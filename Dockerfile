@@ -1,4 +1,4 @@
-FROM openjdk:11
+FROM openjdk:14.0.2
 #RUN addgroup -S spring && adduser -S spring -G spring
 #USER spring:spring
 #RUN apt-get install curl tar bash procps
