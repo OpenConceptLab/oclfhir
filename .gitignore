@@ -1,0 +1,37 @@
+### IntelliJ Idea ###
+*.iml
+*.ipr
+*.iws
+.idea/
+
+### Maven ###
+target/
+pom.xml.versionsBackup
+
+### Eclipse ###
+*.pydevproject
+.project
+.metadata
+bin/**
+tmp/**
+tmp/**/*
+*.tmp
+*.bak
+*.swp
+*~.nib
+local.properties
+.classpath
+.settings/
+.loadpath
+.DS_Store
+
+# Locally stored "Eclipse launch configurations"
+*.launch
+
+### Java ###
+*.class
+
+# Java Package Files #
+*.jar
+*.war
+*.ear
