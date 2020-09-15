@@ -1,22 +1,24 @@
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns="http://maven.apache.org/POM/4.0.0"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-    <parent>
-        <groupId>org.openconceptlab</groupId>
-        <artifactId>openconceptlab</artifactId>
-        <version>0.0.1-SNAPSHOT</version>
-    </parent>
+	<parent>
+		<groupId>org.openconceptlab</groupId>
+		<artifactId>openconceptlab</artifactId>
+		<version>0.0.1-SNAPSHOT</version>
+	</parent>
 	<groupId>org.openconceptlab.oclfhir</groupId>
 	<artifactId>ocl-fhir-ts</artifactId>
 	<packaging>jar</packaging>
 
 	<name>OCL FHIR terminology service</name>
 
-   <properties>
-      <hapifhir_version>5.0.0</hapifhir_version>
-   </properties>
+	<properties>
+		<hapifhir_version>5.0.0</hapifhir_version>
+	</properties>
 
-   <dependencies>
+	<dependencies>
 
 		<!-- This dependency includes the core HAPI-FHIR classes -->
 		<dependency>
@@ -25,12 +27,12 @@
 			<version>${hapifhir_version}</version>
 		</dependency>
 
-      <!-- This dependency includes the HAPI FHIR Server Framework -->
-      <dependency>
-         <groupId>ca.uhn.hapi.fhir</groupId>
-         <artifactId>hapi-fhir-server</artifactId>
-         <version>${hapifhir_version}</version>
-      </dependency>
+		<!-- This dependency includes the HAPI FHIR Server Framework -->
+		<dependency>
+			<groupId>ca.uhn.hapi.fhir</groupId>
+			<artifactId>hapi-fhir-server</artifactId>
+			<version>${hapifhir_version}</version>
+		</dependency>
 
 		<!-- At least one "structures" JAR must also be included -->
 		<dependency>
@@ -39,7 +41,7 @@
 			<version>${hapifhir_version}</version>
 		</dependency>
 
-		<!-- Used for validation  -->
+		<!-- Used for validation -->
 		<dependency>
 			<groupId>ca.uhn.hapi.fhir</groupId>
 			<artifactId>hapi-fhir-validation-resources-r4</artifactId>
@@ -55,35 +57,35 @@
 		<dependency>
 			<groupId>javax.servlet</groupId>
 			<artifactId>javax.servlet-api</artifactId>
-			<!--	updated from 3.0.1		-->
+			<!-- updated from 3.0.1 -->
 			<version>4.0.1</version>
 			<scope>provided</scope>
 		</dependency>
 
-	   <dependency>
-		   <groupId>org.thymeleaf</groupId>
-		   <artifactId>thymeleaf</artifactId>
-		   <version>3.0.2.RELEASE</version>
-	   </dependency>
+		<dependency>
+			<groupId>org.thymeleaf</groupId>
+			<artifactId>thymeleaf</artifactId>
+			<version>3.0.2.RELEASE</version>
+		</dependency>
 
-	   <!-- Used for CORS support -->
-	   <dependency>
-		   <groupId>org.ebaysf.web</groupId>
-		   <artifactId>cors-filter</artifactId>
-		   <version>1.0.1</version>
-		   <exclusions>
-			   <exclusion>
-				   <artifactId>servlet-api</artifactId>
-				   <groupId>javax.servlet</groupId>
-			   </exclusion>
-		   </exclusions>
-	   </dependency>
+		<!-- Used for CORS support -->
+		<dependency>
+			<groupId>org.ebaysf.web</groupId>
+			<artifactId>cors-filter</artifactId>
+			<version>1.0.1</version>
+			<exclusions>
+				<exclusion>
+					<artifactId>servlet-api</artifactId>
+					<groupId>javax.servlet</groupId>
+				</exclusion>
+			</exclusions>
+		</dependency>
 
-	   <!-- Spring dependencies -->
-	   <dependency>
-		   <groupId>org.springframework.boot</groupId>
-		   <artifactId>spring-boot-starter</artifactId>
-	   </dependency>
+		<!-- Spring dependencies -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter</artifactId>
+		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -94,36 +96,36 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
-	   <dependency>
-		   <groupId>org.springframework.boot</groupId>
-		   <artifactId>spring-boot-starter-test</artifactId>
-		   <scope>test</scope>
-	   </dependency>
-	   <dependency>
-		   <groupId>org.springframework.boot</groupId>
-		   <artifactId>spring-boot-starter-web</artifactId>
-	   </dependency>
-	   <dependency>
-		   <groupId>org.springframework.boot</groupId>
-		   <artifactId>spring-boot-starter-actuator</artifactId>
-	   </dependency>
-	   <dependency>
-		   <groupId>org.springframework.boot</groupId>
-		   <artifactId>spring-boot-devtools</artifactId>
-	   </dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-devtools</artifactId>
+		</dependency>
 
-	   <!--	 Database related dependencies  -->
-	   <dependency>
-		   <groupId>org.postgresql</groupId>
-		   <artifactId>postgresql</artifactId>
-		   <version>42.2.16</version>
-	   </dependency>
-	   <dependency>
-		   <groupId>com.vladmihalcea</groupId>
-		   <artifactId>hibernate-types-52</artifactId>
-		   <version>2.9.13</version>
-	   </dependency>
-   </dependencies>
+		<!-- Database related dependencies -->
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<version>42.2.16</version>
+		</dependency>
+		<dependency>
+			<groupId>com.vladmihalcea</groupId>
+			<artifactId>hibernate-types-52</artifactId>
+			<version>2.9.13</version>
+		</dependency>
+	</dependencies>
 
 	<build>
 		<plugins>
