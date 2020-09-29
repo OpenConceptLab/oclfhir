@@ -4,6 +4,7 @@ import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.interceptor.auth.AuthorizationInterceptor;
 import ca.uhn.fhir.rest.server.interceptor.auth.IAuthRule;
 import ca.uhn.fhir.rest.server.interceptor.auth.RuleBuilder;
+import org.dom4j.rule.Rule;
 import org.hl7.fhir.r4.model.*;
 import org.springframework.stereotype.Component;
 
@@ -15,12 +16,9 @@ import java.util.List;
  */
 @Component
 public class OclFhirAuthorizationInterceptor extends AuthorizationInterceptor {
+
    @Override
    public List<IAuthRule> buildRuleList(RequestDetails theRequestDetails) {
-
-      // Process this header
-      String authHeader = theRequestDetails.getHeader("Authorization");
-
       RuleBuilder builder = getDefaultRuleBuilder();
       return builder.build();
    }
