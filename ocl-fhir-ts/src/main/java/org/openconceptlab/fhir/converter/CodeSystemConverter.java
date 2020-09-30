@@ -1,6 +1,5 @@
 package org.openconceptlab.fhir.converter;
 
-import java.util.Arrays;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
@@ -11,8 +10,6 @@ import org.hl7.fhir.r4.model.CodeSystem.ConceptPropertyComponent;
 import org.hl7.fhir.r4.model.CodeSystem.FilterOperator;
 import org.hl7.fhir.r4.model.CodeType;
 import org.hl7.fhir.r4.model.Enumerations.PublicationStatus;
-import org.hl7.fhir.r4.model.Identifier;
-import org.hl7.fhir.r4.model.Identifier.IdentifierUse;
 import org.hl7.fhir.r4.model.StringType;
 import org.openconceptlab.fhir.model.Concept;
 import org.openconceptlab.fhir.model.ConceptsName;
@@ -21,6 +18,8 @@ import org.openconceptlab.fhir.model.Organization;
 import org.openconceptlab.fhir.model.Source;
 import org.openconceptlab.fhir.model.UserProfile;
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
+import static org.openconceptlab.fhir.util.OclFhirUtil.*;
+
 import org.springframework.stereotype.Component;
 
 import com.google.gson.JsonArray;
@@ -34,9 +33,7 @@ import com.google.gson.JsonParser;
  */
 @Component
 public class CodeSystemConverter {
-	
-	private static final List<String> allowedFilterOperators = Arrays.asList(FilterOperator.ISA.toString(), FilterOperator.ISNOTA.toString(),
-			FilterOperator.IN.toString(), FilterOperator.NOTIN.toString());
+
 	JsonParser parser = new JsonParser();
 	
     public void convertToCodeSystem(List<CodeSystem> codeSystems, List<Source> sources, boolean includeConcepts, String version) {
@@ -73,9 +70,9 @@ public class CodeSystemConverter {
         Organization organization = source.getOrganization();
         UserProfile user = source.getUserId();
         if(organization != null) {
-            codeSystem.setPublisher(organization.getMnemonic());
+            codeSystem.setPublisher(ORG_ + organization.getMnemonic());
         } else if(user != null) {
-            codeSystem.setPublisher(user.getUsername());
+            codeSystem.setPublisher(USER_ + user.getUsername());
         }
         // set description
         if(StringUtils.isNotBlank(source.getDescription())) {
@@ -88,7 +85,8 @@ public class CodeSystemConverter {
         	codeSystem.setUrl(source.getExternalId());
         }
         // set status
-        addStatus(codeSystem, source.getIsActive(), source.getRetired() != null ? source.getRetired() : false, source.getReleased());
+        addStatus(codeSystem, source.getIsActive(), source.getRetired() != null ? source.getRetired() : false,
+				source.getReleased());
         return codeSystem;
     }
     
@@ -143,10 +141,10 @@ public class CodeSystemConverter {
     				if(filter.get(CODE) != null) {
     					String code = filter.get(CODE).getAsString();
     					if(FILTER_CODE_CC.equals(code)) {
-    						addFilter(codeSystem, FILTER_CODE_CC, filter.get(DESC), filter.get(OP),
+    						addFilter(codeSystem, FILTER_CODE_CC, filter.get(DESC), filter.get(OPERATOR),
     								filter.get(VALUE));
     					} else if (FILTER_CODE_DT.equals(code)) {
-    						addFilter(codeSystem, FILTER_CODE_DT, filter.get(DESC), filter.get(OP),
+    						addFilter(codeSystem, FILTER_CODE_DT, filter.get(DESC), filter.get(OPERATOR),
     								filter.get(VALUE));
     					}
     				}
@@ -154,31 +152,15 @@ public class CodeSystemConverter {
     		}
     		// identifier
     		JsonArray identifiers = obj.getAsJsonArray(IDENTIFIERS);
-    		if (identifiers != null && identifiers.isJsonArray()) {
-    			for(JsonElement je : identifiers) {
-    				JsonObject identifier = je.getAsJsonObject();
-    				if(identifier.get(SYSTEM) != null && identifier.get(VALUE) != null) {
-    					Identifier i = new Identifier();
-    					i.setSystem(identifier.get(SYSTEM).getAsString());
-    					i.setValue(identifier.get(VALUE).getAsString());
-    					JsonElement use = identifier.get(USE);
-    					if(use != null && IdentifierUse.fromCode(use.getAsString()) != null)
-    						i.setUse(IdentifierUse.fromCode(use.getAsString()));
-    					codeSystem.getIdentifier().add(i);
-    				}
-    			}
-    		}
+    		codeSystem.setIdentifier(getIdentifiers(identifiers));
+
     		// purpose
-    		if(isValidParam(obj.get(PURPOSE))) 
+    		if(isValidElement(obj.get(PURPOSE)))
     			codeSystem.setPurpose(obj.get(PURPOSE).getAsString());
     		// copyright
-    		if(isValidParam(obj.get(COPYRIGHT)))
+    		if(isValidElement(obj.get(COPYRIGHT)))
     			codeSystem.setCopyright(obj.get(COPYRIGHT).getAsString());
     	}
-    }
-    
-    private boolean isValidParam(JsonElement element) {
-    	return element != null && element.getAsString() != null;
     }
     
     private void addFilter(CodeSystem codeSystem, String code, JsonElement description, JsonElement operator, 
@@ -197,10 +179,6 @@ public class CodeSystemConverter {
     			c.setValue(value.getAsString());
     		codeSystem.getFilter().add(c);
     	}
-    }
-    
-    private JsonObject parseExtras(String extras) {
-    	return parser.parse(extras).getAsJsonObject();
     }
 
     public void toSource(final CodeSystem codeSystem){

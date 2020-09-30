@@ -12,12 +12,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.lang3.StringUtils;
 import org.aspectj.apache.bcel.classfile.Code;
-import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.CodeSystem;
-import org.hl7.fhir.r4.model.IdType;
-import org.hl7.fhir.r4.model.OperationOutcome;
+import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
+import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
 import org.openconceptlab.fhir.util.OclFhirUtil;
+import static org.openconceptlab.fhir.util.OclFhirUtil.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -48,17 +47,17 @@ public class OclFhirController {
 
     @GetMapping(path = {"/orgs/{org}/CodeSystem/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public String getCodeSystemByOrg(@PathVariable String org, @PathVariable String id) {
-        return getCodeSystemByOwner(org, id);
+        return getResourceByOwner(CodeSystem.class, ORG_ + org, id);
     }
 
     @GetMapping(path = {"/users/{user}/CodeSystem/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public String getCodeSystemByUser(@PathVariable String user, @PathVariable String id) {
-        return getCodeSystemByOwner(user, id);
+        return getResourceByOwner(CodeSystem.class, USER_ + user, id);
     }
 
     @GetMapping(path = {"/orgs/{org}/CodeSystem"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public String searchCodeSystemsByOrg(@PathVariable String org) {
-        return searchCodeSystem(CodeSystem.SP_PUBLISHER, org);
+        return searchResource(CodeSystem.class, CodeSystem.SP_PUBLISHER, ORG_ + org);
     }
 
     @GetMapping(path = {"/users/{user}/CodeSystem"}, produces = {MediaType.APPLICATION_JSON_VALUE})
@@ -93,5 +92,32 @@ public class OclFhirController {
         return codeSystem != null && owner.equals(codeSystem.getPublisher()) ? oclFhirUtil.getResource(codeSystem) : "{}";
     }
 
+    private String searchResource(final Class<? extends MetadataResource> resourceClass, final String... filters) {
+        IQuery q = oclFhirUtil.getClient().search().forResource(resourceClass);
+        if(filters.length % 2 == 0) {
+            for(int i=0; i<filters.length; i+=2) {
+                if (i==0) {
+                    q = q.where(new StringClientParam(filters[i]).matches().value(filters[i + 1]));
+                } else {
+                    q = q.and(new StringClientParam(filters[i]).matches().value(filters[i + 1]));
+                }
+            }
+        }
+        Bundle bundle = (Bundle) q.execute();
+        return oclFhirUtil.getResource(bundle);
+    }
+
+    private String getResourceByOwner(final Class<? extends MetadataResource> resourceClass, final String owner, final String id) {
+        MetadataResource resource = null;
+        try {
+            resource = oclFhirUtil.getClient()
+                    .read().resource(resourceClass)
+                    .withId(id).execute();
+        } catch (Exception e) {
+            return oclFhirUtil.getResource(oclFhirUtil.getNotFoundOutcome(new IdType(resourceClass.getSimpleName(), id)));
+        }
+        
+        return resource != null && owner.equals(resource.getPublisher()) ? oclFhirUtil.getResource(resource) : "{}";
+    }
 
 }

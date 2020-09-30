@@ -3,6 +3,7 @@ package org.openconceptlab.fhir.provider;
 import ca.uhn.fhir.rest.annotation.*;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.IResourceProvider;
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.instance.model.api.IBaseResource;
@@ -11,6 +12,7 @@ import org.openconceptlab.fhir.converter.CodeSystemConverter;
 import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.repository.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
+import static org.openconceptlab.fhir.util.OclFhirUtil.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -40,8 +42,8 @@ public class CodeSystemResourceProvider implements IResourceProvider {
 
     /**
      * Get a single {@link CodeSystem} for given {@link IdType}.
-     * @param id
-     * @return
+     * @param id {@link CodeSystem#id}
+     * @return {@link CodeSystem}
      */
     @Read()
     @Transactional
@@ -49,13 +51,11 @@ public class CodeSystemResourceProvider implements IResourceProvider {
         List<CodeSystem> codeSystems = new ArrayList<>();
         List<Source> sources = getPublicSourceByMnemonic(new StringType(id.getIdPart()));
         codeSystemConverter.convertToCodeSystem(codeSystems, sources, true, null);
-        if(codeSystems.size() >= 1) return codeSystems.get(0);
-
-        if(codeSystems.isEmpty()) {
+        if(codeSystems.size() >= 1) {
+            return codeSystems.get(0);
+        } else {
             throw new ResourceNotFoundException(id, oclFhirUtil.getNotFoundOutcome(id));
         }
-
-        return new CodeSystem();
     }
 
     /**
@@ -79,7 +79,9 @@ public class CodeSystemResourceProvider implements IResourceProvider {
      */
     @Search
     @Transactional
-    public Bundle getCodeSystemsByPublisher(@RequiredParam(name = CodeSystem.SP_PUBLISHER) StringType publisher, RequestDetails details) {
+    public Bundle getCodeSystemsByPublisher(@RequiredParam(name = CodeSystem.SP_PUBLISHER) StringType publisher,
+    		RequestDetails details) {
+        validatePublisher(publisher.getValue());
         List<CodeSystem> codeSystems = new ArrayList<CodeSystem>();
         List<Source> sources = getPublicSourcesByPublisher(publisher.getValue());
         codeSystemConverter.convertToCodeSystem(codeSystems, sources, true, null);
@@ -87,15 +89,20 @@ public class CodeSystemResourceProvider implements IResourceProvider {
     }
 
     private List<Source> getPublicSourceByMnemonic(StringType id) {
-        return sourceRepository.findByMnemonicAndPublicAccessIn(id.getValue(), Arrays.asList("View", "Edit"));
+        return sourceRepository.findByMnemonicAndPublicAccessIn(id.getValue(), publicAccess);
     }
 
     private List<Source> getPublicSources() {
-        return sourceRepository.findByPublicAccessIn(Arrays.asList("View", "Edit"));
+        return sourceRepository.findByPublicAccessIn(publicAccess);
     }
-
+    
     private List<Source> getPublicSourcesByPublisher(String publisher) {
-        return sourceRepository.findByOrganizationMnemonicOrUserIdUsername(publisher, publisher);
+        String owner = getOwner(publisher);
+        String value = getPublisher(publisher);
+        if(ORG.equals(owner)) {
+            return sourceRepository.findByOrganizationMnemonic(value);
+        } else {
+            return sourceRepository.findByUserIdUsername(value);
+        }
     }
-
 }

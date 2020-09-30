@@ -4,7 +4,14 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -13,17 +20,33 @@ import javax.annotation.PostConstruct;
 
 import java.net.URL;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+
+import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 
 @Component
 public class OclFhirUtil {
 
+    public static final String PUBLISHER_REGEX = "^user:.*|^org:.*";
+	public static final String ORG_ = "org:";
+    public static final String USER_ = "user:";
+    public static final String ORG = "org";
+    public static final String USER = "user";
+    public static final String SEP = ":";
+    public static List<String> publicAccess = Arrays.asList("View", "Edit");
+    
     @Value("${server.port}")
     private String port;
 
     private static FhirContext context = FhirContext.forR4();
     private String serverBase = "";
     IParser parser = context.newJsonParser();
+    public static JsonParser gson = new JsonParser();
+    public static final List<String> allowedFilterOperators = Arrays.asList(CodeSystem.FilterOperator.ISA.toCode(),
+            CodeSystem.FilterOperator.ISNOTA.toCode(), CodeSystem.FilterOperator.IN.toCode(),
+            CodeSystem.FilterOperator.NOTIN.toCode());
 
     @PostConstruct
     private void init() {
@@ -66,5 +89,79 @@ public class OclFhirUtil {
                 .setCode(OperationOutcome.IssueType.NOTFOUND)
                 .setDiagnostics("Resource " + id + " does not exist.");
         return o;
+    }
+
+    public static OperationOutcome getError(OperationOutcome.IssueType errorType, final String error) {
+        OperationOutcome o = new OperationOutcome();
+        o.getIssueFirstRep()
+                .setSeverity(OperationOutcome.IssueSeverity.ERROR)
+                .setCode(errorType)
+                .setDiagnostics(error);
+        return o;
+    }
+
+    public static OperationOutcome getError(OperationOutcome.IssueType errorType) {
+        OperationOutcome o = new OperationOutcome();
+        o.getIssueFirstRep()
+                .setSeverity(OperationOutcome.IssueSeverity.ERROR)
+                .setCode(errorType);
+        return o;
+    }
+
+    public static boolean isValid(final String value) {
+        return StringUtils.isNotBlank(value);
+    }
+
+    public static boolean isValid(final StringType value) {
+        return value != null && StringUtils.isNotBlank(value.getValue());
+    }
+    
+    public static JsonObject parseExtras(String extras) {
+        return gson.parse(extras).getAsJsonObject();
+    }
+
+    public static List<Identifier> getIdentifiers(JsonArray jsonArray) {
+        List<Identifier> identifiers = new ArrayList<>();
+        if (jsonArray != null && jsonArray.isJsonArray()) {
+            for(JsonElement je : jsonArray) {
+                JsonObject identifier = je.getAsJsonObject();
+                if(identifier.get(SYSTEM) != null && identifier.get(VALUE) != null) {
+                    Identifier i = new Identifier();
+                    i.setSystem(identifier.get(SYSTEM).getAsString());
+                    i.setValue(identifier.get(VALUE).getAsString());
+                    JsonElement use = identifier.get(USE);
+                    if(use != null && Identifier.IdentifierUse.fromCode(use.getAsString()) != null)
+                        i.setUse(Identifier.IdentifierUse.fromCode(use.getAsString()));
+                    identifiers.add(i);
+                }
+            }
+        }
+        return identifiers;
+    }
+
+    public static boolean isValidElement(JsonElement element) {
+        return element != null && element.getAsString() != null;
+    }
+
+    public static void validatePublisher(String publisher) {
+        if (!isValidPublisher(publisher)) {
+            throw new InvalidRequestException("", getError(OperationOutcome.IssueType.INVALID,
+                    String.format("Invalid publisher '%s' provided. Correct format is 'user:<username>' or 'org:<organizationId>'", publisher)));
+        }
+    }
+
+    public static boolean isValidPublisher(final String publisher) {
+        return isValid(publisher)
+                && publisher.matches(PUBLISHER_REGEX)
+                && publisher.split(SEP).length >= 2;
+    }
+
+    public static String getOwner(String publisher) {
+        return publisher.split(SEP)[0];
+    }
+
+    public static String getPublisher(String publisher) {
+        String[] arr = publisher.split(SEP);
+        return String.join(SEP, ArrayUtils.subarray(arr, 1, arr.length));
     }
 }
