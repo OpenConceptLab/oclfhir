@@ -37,11 +37,15 @@ import java.util.stream.Collectors;
 public class OclFhirController {
 
     CodeSystemResourceProvider codeSystemResourceProvider;
+    ValueSetResourceProvider valueSetResourceProvider;
     OclFhirUtil oclFhirUtil;
 
     @Autowired
-    public OclFhirController(CodeSystemResourceProvider codeSystemResourceProvider, OclFhirUtil oclFhirUtil) {
+    public OclFhirController(CodeSystemResourceProvider codeSystemResourceProvider,
+                             ValueSetResourceProvider valueSetResourceProvider,
+                             OclFhirUtil oclFhirUtil) {
         this.codeSystemResourceProvider = codeSystemResourceProvider;
+        this.valueSetResourceProvider = valueSetResourceProvider;
         this.oclFhirUtil = oclFhirUtil;
     }
 
@@ -62,7 +66,27 @@ public class OclFhirController {
 
     @GetMapping(path = {"/users/{user}/CodeSystem"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public String searchCodeSystemsByUser(@PathVariable String user) {
-        return searchCodeSystem(CodeSystem.SP_PUBLISHER, user);
+        return searchResource(CodeSystem.class, CodeSystem.SP_PUBLISHER, USER_ + user);
+    }
+
+    @GetMapping(path = {"/orgs/{org}/ValueSet/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public String getValueSetByOrg(@PathVariable String org, @PathVariable String id) {
+        return getResourceByOwner(ValueSet.class, ORG_ + org, id);
+    }
+
+    @GetMapping(path = {"/users/{user}/ValueSet/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public String getValueSetByUser(@PathVariable String user, @PathVariable String id) {
+        return getResourceByOwner(ValueSet.class, USER_ + user, id);
+    }
+
+    @GetMapping(path = {"/orgs/{org}/ValueSet"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public String searchValueSetsByOrg(@PathVariable String org) {
+        return searchResource(ValueSet.class, ValueSet.SP_PUBLISHER, ORG_ + org);
+    }
+
+    @GetMapping(path = {"/users/{user}/ValueSet"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public String searchValueSetsByUser(@PathVariable String user) {
+        return searchResource(ValueSet.class, ValueSet.SP_PUBLISHER, USER_ + user);
     }
 
     private String searchCodeSystem(final String... filters) {

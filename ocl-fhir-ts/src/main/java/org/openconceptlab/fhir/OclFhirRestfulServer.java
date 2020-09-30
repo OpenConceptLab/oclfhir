@@ -9,12 +9,14 @@ import ca.uhn.fhir.rest.server.IServerAddressStrategy;
 import ca.uhn.fhir.rest.server.IncomingRequestAddressStrategy;
 import ca.uhn.fhir.rest.server.RestfulServer;
 import ca.uhn.fhir.rest.server.interceptor.ResponseHighlighterInterceptor;
+import ca.uhn.fhir.rest.server.interceptor.ResponseValidatingInterceptor;
 import ca.uhn.fhir.rest.server.interceptor.ServeMediaResourceRawInterceptor;
 import ca.uhn.fhir.rest.server.servlet.ServletRequestDetails;
 import org.openconceptlab.fhir.interceptor.OclFhirAuthorizationInterceptor;
 import org.openconceptlab.fhir.interceptor.OclFhirLoggingInterceptor;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.OclCapabilityStatementProvider;
+import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -29,6 +31,9 @@ public class OclFhirRestfulServer extends RestfulServer {
 
 	@Autowired
 	private CodeSystemResourceProvider codeSystemResourceProvider;
+
+	@Autowired
+	private ValueSetResourceProvider valueSetResourceProvider;
 
 	@Autowired
 	private OclCapabilityStatementProvider oclCapabilityStatementProvider;
@@ -51,6 +56,7 @@ public class OclFhirRestfulServer extends RestfulServer {
 
 		// Register resource providers
 		registerProvider(codeSystemResourceProvider);
+		registerProvider(valueSetResourceProvider);
 
 		// Register capability statement provider
 		setServerConformanceProvider(oclCapabilityStatementProvider);
