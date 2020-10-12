@@ -14,13 +14,11 @@ import java.util.List;
  */
 @Entity
 @Table(name="organizations")
-@NamedQuery(name="Organization.findAll", query="SELECT o FROM Organization o")
 public class Organization extends BaseOclEntity implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
-	@SequenceGenerator(name="ORGANIZATIONS_ID_GENERATOR", sequenceName="ORGANIZATIONS_ID_SEQ")
-	@GeneratedValue(strategy=GenerationType.SEQUENCE, generator="ORGANIZATIONS_ID_GENERATOR")
+	@GeneratedValue(strategy=GenerationType.IDENTITY)
 	private Long id;
 
 	@Column

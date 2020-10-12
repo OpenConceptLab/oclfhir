@@ -17,7 +17,6 @@ import java.util.List;
  */
 @Entity
 @Table(name="mappings")
-@NamedQuery(name="Mapping.findAll", query="SELECT m FROM Mapping m")
 @TypeDefs({
 		@TypeDef(name = "jsonb", typeClass = JsonBinaryType.class)
 })
@@ -25,8 +24,7 @@ public class Mapping extends BaseOclEntity implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
-	@SequenceGenerator(name="MAPPINGS_ID_GENERATOR", sequenceName="MAPPINGS_ID_SEQ")
-	@GeneratedValue(strategy=GenerationType.SEQUENCE, generator="MAPPINGS_ID_GENERATOR")
+	@GeneratedValue(strategy=GenerationType.IDENTITY)
 	private Long id;
 
 	@Column
@@ -96,7 +94,7 @@ public class Mapping extends BaseOclEntity implements Serializable {
 	@JoinColumn(name="versioned_object_id")
 	private Mapping versionedObject;
 
-	@ManyToOne
+	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name="parent_id")
 	private Source parent;
 

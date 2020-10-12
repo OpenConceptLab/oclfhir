@@ -14,13 +14,11 @@ import java.util.List;
  */
 @Entity
 @Table(name="collections")
-@NamedQuery(name="Collection.findAll", query="SELECT c FROM Collection c")
 public class Collection extends BaseOclEntity implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
-	@SequenceGenerator(name="COLLECTIONS_ID_GENERATOR", sequenceName="COLLECTIONS_ID_SEQ")
-	@GeneratedValue(strategy=GenerationType.SEQUENCE, generator="COLLECTIONS_ID_GENERATOR")
+	@GeneratedValue(strategy=GenerationType.IDENTITY)
 	private Long id;
 
 	@Column(name="_background_process_ids")
@@ -99,7 +97,8 @@ public class Collection extends BaseOclEntity implements Serializable {
 	@Column
 	private Boolean retired;
 
-	@Column(name="supported_locales")
+	@Type(type = "jsonb")
+	@Column(name="supported_locales", columnDefinition = "jsonb")
 	private String supportedLocales;
 
 	@Column(name="updated_at")

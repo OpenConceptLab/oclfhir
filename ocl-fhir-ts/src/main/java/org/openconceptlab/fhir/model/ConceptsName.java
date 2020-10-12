@@ -10,19 +10,17 @@ import javax.persistence.*;
  */
 @Entity
 @Table(name="concepts_names")
-@NamedQuery(name="ConceptsName.findAll", query="SELECT c FROM ConceptsName c")
 public class ConceptsName extends BaseOclEntity implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
-	@SequenceGenerator(name="CONCEPTS_NAMES_ID_GENERATOR", sequenceName="CONCEPTS_NAMES_ID_SEQ")
-	@GeneratedValue(strategy=GenerationType.SEQUENCE, generator="CONCEPTS_NAMES_ID_GENERATOR")
+	@GeneratedValue(strategy=GenerationType.IDENTITY)
 	private Integer id;
 
 	@ManyToOne
 	private Concept concept;
 
-	@ManyToOne
+	@ManyToOne(cascade = CascadeType.ALL)
 	private LocalizedText localizedtext;
 
 	public ConceptsName() {

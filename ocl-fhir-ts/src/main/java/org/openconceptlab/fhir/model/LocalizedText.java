@@ -12,17 +12,15 @@ import java.util.List;
  */
 @Entity
 @Table(name="localized_texts")
-@NamedQuery(name="LocalizedText.findAll", query="SELECT l FROM LocalizedText l")
 public class LocalizedText extends BaseOclEntity implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
-	@SequenceGenerator(name="LOCALIZED_TEXTS_ID_GENERATOR", sequenceName="LOCALIZED_TEXTS_ID_SEQ")
-	@GeneratedValue(strategy=GenerationType.SEQUENCE, generator="LOCALIZED_TEXTS_ID_GENERATOR")
+	@GeneratedValue(strategy=GenerationType.IDENTITY)
 	private Long id;
 
 	@Column(name="created_at")
-	private Timestamp createdAt;
+	private Timestamp createdAt = new Timestamp(System.currentTimeMillis());
 
 	@Column(name="external_id")
 	private String externalId;

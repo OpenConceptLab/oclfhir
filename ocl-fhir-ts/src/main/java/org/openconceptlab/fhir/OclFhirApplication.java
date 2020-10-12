@@ -5,18 +5,24 @@ import org.openconceptlab.fhir.controller.OclFhirController;
 import org.openconceptlab.fhir.converter.CodeSystemConverter;
 import org.openconceptlab.fhir.interceptor.OclFhirLoggingInterceptor;
 import org.openconceptlab.fhir.model.BaseOclEntity;
+import org.openconceptlab.fhir.model.UserProfile;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.repository.BaseOclRepository;
 import org.openconceptlab.fhir.repository.ConceptRepository;
+import org.openconceptlab.fhir.repository.UserRepository;
 import org.openconceptlab.fhir.util.OclFhirUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.boot.autoconfigure.web.servlet.error.ErrorMvcAutoConfiguration;
 import org.springframework.boot.web.servlet.ServletComponentScan;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+
+import javax.annotation.PostConstruct;
+import java.util.List;
 
 @ServletComponentScan
 @SpringBootApplication(exclude = {ErrorMvcAutoConfiguration.class})
@@ -34,7 +40,30 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 @EnableJpaRepositories(basePackageClasses = {ConceptRepository.class})
 @EntityScan(basePackageClasses = {BaseOclEntity.class})
 public class OclFhirApplication {
+
+    UserProfile oclUser = null;
+
+    @Autowired
+    UserRepository userRepository;
+
+    @PostConstruct
+    public void init() {
+        List<UserProfile> users = userRepository.findByUsernameIs("ocladmin");
+        if (!users.isEmpty()) {
+            oclUser = users.get(0);
+        } else {
+            throw new InternalError("Can not find ocladmin user.");
+        }
+    }
+
     public static void main(String[] args) {
         SpringApplication.run(OclFhirApplication.class,args);
     }
+
+    @Bean
+    public UserProfile getOclUser() {
+        return oclUser;
+    }
+
+
 }

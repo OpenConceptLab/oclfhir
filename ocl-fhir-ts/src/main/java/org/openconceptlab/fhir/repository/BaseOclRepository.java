@@ -15,5 +15,6 @@ import java.util.List;
 public interface BaseOclRepository<T extends BaseOclEntity> extends JpaRepository<T, Integer> {
 
     List<T> findByPublicAccessIn(List<String> publicAccess);
+    List<T> findById(Long id);
 
 }

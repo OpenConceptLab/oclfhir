@@ -11,13 +11,11 @@ import java.sql.Timestamp;
  */
 @Entity
 @Table(name="authtoken_token")
-@NamedQuery(name="AuthtokenToken.findAll", query="SELECT a FROM AuthtokenToken a")
 public class AuthtokenToken extends BaseOclEntity implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
-	@SequenceGenerator(name="AUTHTOKEN_TOKEN_KEY_GENERATOR", sequenceName="AUTHTOKEN_TOKEN_ID_SEQ")
-	@GeneratedValue(strategy=GenerationType.SEQUENCE, generator="AUTHTOKEN_TOKEN_KEY_GENERATOR")
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private String key;
 
 	@Column

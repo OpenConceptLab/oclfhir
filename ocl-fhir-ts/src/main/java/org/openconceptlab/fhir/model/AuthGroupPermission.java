@@ -14,8 +14,7 @@ public class AuthGroupPermission extends BaseOclEntity implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
-	@SequenceGenerator(name="AUTH_GROUP_PERMISSIONS_ID_GENERATOR", sequenceName="AUTH_GROUP_PERMISSIONS_ID_SEQ")
-	@GeneratedValue(strategy=GenerationType.SEQUENCE, generator="AUTH_GROUP_PERMISSIONS_ID_GENERATOR")
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Integer id;
 
 	@ManyToOne

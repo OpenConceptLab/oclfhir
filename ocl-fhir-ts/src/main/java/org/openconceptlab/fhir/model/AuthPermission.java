@@ -11,13 +11,11 @@ import java.util.List;
  */
 @Entity
 @Table(name="auth_permission")
-@NamedQuery(name="AuthPermission.findAll", query="SELECT a FROM AuthPermission a")
 public class AuthPermission extends BaseOclEntity implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
-	@SequenceGenerator(name="AUTH_PERMISSION_ID_GENERATOR", sequenceName="AUTH_PERMISSION_ID_SEQ")
-	@GeneratedValue(strategy=GenerationType.SEQUENCE, generator="AUTH_PERMISSION_ID_GENERATOR")
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Integer id;
 
 	@Column

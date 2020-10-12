@@ -10,13 +10,11 @@ import javax.persistence.*;
  */
 @Entity
 @Table(name="user_profiles_user_permissions")
-@NamedQuery(name="UserProfilesUserPermission.findAll", query="SELECT u FROM UserProfilesUserPermission u")
 public class UserProfilesUserPermission extends BaseOclEntity implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
-	@SequenceGenerator(name="USER_PROFILES_USER_PERMISSIONS_ID_GENERATOR", sequenceName="USER_PROFILES_USER_PERMISSIONS_ID_SEQ")
-	@GeneratedValue(strategy=GenerationType.SEQUENCE, generator="USER_PROFILES_USER_PERMISSIONS_ID_GENERATOR")
+	@GeneratedValue(strategy=GenerationType.IDENTITY)
 	private Integer id;
 
 	@ManyToOne

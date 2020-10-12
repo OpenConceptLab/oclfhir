@@ -5,7 +5,9 @@ import org.hibernate.annotations.Type;
 import java.io.Serializable;
 import javax.persistence.*;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -14,26 +16,21 @@ import java.util.List;
  */
 @Entity
 @Table(name="sources")
-@NamedQuery(name="Source.findAll", query="SELECT s FROM Source s")
 public class Source extends BaseOclEntity implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
-	@SequenceGenerator(name="SOURCES_ID_GENERATOR", sequenceName="SOURCES_ID_SEQ")
-	@GeneratedValue(strategy=GenerationType.SEQUENCE, generator="SOURCES_ID_GENERATOR")
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@Column(name="_background_process_ids")
-	private String backgroundProcessIds;
-
 	@Column(name="active_concepts")
-	private Integer activeConcepts;
+	private Integer activeConcepts = 0;
 
 	@Column(name="active_mappings")
-	private Integer activeMappings;
+	private Integer activeMappings = 0;
 
 	@Column(name="created_at")
-	private Timestamp createdAt;
+	private Timestamp createdAt = new Timestamp(System.currentTimeMillis());
 
 	@Column(name="custom_validation_schema")
 	private String customValidationSchema;
@@ -55,16 +52,16 @@ public class Source extends BaseOclEntity implements Serializable {
 	private String fullName;
 
 	@Column(name="internal_reference_id")
-	private String internalReferenceId;
+	private String internalReferenceId = "0";
 
 	@Column(name="is_active")
 	private Boolean isActive;
 
 	@Column(name="is_latest_version")
-	private Boolean isLatestVersion;
+	private Boolean isLatestVersion = true;
 
 	@Column(name="last_child_update")
-	private Timestamp lastChildUpdate;
+	private Timestamp lastChildUpdate = new Timestamp(System.currentTimeMillis());
 
 	@Column(name="last_concept_update")
 	private Timestamp lastConceptUpdate;
@@ -76,13 +73,13 @@ public class Source extends BaseOclEntity implements Serializable {
 	private String mnemonic;
 
 	@Column
-	private String name;
+	private String name = "N/A";
 
 	@Column(name="public_access")
-	private String publicAccess;
+	private String publicAccess = "View";
 
 	@Column
-	private Boolean released;
+	private Boolean released = false;
 
 	@Column
 	private Boolean retired;
@@ -90,29 +87,27 @@ public class Source extends BaseOclEntity implements Serializable {
 	@Column(name="source_type")
 	private String sourceType;
 
-	@Column(name="supported_locales")
+	@Type(type = "jsonb")
+	@Column(name="supported_locales", columnDefinition = "jsonb")
 	private String supportedLocales;
 
 	@Column(name="updated_at")
-	private Timestamp updatedAt;
+	private Timestamp updatedAt = new Timestamp(System.currentTimeMillis());
 
 	@Column
 	private String uri;
 
 	@Column
-	private String version;
+	private String version = "HEAD";
 
 	@Column
 	private String website;
 
-	@OneToMany(mappedBy="parent")
+	@OneToMany(mappedBy="parent", cascade = CascadeType.ALL)
 	private List<Concept> concepts;
 
-	@OneToMany(mappedBy="source", fetch = FetchType.LAZY)
-	private List<ConceptsSource> conceptsSources;
-
-	@OneToMany(mappedBy="source", fetch = FetchType.LAZY)
-	private List<MappingsSource> mappingsSources;
+	@OneToMany(mappedBy="parent", cascade = CascadeType.ALL)
+	private List<Mapping> mappings;
 
 	@ManyToOne
 	private Organization organization;
@@ -132,20 +127,16 @@ public class Source extends BaseOclEntity implements Serializable {
 	public Source() {
 	}
 
+	public Source(Long id) {
+		this.id = id;
+	}
+
 	public Long getId() {
 		return this.id;
 	}
 
 	public void setId(Long id) {
 		this.id = id;
-	}
-
-	public String getBackgroundProcessIds() {
-		return this.backgroundProcessIds;
-	}
-
-	public void setBackgroundProcessIds(String backgroundProcessIds) {
-		this.backgroundProcessIds = backgroundProcessIds;
 	}
 
 	public Integer getActiveConcepts() {
@@ -357,6 +348,8 @@ public class Source extends BaseOclEntity implements Serializable {
 	}
 
 	public List<Concept> getConcepts() {
+		if (this.concepts == null)
+			this.concepts = new ArrayList<>();
 		return this.concepts;
 	}
 
@@ -378,48 +371,26 @@ public class Source extends BaseOclEntity implements Serializable {
 		return concept;
 	}
 
-	public List<ConceptsSource> getConceptsSources() {
-		return this.conceptsSources;
+	public List<Mapping> getMappings() {
+		if (this.mappings == null)
+			this.mappings = new ArrayList<>();
+		return this.mappings;
 	}
 
-	public void setConceptsSources(List<ConceptsSource> conceptsSources) {
-		this.conceptsSources = conceptsSources;
+	public void setMappings(List<Mapping> mappings) {
+		this.mappings = mappings;
 	}
 
-	public ConceptsSource addConceptsSource(ConceptsSource conceptsSource) {
-		getConceptsSources().add(conceptsSource);
-		conceptsSource.setSource(this);
-
-		return conceptsSource;
+	public Mapping addMapping(Mapping mapping) {
+		getMappings().add(mapping);
+		mapping.setParent(this);
+		return mapping;
 	}
 
-	public ConceptsSource removeConceptsSource(ConceptsSource conceptsSource) {
-		getConceptsSources().remove(conceptsSource);
-		conceptsSource.setSource(null);
-
-		return conceptsSource;
-	}
-
-	public List<MappingsSource> getMappingsSources() {
-		return this.mappingsSources;
-	}
-
-	public void setMappingsSources(List<MappingsSource> mappingsSources) {
-		this.mappingsSources = mappingsSources;
-	}
-
-	public MappingsSource addMappingsSource(MappingsSource mappingsSource) {
-		getMappingsSources().add(mappingsSource);
-		mappingsSource.setSource(this);
-
-		return mappingsSource;
-	}
-
-	public MappingsSource removeMappingsSource(MappingsSource mappingsSource) {
-		getMappingsSources().remove(mappingsSource);
-		mappingsSource.setSource(null);
-
-		return mappingsSource;
+	public Mapping removeMapping(Mapping mapping) {
+		getMappings().remove(mapping);
+		mapping.setParent(null);
+		return mapping;
 	}
 
 	public Organization getOrganization() {

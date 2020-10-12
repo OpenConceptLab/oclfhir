@@ -14,13 +14,11 @@ import java.util.List;
  */
 @Entity
 @Table(name="user_profiles")
-@NamedQuery(name="UserProfile.findAll", query="SELECT u FROM UserProfile u")
 public class UserProfile extends BaseOclEntity implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
-	@SequenceGenerator(name="USER_PROFILES_ID_GENERATOR", sequenceName="USER_PROFILES_ID_SEQ")
-	@GeneratedValue(strategy=GenerationType.SEQUENCE, generator="USER_PROFILES_ID_GENERATOR")
+	@GeneratedValue(strategy=GenerationType.IDENTITY)
 	private Long id;
 
 	@Column
@@ -102,6 +100,10 @@ public class UserProfile extends BaseOclEntity implements Serializable {
 	private List<UserProfilesUserPermission> userProfilesUserPermissions;
 
 	public UserProfile() {
+	}
+
+	public UserProfile(Long id) {
+		this.id = id;
 	}
 
 	public Long getId() {

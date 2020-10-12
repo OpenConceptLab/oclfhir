@@ -5,6 +5,7 @@ import org.hibernate.annotations.Type;
 import java.io.Serializable;
 import javax.persistence.*;
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -14,26 +15,24 @@ import java.util.List;
  */
 @Entity
 @Table(name="concepts")
-@NamedQuery(name="Concept.findAll", query="SELECT c FROM Concept c")
 public class Concept extends BaseOclEntity implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
-	@SequenceGenerator(name="CONCEPTS_ID_GENERATOR", sequenceName="CONCEPTS_ID_SEQ")
-	@GeneratedValue(strategy=GenerationType.SEQUENCE, generator="CONCEPTS_ID_GENERATOR")
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
 	@Column
 	private String comment;
 
 	@Column(name="concept_class")
-	private String conceptClass;
+	private String conceptClass = "N/A";
 
 	@Column(name="created_at")
-	private Timestamp createdAt;
+	private Timestamp createdAt = new Timestamp(System.currentTimeMillis());
 
 	@Column
-	private String datatype;
+	private String datatype = "N/A";
 
 	@Column(name="default_locale")
 	private String defaultLocale;
@@ -75,11 +74,12 @@ public class Concept extends BaseOclEntity implements Serializable {
 	@Column
 	private Boolean retired;
 
-	@Column(name="supported_locales")
+	@Type(type = "jsonb")
+	@Column(name="supported_locales", columnDefinition = "jsonb")
 	private String supportedLocales;
 
 	@Column(name="updated_at")
-	private Timestamp updatedAt;
+	private Timestamp updatedAt = new Timestamp(System.currentTimeMillis());;
 
 	@Column
 	private String uri;
@@ -90,14 +90,11 @@ public class Concept extends BaseOclEntity implements Serializable {
 	@Column
 	private String website;
 
-	@OneToMany(mappedBy="concept", fetch = FetchType.LAZY)
-	private List<CollectionsConcept> collectionsConcepts;
-
 	@ManyToOne
 	@JoinColumn(name="versioned_object_id")
 	private Concept versionedObject;
 
-	@ManyToOne
+	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name="parent_id")
 	private Source parent;
 
@@ -109,14 +106,11 @@ public class Concept extends BaseOclEntity implements Serializable {
 	@JoinColumn(name="updated_by_id")
 	private UserProfile updatedBy;
 
-	@OneToMany(mappedBy="concept")
+	@OneToMany(mappedBy="concept", cascade = CascadeType.ALL)
 	private List<ConceptsDescription> conceptsDescriptions;
 
-	@OneToMany(mappedBy="concept")
+	@OneToMany(mappedBy="concept", cascade = CascadeType.ALL)
 	private List<ConceptsName> conceptsNames;
-
-	@OneToMany(mappedBy="concept", fetch = FetchType.LAZY)
-	private List<ConceptsSource> conceptsSources;
 
 	public Concept() {
 	}
@@ -305,26 +299,6 @@ public class Concept extends BaseOclEntity implements Serializable {
 		this.website = website;
 	}
 
-	public List<CollectionsConcept> getCollectionsConcepts() {
-		return this.collectionsConcepts;
-	}
-
-	public void setCollectionsConcepts(List<CollectionsConcept> collectionsConcepts) {
-		this.collectionsConcepts = collectionsConcepts;
-	}
-
-	public CollectionsConcept addCollectionsConcept(CollectionsConcept collectionsConcept) {
-		getCollectionsConcepts().add(collectionsConcept);
-		collectionsConcept.setConcept(this);
-		return collectionsConcept;
-	}
-
-	public CollectionsConcept removeCollectionsConcept(CollectionsConcept collectionsConcept) {
-		getCollectionsConcepts().remove(collectionsConcept);
-		collectionsConcept.setConcept(null);
-		return collectionsConcept;
-	}
-
 	public Concept getVersionedObject() {
 		return this.versionedObject;
 	}
@@ -358,6 +332,8 @@ public class Concept extends BaseOclEntity implements Serializable {
 	}
 
 	public List<ConceptsDescription> getConceptsDescriptions() {
+		if (this.conceptsDescriptions == null)
+			this.conceptsDescriptions = new ArrayList<>();
 		return this.conceptsDescriptions;
 	}
 
@@ -378,6 +354,8 @@ public class Concept extends BaseOclEntity implements Serializable {
 	}
 
 	public List<ConceptsName> getConceptsNames() {
+		if (this.conceptsNames == null)
+			this.conceptsNames = new ArrayList<>();
 		return this.conceptsNames;
 	}
 
@@ -396,25 +374,4 @@ public class Concept extends BaseOclEntity implements Serializable {
 		conceptsName.setConcept(null);
 		return conceptsName;
 	}
-
-	public List<ConceptsSource> getConceptsSources() {
-		return this.conceptsSources;
-	}
-
-	public void setConceptsSources(List<ConceptsSource> conceptsSources) {
-		this.conceptsSources = conceptsSources;
-	}
-
-	public ConceptsSource addConceptsSource(ConceptsSource conceptsSource) {
-		getConceptsSources().add(conceptsSource);
-		conceptsSource.setConcept(this);
-		return conceptsSource;
-	}
-
-	public ConceptsSource removeConceptsSource(ConceptsSource conceptsSource) {
-		getConceptsSources().remove(conceptsSource);
-		conceptsSource.setConcept(null);
-		return conceptsSource;
-	}
-
 }

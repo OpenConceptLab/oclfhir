@@ -12,13 +12,11 @@ import java.util.List;
  */
 @Entity
 @Table(name="collection_references")
-@NamedQuery(name="CollectionReference.findAll", query="SELECT c FROM CollectionReference c")
 public class CollectionReference extends BaseOclEntity implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
-	@SequenceGenerator(name="COLLECTION_REFERENCES_ID_GENERATOR", sequenceName="COLLECTION_REFERENCES_ID_SEQ")
-	@GeneratedValue(strategy=GenerationType.SEQUENCE, generator="COLLECTION_REFERENCES_ID_GENERATOR")
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
 	@Column(name="created_at")

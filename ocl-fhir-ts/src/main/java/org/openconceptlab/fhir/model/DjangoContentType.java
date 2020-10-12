@@ -11,13 +11,11 @@ import java.util.List;
  */
 @Entity
 @Table(name="django_content_type")
-@NamedQuery(name="DjangoContentType.findAll", query="SELECT d FROM DjangoContentType d")
 public class DjangoContentType extends BaseOclEntity implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	@Id
-	@SequenceGenerator(name="DJANGO_CONTENT_TYPE_ID_GENERATOR", sequenceName="DJANGO_CONTENT_TYPE_ID_SEQ")
-	@GeneratedValue(strategy=GenerationType.SEQUENCE, generator="DJANGO_CONTENT_TYPE_ID_GENERATOR")
+	@GeneratedValue(strategy=GenerationType.IDENTITY)
 	private Integer id;
 
 	@Column(name="app_label")
