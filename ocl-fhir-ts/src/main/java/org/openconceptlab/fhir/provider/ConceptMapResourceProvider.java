@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * The ConceptMapResourceProvider.
- * @author hp11
+ * @author harpatel1
  */
 @Component
 public class ConceptMapResourceProvider implements IResourceProvider {

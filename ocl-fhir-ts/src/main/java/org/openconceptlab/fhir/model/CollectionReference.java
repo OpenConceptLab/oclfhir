@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * The persistent class for the collection_references database table.
- * @author hp11
+ * @author harpatel1
  */
 @Entity
 @Table(name="collection_references")

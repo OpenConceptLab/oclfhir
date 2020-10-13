@@ -13,7 +13,7 @@ import java.util.List;
 
 /**
  * The persistent class for the mappings database table.
- * @author hp11
+ * @author harpatel1
  */
 @Entity
 @Table(name="mappings")

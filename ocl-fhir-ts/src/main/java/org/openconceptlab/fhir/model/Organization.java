@@ -10,7 +10,7 @@ import java.util.List;
 
 /**
  * The persistent class for the organizations database table.
- * @author hp11
+ * @author harpatel1
  */
 @Entity
 @Table(name="organizations")

@@ -6,7 +6,7 @@ import javax.persistence.*;
 
 /**
  * The persistent class for the collections_references database table.
- * @author hp11
+ * @author harpatel1
  */
 @Entity
 @Table(name="collections_references")

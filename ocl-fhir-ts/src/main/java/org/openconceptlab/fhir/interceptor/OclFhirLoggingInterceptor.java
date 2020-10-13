@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * The OclFhirLoggingInterceptor class.
- * @author hp11
+ * @author harpatel1
  */
 @Component
 public class OclFhirLoggingInterceptor {

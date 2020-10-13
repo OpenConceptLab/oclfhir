@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
  * The UserRepository.
- * @author hp11
+ * @author harpatel1
  */
 @Repository
 public interface UserRepository extends BaseOclRepository<UserProfile> {

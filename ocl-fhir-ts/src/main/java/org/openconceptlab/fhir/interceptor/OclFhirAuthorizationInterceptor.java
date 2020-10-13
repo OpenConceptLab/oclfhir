@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * The OclFhirAuthorizationInterceptor class.
- * @author hp11
+ * @author harpatel1
  */
 @Component
 public class OclFhirAuthorizationInterceptor extends AuthorizationInterceptor {

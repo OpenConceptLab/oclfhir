@@ -11,7 +11,6 @@ import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.converter.ValueSetConverter;
 import org.openconceptlab.fhir.model.Collection;
-import org.openconceptlab.fhir.model.Source;
 import org.openconceptlab.fhir.repository.CollectionRepository;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,14 +18,13 @@ import org.springframework.stereotype.Component;
 
 import javax.transaction.Transactional;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import static org.openconceptlab.fhir.util.OclFhirUtil.*;
 
 /**
  * The ValueSetResourceProvider.
- * @author hp11
+ * @author harpatel1
  */
 @Component
 public class ValueSetResourceProvider implements IResourceProvider {
@@ -92,8 +90,8 @@ public class ValueSetResourceProvider implements IResourceProvider {
     }
 
     private List<Collection> getPublicCollectionsByPublisher(String publisher) {
-        String owner = getOwner(publisher);
-        String value = getPublisher(publisher);
+        String owner = getOwnerType(publisher);
+        String value = getOwner(publisher);
         if(ORG.equals(owner)) {
             return collectionRepository.findByOrganizationMnemonic(value);
         } else {

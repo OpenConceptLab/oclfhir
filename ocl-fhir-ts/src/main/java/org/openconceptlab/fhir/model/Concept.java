@@ -1,5 +1,7 @@
 package org.openconceptlab.fhir.model;
 
+import org.hibernate.annotations.LazyCollection;
+import org.hibernate.annotations.LazyCollectionOption;
 import org.hibernate.annotations.Type;
 
 import java.io.Serializable;
@@ -11,7 +13,7 @@ import java.util.List;
 
 /**
  * The persistent class for the concepts database table.
- * @author hp11
+ * @author harpatel1
  */
 @Entity
 @Table(name="concepts")
@@ -106,9 +108,11 @@ public class Concept extends BaseOclEntity implements Serializable {
 	@JoinColumn(name="updated_by_id")
 	private UserProfile updatedBy;
 
+//	@LazyCollection(LazyCollectionOption.FALSE)
 	@OneToMany(mappedBy="concept", cascade = CascadeType.ALL)
 	private List<ConceptsDescription> conceptsDescriptions;
 
+//	@LazyCollection(LazyCollectionOption.FALSE)
 	@OneToMany(mappedBy="concept", cascade = CascadeType.ALL)
 	private List<ConceptsName> conceptsNames;
 

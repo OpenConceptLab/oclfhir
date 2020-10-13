@@ -6,7 +6,7 @@ import org.springframework.stereotype.Repository;
 
 /**
  * The ConceptRepository.
- * @author hp11
+ * @author harpatel1
  */
 @Repository
 public interface ConceptRepository extends BaseOclRepository<Concept>{

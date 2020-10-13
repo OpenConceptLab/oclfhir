@@ -9,7 +9,7 @@ import javax.servlet.http.HttpServletRequest;
 
 /**
  * The OclCapabilityStatementProvider.
- * @author hp11
+ * @author harpatel1
  */
 @Component
 public class OclCapabilityStatementProvider extends ServerCapabilityStatementProvider {

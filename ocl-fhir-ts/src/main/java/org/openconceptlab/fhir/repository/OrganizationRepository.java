@@ -5,7 +5,7 @@ import org.springframework.stereotype.Repository;
 
 /**
  * The OrganizationRepository.
- * @author hp11
+ * @author harpatel1
  */
 @Repository
 public interface OrganizationRepository extends BaseOclRepository<Organization>{

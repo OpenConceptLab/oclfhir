@@ -2,14 +2,9 @@ package org.openconceptlab.fhir.util;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
-import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
+import com.google.gson.*;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.*;
@@ -18,7 +13,6 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 
-import java.net.URL;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,14 +30,22 @@ public class OclFhirUtil {
     public static final String USER = "user";
     public static final String SEP = ":";
     public static List<String> publicAccess = Arrays.asList("View", "Edit");
+    public static final String OWNER = "owner";
+    public static final String ID = "id";
     
     @Value("${server.port}")
     private String port;
 
-    private static FhirContext context = FhirContext.forR4();
+    private static FhirContext context;
+
+    static {
+        context = FhirContext.forR4();
+    }
+
     private String serverBase = "";
     IParser parser = context.newJsonParser();
-    public static JsonParser gson = new JsonParser();
+    public static JsonParser jsonParser = new JsonParser();
+    public static Gson gson = new Gson();
     public static final List<String> allowedFilterOperators = Arrays.asList(CodeSystem.FilterOperator.ISA.toCode(),
             CodeSystem.FilterOperator.ISNOTA.toCode(), CodeSystem.FilterOperator.IN.toCode(),
             CodeSystem.FilterOperator.NOTIN.toCode());
@@ -64,7 +66,7 @@ public class OclFhirUtil {
         resource.stream().forEach(r -> {
             Bundle.BundleEntryComponent component = new Bundle.BundleEntryComponent();
             component.setResource(r);
-            component.setFullUrl(getCompleteUrl(fhirBase, requestPath, r.getId()));
+            //component.setFullUrl(getCompleteUrl(fhirBase, requestPath, r.getId()));
             bundle.addEntry(component);
         });
         return bundle;
@@ -117,7 +119,7 @@ public class OclFhirUtil {
     }
     
     public static JsonObject parseExtras(String extras) {
-        return gson.parse(extras).getAsJsonObject();
+        return jsonParser.parse(extras).getAsJsonObject();
     }
 
     public static List<Identifier> getIdentifiers(JsonArray jsonArray) {
@@ -156,12 +158,20 @@ public class OclFhirUtil {
                 && publisher.split(SEP).length >= 2;
     }
 
-    public static String getOwner(String publisher) {
-        return publisher.split(SEP)[0];
+    public static String getOwnerType(String owner) {
+        return owner.split(SEP)[0];
     }
 
-    public static String getPublisher(String publisher) {
-        String[] arr = publisher.split(SEP);
+    public static String getOwner(String owner) {
+        String[] arr = owner.split(SEP);
         return String.join(SEP, ArrayUtils.subarray(arr, 1, arr.length));
     }
+
+    public static <T extends MetadataResource> String toFhirString(final T resource) {
+        String fhirString = getFhirContext().newJsonParser().encodeResourceToString(resource);
+        JsonObject object = new JsonObject();
+        object.add("__fhir", jsonParser.parse(fhirString));
+        return gson.toJson(object);
+    }
+
 }

@@ -7,7 +7,7 @@ import java.sql.Timestamp;
 
 /**
  * The persistent class for the authtoken_token database table.
- * @author hp11
+ * @author harpatel1
  */
 @Entity
 @Table(name="authtoken_token")

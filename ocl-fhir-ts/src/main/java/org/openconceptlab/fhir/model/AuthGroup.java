@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
  * The persistent class for the auth_group database table.
- * @author hp11
+ * @author harpatel1
  */
 @Entity
 @Table(name="auth_group")

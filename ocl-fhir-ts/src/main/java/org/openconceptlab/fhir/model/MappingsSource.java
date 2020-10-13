@@ -6,7 +6,7 @@ import javax.persistence.*;
 
 /**
  * The persistent class for the mappings_sources database table.
- * @author hp11
+ * @author harpatel1
  */
 @Entity
 @Table(name="mappings_sources")

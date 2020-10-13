@@ -12,7 +12,7 @@ import java.util.Map;
 
 /**
  * The persistent class for the sources database table.
- * @author hp11
+ * @author harpatel1
  */
 @Entity
 @Table(name="sources")

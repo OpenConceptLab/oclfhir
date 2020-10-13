@@ -8,7 +8,7 @@ import javax.persistence.MappedSuperclass;
 
 /**
  * Base OCL entity.
- * @author hp11
+ * @author harpatel1
  */
 @MappedSuperclass
 @TypeDefs({

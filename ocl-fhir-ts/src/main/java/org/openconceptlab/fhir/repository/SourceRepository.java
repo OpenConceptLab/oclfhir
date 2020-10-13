@@ -12,15 +12,18 @@ import java.util.List;
 
 /**
  * The SourceRepository.
- * @author hp11
+ * @author harpatel1
  */
 @Repository
 public interface SourceRepository extends BaseOclRepository<Source> {
     List<Source> findByMnemonicAndPublicAccessIn(String mnemonic, List<String> publicAccess);
-    List<Source> findByOrganizationMnemonic(String org);
-    List<Source> findByUserIdUsername(String username);
+    List<Source> findByMnemonicAndOrganizationMnemonicAndPublicAccessIn(String sourceId, String orgId, List<String> publicAccess);
+    List<Source> findByMnemonicAndUserIdUsernameAndPublicAccessIn(String sourceId, String username, List<String> publicAccess);
+    List<Source> findByOrganizationMnemonicAndPublicAccessIn(String org, List<String> publicAccess);
+    List<Source> findByUserIdUsernameAndPublicAccessIn(String username, List<String> publicAccess);
     List<Source> findByOrganizationMnemonicOrUserIdUsername(String org, String username);
     List<Source> findByExternalIdIs(String externalId);
+    List<Source> findByExternalIdAndPublicAccessIn(String externalId, List<String> publicAccess);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(value = "update sources set mnemonic = :id where id = :id", nativeQuery = true)

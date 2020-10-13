@@ -3,9 +3,7 @@ package org.openconceptlab.fhir.provider;
 import ca.uhn.fhir.rest.annotation.*;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.IResourceProvider;
-import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
-import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.converter.CodeSystemConverter;
@@ -21,19 +19,21 @@ import java.util.*;
 
 /**
  * The CodeSystemResourceProvider.
- * @author hp11
+ * @author harpatel1
  */
 @Component
 public class CodeSystemResourceProvider implements IResourceProvider {
 
-    @Autowired
     private SourceRepository sourceRepository;
-
-    @Autowired
     private CodeSystemConverter codeSystemConverter;
+    private OclFhirUtil oclFhirUtil;
 
     @Autowired
-    private OclFhirUtil oclFhirUtil;
+    public CodeSystemResourceProvider(SourceRepository sourceRepository, CodeSystemConverter codeSystemConverter, OclFhirUtil oclFhirUtil) {
+        this.sourceRepository = sourceRepository;
+        this.codeSystemConverter = codeSystemConverter;
+        this.oclFhirUtil = oclFhirUtil;
+    }
 
     @Override
     public Class<? extends IBaseResource> getResourceType() {
@@ -48,9 +48,8 @@ public class CodeSystemResourceProvider implements IResourceProvider {
     @Read()
     @Transactional
     public CodeSystem get(@IdParam IdType id){
-        List<CodeSystem> codeSystems = new ArrayList<>();
         List<Source> sources = getPublicSourceByMnemonic(new StringType(id.getIdPart()));
-        codeSystemConverter.convertToCodeSystem(codeSystems, sources, true, null);
+        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, true, null);
         if(codeSystems.size() >= 1) {
             return codeSystems.get(0);
         } else {
@@ -65,27 +64,44 @@ public class CodeSystemResourceProvider implements IResourceProvider {
      */
     @Search
     @Transactional
-    public Bundle getCodeSystems(RequestDetails details) {
-        List<CodeSystem> codeSystems = new ArrayList<CodeSystem>();
+    public Bundle searchCodeSystems(RequestDetails details) {
         List<Source> sources = getPublicSources();
-        codeSystemConverter.convertToCodeSystem(codeSystems, sources, true, null);
+        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false, null);
         return OclFhirUtil.getBundle(codeSystems, details.getFhirServerBase(), details.getRequestPath());
     }
 
     /**
-     * Returns all public {@link CodeSystem} for a given publisher.
-     * @param publisher
+     * Returns public {@link CodeSystem} for a given Url.
+     * @param url
      * @return {@link Bundle}
      */
     @Search
     @Transactional
-    public Bundle getCodeSystemsByPublisher(@RequiredParam(name = CodeSystem.SP_PUBLISHER) StringType publisher,
-    		RequestDetails details) {
-        validatePublisher(publisher.getValue());
-        List<CodeSystem> codeSystems = new ArrayList<CodeSystem>();
-        List<Source> sources = getPublicSourcesByPublisher(publisher.getValue());
-        codeSystemConverter.convertToCodeSystem(codeSystems, sources, true, null);
+    public Bundle searchCodeSystemByUrl(@RequiredParam(name = CodeSystem.SP_URL) StringType url, RequestDetails details) {
+        List<Source> sources = getPublicSourceByUrl(url);
+        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, true, null);
         return OclFhirUtil.getBundle(codeSystems, details.getFhirServerBase(), details.getRequestPath());
+    }
+
+    @Search
+    @Transactional
+    public Bundle searchCodeSystemByOwner(@RequiredParam(name = "owner") StringType owner, @OptionalParam(name = "id") StringType id
+            , RequestDetails details) {
+        List<Source> sources = getPublicSourceByIdOrOwner(id, owner);
+        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, isValid(id), null);
+        return OclFhirUtil.getBundle(codeSystems, details.getFhirServerBase(), details.getRequestPath());
+    }
+
+    private List<Source> getPublicSourceByIdOrOwner(StringType id, StringType owner) {
+        String ownerType = getOwnerType(owner.getValue());
+        String value = getOwner(owner.getValue());
+        if (ORG.equals(ownerType)) {
+            return isValid(id) ? sourceRepository.findByMnemonicAndOrganizationMnemonicAndPublicAccessIn(id.getValue(), value, publicAccess)
+                    : sourceRepository.findByOrganizationMnemonicAndPublicAccessIn(value, publicAccess);
+        } else {
+            return isValid(id) ? sourceRepository.findByMnemonicAndUserIdUsernameAndPublicAccessIn(id.getValue(), value, publicAccess)
+                    : sourceRepository.findByUserIdUsernameAndPublicAccessIn(value, publicAccess);
+        }
     }
 
     private List<Source> getPublicSourceByMnemonic(StringType id) {
@@ -95,14 +111,8 @@ public class CodeSystemResourceProvider implements IResourceProvider {
     private List<Source> getPublicSources() {
         return sourceRepository.findByPublicAccessIn(publicAccess);
     }
-    
-    private List<Source> getPublicSourcesByPublisher(String publisher) {
-        String owner = getOwner(publisher);
-        String value = getPublisher(publisher);
-        if(ORG.equals(owner)) {
-            return sourceRepository.findByOrganizationMnemonic(value);
-        } else {
-            return sourceRepository.findByUserIdUsername(value);
-        }
+
+    private List<Source> getPublicSourceByUrl(StringType url) {
+        return sourceRepository.findByExternalIdAndPublicAccessIn(url.getValue(), publicAccess);
     }
 }

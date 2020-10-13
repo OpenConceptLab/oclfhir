@@ -5,7 +5,7 @@ import org.springframework.stereotype.Repository;
 
 /**
  * The MappingRepository.
- * @author hp11
+ * @author harpatel1
  */
 @Repository
 public interface MappingRepository extends BaseOclRepository<Mapping>{

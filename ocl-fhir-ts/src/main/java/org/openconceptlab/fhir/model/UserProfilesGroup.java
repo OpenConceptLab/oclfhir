@@ -6,7 +6,7 @@ import javax.persistence.*;
 
 /**
  * The persistent class for the user_profiles_groups database table.
- * @author hp11
+ * @author harpatel1
  */
 @Entity
 @Table(name="user_profiles_groups")

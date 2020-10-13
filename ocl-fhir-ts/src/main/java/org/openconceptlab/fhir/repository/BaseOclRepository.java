@@ -9,7 +9,7 @@ import java.util.List;
 
 /**
  * The BaseOclRepository.
- * @author hp11
+ * @author harpatel1
  */
 @NoRepositoryBean
 public interface BaseOclRepository<T extends BaseOclEntity> extends JpaRepository<T, Integer> {

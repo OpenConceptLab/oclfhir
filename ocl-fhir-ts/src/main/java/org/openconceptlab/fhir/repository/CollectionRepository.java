@@ -8,7 +8,7 @@ import java.util.List;
 
 /**
  * The CollectionRepository.
- * @author hp11
+ * @author harpatel1
  */
 @Repository
 public interface CollectionRepository extends BaseOclRepository<Collection>{
