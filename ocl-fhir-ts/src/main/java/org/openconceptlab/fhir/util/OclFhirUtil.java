@@ -8,6 +8,10 @@ import com.google.gson.*;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.*;
+import org.openconceptlab.fhir.model.*;
+import org.openconceptlab.fhir.repository.BaseOclRepository;
+import org.openconceptlab.fhir.repository.CollectionRepository;
+import org.openconceptlab.fhir.repository.SourceRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -17,21 +21,14 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
+import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 
 @Component
 public class OclFhirUtil {
-
-    public static final String PUBLISHER_REGEX = "^user:.*|^org:.*";
-	public static final String ORG_ = "org:";
-    public static final String USER_ = "user:";
-    public static final String ORG = "org";
-    public static final String USER = "user";
-    public static final String SEP = ":";
-    public static List<String> publicAccess = Arrays.asList("View", "Edit");
-    public static final String OWNER = "owner";
-    public static final String ID = "id";
     
     @Value("${server.port}")
     private String port;
@@ -172,6 +169,72 @@ public class OclFhirUtil {
         JsonObject object = new JsonObject();
         object.add("__fhir", jsonParser.parse(fhirString));
         return gson.toJson(object);
+    }
+
+    public static Optional<Identifier> getIdentifier(String value) {
+        Identifier identifier = new Identifier();
+        identifier.setSystem("http://fhir.openconceptlab.org");
+        identifier.setValue(value.replace("sources", "CodeSystem").replace("collections", "ValueSet"));
+        identifier.getType().setText("Accession ID");
+        identifier.getType().getCodingFirstRep().setSystem("http://hl7.org/fhir/v2/0203").setCode("ACSN").setDisplay("Accession ID");
+        return isValid(value) ? Optional.of(identifier) : Optional.empty();
+    }
+
+    public static void addConceptDesignation(Concept concept, CodeSystem.ConceptDefinitionComponent definitionComponent) {
+        concept.getConceptsNames().parallelStream().forEach(name -> {
+            CodeSystem.ConceptDefinitionDesignationComponent designation = new CodeSystem.ConceptDefinitionDesignationComponent();
+            LocalizedText lt = name.getLocalizedText();
+            if(lt != null) {
+                designation.setLanguage(lt.getLocale());
+                if (isValid(lt.getType()))
+                    designation.getUse().setCode(lt.getType());
+                designation.setValue(lt.getName());
+                definitionComponent.getDesignation().add(designation);
+            }
+        });
+    }
+
+    public static void addStatus(MetadataResource resource, boolean active, boolean retired, boolean released) {
+        if(active || released) {
+            resource.setStatus(Enumerations.PublicationStatus.ACTIVE);
+        } else if(retired) {
+            resource.setStatus(Enumerations.PublicationStatus.RETIRED);
+        } else {
+            resource.setStatus(Enumerations.PublicationStatus.UNKNOWN);
+        }
+    }
+
+    public String getDefinition(List<LocalizedText> definitions, String defaultLocale) {
+        if (definitions == null || definitions.isEmpty()) return "";
+        if (definitions.size() > 1) {
+
+            // match with dict default locale
+            Stream<LocalizedText> dlMatch = definitions.stream().filter(d -> defaultLocale.equals(d.getLocale()));
+            Optional<LocalizedText> dlPreferred = getPreferred(dlMatch);
+            if (dlPreferred.isPresent()) return dlPreferred.get().getName();
+            Optional<LocalizedText> dlNonPreferred = getNonPreferred(dlMatch);
+            if (dlNonPreferred.isPresent()) return dlNonPreferred.get().getName();
+
+            // match with dict supported locales
+            Stream<LocalizedText> slMatch = definitions.stream().filter(d -> defaultLocale.contains(d.getLocale()));
+            Optional<LocalizedText> slPreferred = getPreferred(slMatch);
+            if (slPreferred.isPresent()) return slPreferred.get().getName();
+            Optional<LocalizedText> slNonPreferred = getNonPreferred(slMatch);
+            if (slNonPreferred.isPresent()) return slNonPreferred.get().getName();
+
+            // Any locale preferred
+            Optional<LocalizedText> anyPreferred = getPreferred(definitions.stream());
+            if (anyPreferred.isPresent()) return anyPreferred.get().getName();
+        }
+        return definitions.get(0).getName();
+    }
+
+    private Optional<LocalizedText> getPreferred(Stream<LocalizedText> texts) {
+        return texts.filter(f -> f.getLocalePreferred()).findFirst();
+    }
+
+    private Optional<LocalizedText> getNonPreferred(Stream<LocalizedText> texts) {
+        return texts.filter(f -> !f.getLocalePreferred()).findFirst();
     }
 
 }

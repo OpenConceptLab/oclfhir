@@ -6,7 +6,7 @@ import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
 import org.openconceptlab.fhir.util.OclFhirUtil;
-import static org.openconceptlab.fhir.util.OclFhirUtil.*;
+import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;

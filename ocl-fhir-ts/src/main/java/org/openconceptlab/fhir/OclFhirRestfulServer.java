@@ -5,13 +5,8 @@ import javax.servlet.annotation.WebServlet;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.server.HardcodedServerAddressStrategy;
-import ca.uhn.fhir.rest.server.IServerAddressStrategy;
-import ca.uhn.fhir.rest.server.IncomingRequestAddressStrategy;
 import ca.uhn.fhir.rest.server.RestfulServer;
 import ca.uhn.fhir.rest.server.interceptor.ResponseHighlighterInterceptor;
-import ca.uhn.fhir.rest.server.interceptor.ResponseValidatingInterceptor;
-import ca.uhn.fhir.rest.server.interceptor.ServeMediaResourceRawInterceptor;
-import ca.uhn.fhir.rest.server.servlet.ServletRequestDetails;
 import org.openconceptlab.fhir.interceptor.OclFhirAuthorizationInterceptor;
 import org.openconceptlab.fhir.interceptor.OclFhirLoggingInterceptor;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;

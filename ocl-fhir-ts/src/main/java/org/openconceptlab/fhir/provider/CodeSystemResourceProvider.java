@@ -2,6 +2,7 @@ package org.openconceptlab.fhir.provider;
 
 import ca.uhn.fhir.rest.annotation.*;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
+import ca.uhn.fhir.rest.api.server.ResponseDetails;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import org.hl7.fhir.instance.model.api.IBaseResource;
@@ -11,11 +12,13 @@ import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.repository.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import static org.openconceptlab.fhir.util.OclFhirUtil.*;
+import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.transaction.Transactional;
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * The CodeSystemResourceProvider.
@@ -87,32 +90,46 @@ public class CodeSystemResourceProvider implements IResourceProvider {
     @Transactional
     public Bundle searchCodeSystemByOwner(@RequiredParam(name = "owner") StringType owner, @OptionalParam(name = "id") StringType id
             , RequestDetails details) {
-        List<Source> sources = getPublicSourceByIdOrOwner(id, owner);
+        List<Source> sources = getPublicSourceByIdOrOwner(id, owner, sourceRepository);
         List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, isValid(id), null);
         return OclFhirUtil.getBundle(codeSystems, details.getFhirServerBase(), details.getRequestPath());
     }
 
-    private List<Source> getPublicSourceByIdOrOwner(StringType id, StringType owner) {
-        String ownerType = getOwnerType(owner.getValue());
-        String value = getOwner(owner.getValue());
-        if (ORG.equals(ownerType)) {
-            return isValid(id) ? sourceRepository.findByMnemonicAndOrganizationMnemonicAndPublicAccessIn(id.getValue(), value, publicAccess)
-                    : sourceRepository.findByOrganizationMnemonicAndPublicAccessIn(value, publicAccess);
-        } else {
-            return isValid(id) ? sourceRepository.findByMnemonicAndUserIdUsernameAndPublicAccessIn(id.getValue(), value, publicAccess)
-                    : sourceRepository.findByUserIdUsernameAndPublicAccessIn(value, publicAccess);
-        }
-    }
-
     private List<Source> getPublicSourceByMnemonic(StringType id) {
-        return sourceRepository.findByMnemonicAndPublicAccessIn(id.getValue(), publicAccess);
+        return sourceRepository.findByMnemonicAndPublicAccessIn(id.getValue(), publicAccess)
+                .parallelStream().filter(s -> "HEAD".equals(s.getVersion()))
+                .collect(Collectors.toList());
     }
 
     private List<Source> getPublicSources() {
-        return sourceRepository.findByPublicAccessIn(publicAccess);
+        return sourceRepository.findByPublicAccessIn(publicAccess).parallelStream().filter(s -> "HEAD".equals(s.getVersion()))
+                .collect(Collectors.toList());
     }
 
     private List<Source> getPublicSourceByUrl(StringType url) {
-        return sourceRepository.findByExternalIdAndPublicAccessIn(url.getValue(), publicAccess);
+        return sourceRepository.findByExternalIdAndPublicAccessIn(url.getValue(), publicAccess)
+                .parallelStream().filter(s -> "HEAD".equals(s.getVersion()))
+                .collect(Collectors.toList());
+    }
+
+    public List<Source> getPublicSourceByIdOrOwner(StringType id, StringType owner, SourceRepository repository) {
+        List<Source> sources = new ArrayList<>();
+        String ownerType = getOwnerType(owner.getValue());
+        String value = getOwner(owner.getValue());
+        if (ORG.equals(ownerType)) {
+            if (isValid(id)) {
+                sources.addAll(repository.findByMnemonicAndOrganizationMnemonicAndPublicAccessIn(id.getValue(), value, publicAccess));
+            } else {
+                sources.addAll(repository.findByOrganizationMnemonicAndPublicAccessIn(value, publicAccess));
+            }
+        } else {
+            if (isValid(id)) {
+                sources.addAll(repository.findByMnemonicAndUserIdUsernameAndPublicAccessIn(id.getValue(), value, publicAccess));
+            } else {
+                sources.addAll(repository.findByUserIdUsernameAndPublicAccessIn(value, publicAccess));
+            }
+        }
+        return sources.parallelStream().filter(s -> "HEAD".equals(s.getVersion()))
+                .collect(Collectors.toList());
     }
 }
