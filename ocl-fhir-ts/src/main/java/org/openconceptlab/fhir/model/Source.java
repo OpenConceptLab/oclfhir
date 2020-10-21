@@ -109,6 +109,12 @@ public class Source extends BaseOclEntity implements Serializable {
 	@OneToMany(mappedBy="parent", cascade = CascadeType.ALL)
 	private List<Mapping> mappings;
 
+	@OneToMany(mappedBy="source", cascade = CascadeType.ALL)
+	private List<ConceptsSource> conceptsSources;
+
+	@OneToMany(mappedBy="source", cascade = CascadeType.ALL)
+	private List<MappingsSource> mappingsSources;
+
 	@ManyToOne
 	private Organization organization;
 
@@ -391,6 +397,42 @@ public class Source extends BaseOclEntity implements Serializable {
 		getMappings().remove(mapping);
 		mapping.setParent(null);
 		return mapping;
+	}
+
+	public List<ConceptsSource> getConceptsSources() {
+		return this.conceptsSources != null ? this.conceptsSources : new ArrayList<>();
+	}
+
+	public void setConceptsSources(List<ConceptsSource> conceptsSources) {
+		this.conceptsSources = conceptsSources;
+	}
+
+	public ConceptsSource addConceptsSource(ConceptsSource conceptsSource) {
+		getConceptsSources().add(conceptsSource);
+		return conceptsSource;
+	}
+
+	public ConceptsSource removeConceptsSource(ConceptsSource conceptsSource) {
+		getConceptsSources().remove(conceptsSource);
+		return conceptsSource;
+	}
+
+	public List<MappingsSource> getMappingsSources() {
+		return this.mappingsSources != null ? this.mappingsSources : new ArrayList<>();
+	}
+
+	public void setMappingsSources(List<MappingsSource> mappingsSources) {
+		this.mappingsSources = mappingsSources;
+	}
+
+	public MappingsSource addConceptsSource(MappingsSource mappingsSource) {
+		getMappingsSources().add(mappingsSource);
+		return mappingsSource;
+	}
+
+	public MappingsSource removeConceptsSource(MappingsSource mappingsSource) {
+		getMappingsSources().remove(mappingsSource);
+		return mappingsSource;
 	}
 
 	public Organization getOrganization() {

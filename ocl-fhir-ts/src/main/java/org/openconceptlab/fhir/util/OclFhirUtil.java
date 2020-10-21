@@ -1,6 +1,7 @@
 package org.openconceptlab.fhir.util;
 
 import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.model.api.IResource;
 import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
@@ -13,6 +14,7 @@ import org.openconceptlab.fhir.repository.BaseOclRepository;
 import org.openconceptlab.fhir.repository.CollectionRepository;
 import org.openconceptlab.fhir.repository.SourceRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
@@ -235,6 +237,33 @@ public class OclFhirUtil {
 
     private Optional<LocalizedText> getNonPreferred(Stream<LocalizedText> texts) {
         return texts.filter(f -> !f.getLocalePreferred()).findFirst();
+    }
+
+    public static String notFound(Class<? extends MetadataResource> cls, StringType url, StringType version) {
+        return String.format("Resource of type %s with URL %s%s is not known",
+                cls.getSimpleName(),
+                url,
+                isValid(version) ? " and version "+version : "");
+    }
+
+    public static String notFound(Class<? extends MetadataResource> cls, StringType owner, StringType id, StringType version) {
+        return String.format("Resource of type %s with owner %s and ID %s/%s is not known",
+                cls.getSimpleName(),
+                getOwner(owner.getValue()),
+                id,
+                isValid(version) ? "_history/" + version : "");
+    }
+
+    public static boolean isVersionAll(StringType version) {
+        return isValid(version) && version.getValue().equals("*");
+    }
+
+    public static ResponseEntity<String> badRequest() {
+        return ResponseEntity.badRequest().body("{\"exception\":\"Could not process the request.\"}");
+    }
+
+    public static ResponseEntity<String> notFound(int status, String body) {
+        return ResponseEntity.status(status).body(body);
     }
 
 }

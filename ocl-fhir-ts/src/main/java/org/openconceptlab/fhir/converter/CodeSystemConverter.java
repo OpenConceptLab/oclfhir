@@ -1,11 +1,12 @@
 package org.openconceptlab.fhir.converter;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.Collection;
 import java.util.stream.Collectors;
 
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Multimap;
 import com.google.gson.*;
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.*;
@@ -47,19 +48,19 @@ public class CodeSystemConverter {
 		this.oclUser = oclUser;
 	}
 
-	public List<CodeSystem> convertToCodeSystem(List<Source> sources, boolean includeConcepts, String version) {
+	public List<CodeSystem> convertToCodeSystem(List<Source> sources, boolean includeConcepts) {
 		List<CodeSystem> codeSystems = new ArrayList<>();
-				sources.forEach(source -> {
-        	// convert to base
+		sources.forEach(source -> {
+			// convert to base
 			CodeSystem codeSystem = toBaseCodeSystem(source);
 			if (includeConcepts) {
 				// add concepts
 				addConceptsToCodeSystem(codeSystem, source);
 			}
 			codeSystems.add(codeSystem);
-        });
+		});
 		return codeSystems;
-    }
+	}
 
 	private CodeSystem toBaseCodeSystem(final Source source){
         CodeSystem codeSystem = new CodeSystem();
@@ -91,7 +92,7 @@ public class CodeSystemConverter {
             codeSystem.setDescription(source.getDescription());
         }
         // count
-        codeSystem.setCount((int) source.getConcepts().stream().filter(c -> c.getIsLatestVersion()).count());
+        codeSystem.setCount((int) getConceptsCount(source));
         // property
 		addProperty(codeSystem);
         return codeSystem;
@@ -122,42 +123,55 @@ public class CodeSystemConverter {
 		return component;
 	}
 
+	private long getConceptsCount(final Source source) {
+		return source.getConceptsSources().parallelStream().map(m -> m.getConcept().getMnemonic()).distinct().count();
+	}
+
 	private void addConceptsToCodeSystem(final CodeSystem codeSystem, final Source source) {
-    	for(Concept concept : source.getConcepts()) {
-    		if (concept.getIsLatestVersion()) {
-				CodeSystem.ConceptDefinitionComponent definitionComponent = new CodeSystem.ConceptDefinitionComponent();
-				// code
-				definitionComponent.setCode(concept.getMnemonic());
-				// display
-				List<LocalizedText> names = concept.getConceptsNames().stream()
-						.filter(c -> c.getLocalizedText() != null)
-						.map(d -> d.getLocalizedText())
-						.collect(Collectors.toList());
-				definitionComponent.setDisplay(oclFhirUtil.getDefinition(names, source.getDefaultLocale()));
+		// ConceptsSource includes all concept versions, we need to include only most recent concept version
+		List<Concept> filtered = new ArrayList<>();
+		Multimap<String, Concept> mnemonicToConceptMap = HashMultimap.create();
+		source.getConceptsSources()
+				.stream()
+				.map(ConceptsSource::getConcept)
+				.forEach(c -> mnemonicToConceptMap.put(c.getMnemonic(), c));
+		mnemonicToConceptMap.asMap().forEach((mnemonic, concepts) -> {
+			concepts.stream().max(Comparator.comparing(Concept::getId)).ifPresent(filtered::add);
+		});
 
-				// definition
-				List<LocalizedText> definitions = concept.getConceptsDescriptions().stream()
-						.filter(c -> c.getLocalizedText() != null)
-						.filter(c -> isValid(c.getLocalizedText().getType()) && "definition".equalsIgnoreCase(c.getLocalizedText().getType()))
-						.map(d -> d.getLocalizedText())
-						.collect(Collectors.toList());
-				definitionComponent.setDefinition(oclFhirUtil.getDefinition(definitions, source.getDefaultLocale()));
+		for (Concept concept : filtered) {
+			CodeSystem.ConceptDefinitionComponent definitionComponent = new CodeSystem.ConceptDefinitionComponent();
+			// code
+			definitionComponent.setCode(concept.getMnemonic());
+			// display
+			List<LocalizedText> names = concept.getConceptsNames().stream()
+					.filter(c -> c.getLocalizedText() != null)
+					.map(ConceptsName::getLocalizedText)
+					.collect(Collectors.toList());
+			definitionComponent.setDisplay(oclFhirUtil.getDefinition(names, source.getDefaultLocale()));
 
-				// designation
-				addConceptDesignation(concept, definitionComponent);
+			// definition
+			List<LocalizedText> definitions = concept.getConceptsDescriptions().stream()
+					.filter(c -> c.getLocalizedText() != null)
+					.filter(c -> isValid(c.getLocalizedText().getType()) && "definition".equalsIgnoreCase(c.getLocalizedText().getType()))
+					.map(ConceptsDescription::getLocalizedText)
+					.collect(Collectors.toList());
+			definitionComponent.setDefinition(oclFhirUtil.getDefinition(definitions, source.getDefaultLocale()));
 
-				// property - concept_class, data_type, ,inactive
-				definitionComponent.getProperty().add(new ConceptPropertyComponent(new CodeType(CONCEPT_CLASS),
-						new StringType(concept.getConceptClass())));
-				definitionComponent.getProperty().add(new ConceptPropertyComponent(new CodeType(DATATYPE),
-						new StringType(concept.getDatatype())));
-				definitionComponent.getProperty().add(new ConceptPropertyComponent(new CodeType(INACTIVE),
-						new BooleanType(!concept.getIsActive())));
-				// add concept in CodeSystem
-				codeSystem.getConcept().add(definitionComponent);
-			}
-    	}
-    }
+			// designation
+			addConceptDesignation(concept, definitionComponent);
+
+			// property - concept_class, data_type, ,inactive
+			definitionComponent.getProperty().add(new ConceptPropertyComponent(new CodeType(CONCEPT_CLASS),
+					new StringType(concept.getConceptClass())));
+			definitionComponent.getProperty().add(new ConceptPropertyComponent(new CodeType(DATATYPE),
+					new StringType(concept.getDatatype())));
+			definitionComponent.getProperty().add(new ConceptPropertyComponent(new CodeType(INACTIVE),
+					new BooleanType(!concept.getIsActive())));
+			// add concept in CodeSystem
+			codeSystem.getConcept().add(definitionComponent);
+		}
+	}
 
 	private void addExtras(CodeSystem codeSystem, String extras) {
     	if(StringUtils.isNotBlank(extras)) {

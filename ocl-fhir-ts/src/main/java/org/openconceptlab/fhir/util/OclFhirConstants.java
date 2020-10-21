@@ -35,6 +35,8 @@ public final class OclFhirConstants {
 	public static final List<String> publicAccess = Arrays.asList("View", "Edit");
 	public static final String OWNER = "owner";
 	public static final String ID = "id";
+	public static final String _HISTORY = "_history";
+	public static final String ALL = "*";
 
 	public static final String SYSTEM_CC = "https://api.openconceptlab.org/orgs/OCL/sources/Classes/concepts";
 	public static final String DESC_CC = "Standard list of concept classes.";

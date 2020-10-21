@@ -248,7 +248,7 @@ public class Concept extends BaseOclEntity implements Serializable {
 	}
 
 	public Boolean getReleased() {
-		return this.released;
+		return this.released != null ? this.released : false;
 	}
 
 	public void setReleased(Boolean released) {
