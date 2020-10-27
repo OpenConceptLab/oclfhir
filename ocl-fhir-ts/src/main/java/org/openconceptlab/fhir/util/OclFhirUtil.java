@@ -284,7 +284,7 @@ public class OclFhirUtil {
                 cls.getSimpleName(),
                 getOwner(owner.getValue()),
                 id,
-                isValid(version) ? "_history/" + version : "");
+                isValid(version) ? VERSION + "/" + version : "");
     }
 
     public static boolean isVersionAll(StringType version) {

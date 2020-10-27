@@ -58,13 +58,13 @@ public class CodeSystemResourceProvider implements IResourceProvider {
     /**
      * Returns public {@link CodeSystem} for a given Url.
      * @param url
-     * @param _history
+     * @param version
      * @return {@link Bundle}
      */
     @Search
     @Transactional
     public Bundle searchCodeSystemByUrl(@RequiredParam(name = CodeSystem.SP_URL) StringType url,
-                                        @OptionalParam(name = _HISTORY) StringType version,
+                                        @OptionalParam(name = VERSION) StringType version,
                                         RequestDetails details) {
         List<Source> sources = filterHead(getSourceByUrl(url, version, publicAccess));
         boolean includeConcepts = !isValid(version) || !isVersionAll(version);
@@ -91,14 +91,14 @@ public class CodeSystemResourceProvider implements IResourceProvider {
      * most recent released version is returned.
      * @param owner
      * @param id
-     * @param _history
+     * @param version
      * @return {@link Bundle}
      */
     @Search
     @Transactional
     public Bundle searchCodeSystemByOwnerAndId(@RequiredParam(name = OWNER) StringType owner,
                                                @RequiredParam(name = ID) StringType id,
-                                               @OptionalParam(name = _HISTORY) StringType version,
+                                               @OptionalParam(name = VERSION) StringType version,
                                                RequestDetails details) {
         List<Source> sources = filterHead(getSourceByOwnerAndId(id, owner, version, publicAccess));
         boolean includeConcepts = !isVersionAll(version);

@@ -208,7 +208,7 @@ public class ValueSetConverter {
         String[] source = formatExpression(parentUri);
         if (source.length >= 6 && isValid(source[5]))
             parentUri = String.join("/", source[0], source[1], source[2], source[3], source[4],
-                    "_history", source[5]);
+                    VERSION, source[5]);
         return url.substring(0, url.length() - 1) + parentUri.replace("sources","CodeSystem");
     }
 

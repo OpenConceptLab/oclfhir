@@ -53,15 +53,15 @@ public class OclFhirController {
         }
     }
 
-    @GetMapping(path = {"/orgs/{org}/CodeSystem/{id}/_history",
-                        "/orgs/{org}/CodeSystem/{id}/_history/{version}"},
+    @GetMapping(path = {"/orgs/{org}/CodeSystem/{id}/version",
+                        "/orgs/{org}/CodeSystem/{id}/version/{version}"},
                 produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> getCodeSystemVersionsByOrg(@PathVariable(name = ORG) String org,
                                                              @PathVariable(name = ID) String id,
                                                              @PathVariable(name = VERSION) Optional<String> version) {
         try {
             String resource = searchResource(CodeSystem.class, OWNER, formatOrg(org), ID, id,
-                    _HISTORY, version.orElse(ALL));
+                    VERSION, version.orElse(ALL));
             return ResponseEntity.ok(resource);
         } catch (ResourceNotFoundException e) {
             return notFound(e.getStatusCode(), e.getResponseBody());
@@ -87,15 +87,15 @@ public class OclFhirController {
         }
     }
 
-    @GetMapping(path = {"/orgs/{org}/ValueSet/{id}/_history",
-                        "/orgs/{org}/ValueSet/{id}/_history/{version}"},
+    @GetMapping(path = {"/orgs/{org}/ValueSet/{id}/version",
+                        "/orgs/{org}/ValueSet/{id}/version/{version}"},
                 produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> getValueSetVersionsByOrg(@PathVariable(name = ORG) String org,
                                                            @PathVariable(name = ID) String id,
                                                            @PathVariable(name = VERSION) Optional<String> version) {
         try {
             String resource = searchResource(ValueSet.class, OWNER, formatOrg(org), ID, id,
-                    _HISTORY, version.orElse(ALL));
+                    VERSION, version.orElse(ALL));
             return ResponseEntity.ok(resource);
         } catch (ResourceNotFoundException e) {
             return notFound(e.getStatusCode(), e.getResponseBody());
@@ -121,15 +121,15 @@ public class OclFhirController {
         }
     }
 
-    @GetMapping(path = {"/users/{user}/CodeSystem/{id}/_history",
-                        "/users/{user}/CodeSystem/{id}/_history/{version}"},
+    @GetMapping(path = {"/users/{user}/CodeSystem/{id}/version",
+                        "/users/{user}/CodeSystem/{id}/version/{version}"},
                 produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> getCodeSystemVersionsByUser(@PathVariable(name = USER) String user,
                                                               @PathVariable(name = ID) String id,
                                                               @PathVariable(name = VERSION) Optional<String> version) {
         try {
             String resource = searchResource(CodeSystem.class, OWNER, formatUser(user), ID, id,
-                    _HISTORY, version.orElse(ALL));
+                    VERSION, version.orElse(ALL));
             return ResponseEntity.ok(resource);
         } catch (ResourceNotFoundException e) {
             return notFound(e.getStatusCode(), e.getResponseBody());
@@ -155,15 +155,15 @@ public class OclFhirController {
         }
     }
 
-    @GetMapping(path = {"/users/{user}/ValueSet/{id}/_history",
-                        "/users/{user}/ValueSet/{id}/_history/{version}"},
+    @GetMapping(path = {"/users/{user}/ValueSet/{id}/version",
+                        "/users/{user}/ValueSet/{id}/version/{version}"},
                 produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> getValueSetVersionsByUser(@PathVariable(name = USER) String user,
                                                             @PathVariable(name = ID) String id,
                                                             @PathVariable(name = VERSION) Optional<String> version) {
         try {
             String resource = searchResource(ValueSet.class, OWNER, formatUser(user), ID, id,
-                    _HISTORY, version.orElse(ALL));
+                    VERSION, version.orElse(ALL));
             return ResponseEntity.ok(resource);
         } catch (ResourceNotFoundException e) {
             return notFound(e.getStatusCode(), e.getResponseBody());

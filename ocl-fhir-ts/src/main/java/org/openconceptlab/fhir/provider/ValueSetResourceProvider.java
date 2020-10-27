@@ -60,13 +60,13 @@ public class ValueSetResourceProvider implements IResourceProvider {
     /**
      * Returns public {@link ValueSet} for a given Url.
      * @param url
-     * @param _history
+     * @param version
      * @return {@link Bundle}
      */
     @Search
     @Transactional
     public Bundle searchValueSetByUrl(@RequiredParam(name = ValueSet.SP_URL) StringType url,
-                                      @OptionalParam(name = _HISTORY) StringType version,
+                                      @OptionalParam(name = VERSION) StringType version,
                                       RequestDetails details) {
         List<Collection> collections = filterHead(getCollectionByUrl(url, version, publicAccess));
         List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections);
@@ -92,14 +92,14 @@ public class ValueSetResourceProvider implements IResourceProvider {
      * most recent released version is returned.
      * @param owner
      * @param id
-     * @param _history
+     * @param version
      * @return {@link Bundle}
      */
     @Search
     @Transactional
     public Bundle searchValueSetByOwnerAndId(@RequiredParam(name = OWNER) StringType owner,
                                                @RequiredParam(name = ID) StringType id,
-                                               @OptionalParam(name = _HISTORY) StringType version,
+                                               @OptionalParam(name = VERSION) StringType version,
                                                RequestDetails details) {
         List<Collection> collections = filterHead(getCollectionByOwnerAndId(id, owner, version, publicAccess));
         List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections);

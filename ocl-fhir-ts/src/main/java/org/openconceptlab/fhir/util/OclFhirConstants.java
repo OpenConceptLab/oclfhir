@@ -35,7 +35,6 @@ public final class OclFhirConstants {
 	public static final List<String> publicAccess = Arrays.asList("View", "Edit");
 	public static final String OWNER = "owner";
 	public static final String ID = "id";
-	public static final String _HISTORY = "_history";
 	public static final String ALL = "*";
 	public static final String EMPTY = "";
 
