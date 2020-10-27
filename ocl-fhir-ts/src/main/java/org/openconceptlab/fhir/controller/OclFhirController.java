@@ -54,8 +54,8 @@ public class OclFhirController {
     }
 
     @GetMapping(path = {"/orgs/{org}/CodeSystem/{id}/_history",
-            "/orgs/{org}/CodeSystem/{id}/_history/{version}"},
-            produces = {MediaType.APPLICATION_JSON_VALUE})
+                        "/orgs/{org}/CodeSystem/{id}/_history/{version}"},
+                produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> getCodeSystemVersionsByOrg(@PathVariable(name = ORG) String org,
                                                              @PathVariable(name = ID) String id,
                                                              @PathVariable(name = VERSION) Optional<String> version) {
@@ -79,6 +79,23 @@ public class OclFhirController {
     public ResponseEntity<String> getValueSetByOrg(@PathVariable String org, @PathVariable String id) {
         try {
             String resource = searchResource(ValueSet.class, OWNER, formatOrg(org), ID, id);
+            return ResponseEntity.ok(resource);
+        } catch (ResourceNotFoundException e) {
+            return notFound(e.getStatusCode(), e.getResponseBody());
+        } catch (Exception e) {
+            return badRequest();
+        }
+    }
+
+    @GetMapping(path = {"/orgs/{org}/ValueSet/{id}/_history",
+                        "/orgs/{org}/ValueSet/{id}/_history/{version}"},
+                produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> getValueSetVersionsByOrg(@PathVariable(name = ORG) String org,
+                                                           @PathVariable(name = ID) String id,
+                                                           @PathVariable(name = VERSION) Optional<String> version) {
+        try {
+            String resource = searchResource(ValueSet.class, OWNER, formatOrg(org), ID, id,
+                    _HISTORY, version.orElse(ALL));
             return ResponseEntity.ok(resource);
         } catch (ResourceNotFoundException e) {
             return notFound(e.getStatusCode(), e.getResponseBody());
@@ -130,6 +147,23 @@ public class OclFhirController {
     public ResponseEntity<String> getValueSetByUser(@PathVariable String user, @PathVariable String id) {
         try {
             String resource = searchResource(ValueSet.class, OWNER, formatUser(user), ID, id);
+            return ResponseEntity.ok(resource);
+        } catch (ResourceNotFoundException e) {
+            return notFound(e.getStatusCode(), e.getResponseBody());
+        } catch (Exception e) {
+            return badRequest();
+        }
+    }
+
+    @GetMapping(path = {"/users/{user}/ValueSet/{id}/_history",
+                        "/users/{user}/ValueSet/{id}/_history/{version}"},
+                produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> getValueSetVersionsByUser(@PathVariable(name = USER) String user,
+                                                            @PathVariable(name = ID) String id,
+                                                            @PathVariable(name = VERSION) Optional<String> version) {
+        try {
+            String resource = searchResource(ValueSet.class, OWNER, formatUser(user), ID, id,
+                    _HISTORY, version.orElse(ALL));
             return ResponseEntity.ok(resource);
         } catch (ResourceNotFoundException e) {
             return notFound(e.getStatusCode(), e.getResponseBody());

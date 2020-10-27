@@ -26,9 +26,9 @@ import java.util.stream.Collectors;
 @Component
 public class CodeSystemResourceProvider implements IResourceProvider {
 
-    private SourceRepository sourceRepository;
-    private CodeSystemConverter codeSystemConverter;
-    private OclFhirUtil oclFhirUtil;
+    SourceRepository sourceRepository;
+    CodeSystemConverter codeSystemConverter;
+    OclFhirUtil oclFhirUtil;
 
     @Autowired
     public CodeSystemResourceProvider(SourceRepository sourceRepository, CodeSystemConverter codeSystemConverter, OclFhirUtil oclFhirUtil) {
@@ -92,7 +92,7 @@ public class CodeSystemResourceProvider implements IResourceProvider {
      * @param owner
      * @param id
      * @param _history
-     * @return
+     * @return {@link Bundle}
      */
     @Search
     @Transactional
@@ -159,34 +159,16 @@ public class CodeSystemResourceProvider implements IResourceProvider {
                         value, access));
             }
         } else {
-            final Source source;
-            if (!isValid(version)) {
-                // get most recent released version
-                source = getMostRecentReleasedSourceByOwner(id.getValue(), value, ownerType, access);
-            } else {
-                // get a given version
-                if (ORG.equals(ownerType)) {
-                    source = sourceRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(
-                            id.getValue(), version.getValue(), value, access);
-                } else {
-                    source = sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(
-                            id.getValue(), version.getValue(), value, access);
-                }
-            }
-            if (source != null) sources.add(source);
+            addSourceVersion(id, version, access, sources, ownerType, value);
         }
         if (sources.isEmpty())
             throw new ResourceNotFoundException(notFound(CodeSystem.class, owner, id, version));
         return sources;
     }
 
-    private Source getMostRecentReleasedSourceByOwner(String id, String owner, String ownerType, List<String> access) {
-        if (ORG.equals(ownerType)) {
-            return sourceRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndOrganizationMnemonicOrderByCreatedAtDesc(
-                    id, true, access, owner);
-        }
-        return sourceRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(
-                id, true, access, owner);
+    private void addSourceVersion(StringType id, StringType version, List<String> access, List<Source> sources, String ownerType, String value) {
+        final Source source = oclFhirUtil.getSourceVersion(id, version, access, ownerType, value);
+        if (source != null) sources.add(source);
     }
 
     private Source getMostRecentReleasedSourceByUrl(StringType url, List<String> access) {

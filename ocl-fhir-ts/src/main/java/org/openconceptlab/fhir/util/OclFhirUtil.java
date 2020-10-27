@@ -1,7 +1,6 @@
 package org.openconceptlab.fhir.util;
 
 import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.fhir.model.api.IResource;
 import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
@@ -10,9 +9,8 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.model.*;
-import org.openconceptlab.fhir.repository.BaseOclRepository;
-import org.openconceptlab.fhir.repository.CollectionRepository;
 import org.openconceptlab.fhir.repository.SourceRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -24,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
@@ -34,8 +31,13 @@ public class OclFhirUtil {
     
     @Value("${server.port}")
     private String port;
-
     private static FhirContext context;
+    private SourceRepository sourceRepository;
+
+    @Autowired
+    public OclFhirUtil(SourceRepository sourceRepository) {
+        this.sourceRepository = sourceRepository;
+    }
 
     static {
         context = FhirContext.forR4();
@@ -73,6 +75,37 @@ public class OclFhirUtil {
 
     private static String getCompleteUrl(final String fhirBase, final String requestPath, final String id) {
         return fhirBase + "/" + Paths.get(requestPath, id).toString();
+    }
+
+    public Source getSourceVersion(String id, String version, List<String> access, String ownerType, String owner) {
+        return getSourceVersion(new StringType(id), new StringType(version), access, ownerType, owner);
+    }
+
+    public Source getSourceVersion(StringType id, StringType version, List<String> access, String ownerType, String owner) {
+        final Source source;
+        if (!isValid(version)) {
+            // get most recent released version
+            source = getMostRecentReleasedSourceByOwner(id.getValue(), owner, ownerType, access);
+        } else {
+            // get a given version
+            if (ORG.equals(ownerType)) {
+                source = sourceRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(
+                        id.getValue(), version.getValue(), owner, access);
+            } else {
+                source = sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(
+                        id.getValue(), version.getValue(), owner, access);
+            }
+        }
+        return source;
+    }
+
+    public Source getMostRecentReleasedSourceByOwner(String id, String owner, String ownerType, List<String> access) {
+        if (ORG.equals(ownerType)) {
+            return sourceRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndOrganizationMnemonicOrderByCreatedAtDesc(
+                    id, true, access, owner);
+        }
+        return sourceRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(
+                id, true, access, owner);
     }
 
     public IGenericClient getClient() {

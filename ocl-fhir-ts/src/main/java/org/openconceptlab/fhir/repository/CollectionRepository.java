@@ -21,4 +21,15 @@ public interface CollectionRepository extends BaseOclRepository<Collection>{
     List<Collection> findByExternalIdIs(String externalId);
     List<Collection> findByExternalIdAndPublicAccessIn(String externalId, List<String> publicAccess);
 
+    // versioned
+    Collection findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(String collectionId, String version, String orgId, List<String> publicAccess);
+    Collection findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(String collectionId, String version, String username, List<String> publicAccess);
+    Collection findFirstByExternalIdAndVersionAndPublicAccessIn(String externalId, String version, List<String> publicAccess);
+
+    Collection findFirstByMnemonicAndReleasedAndPublicAccessInAndOrganizationMnemonicOrderByCreatedAtDesc(String collectionId, Boolean released, List<String> publicAccess,
+                                                                                                      String orgId);
+    Collection findFirstByMnemonicAndReleasedAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(String collectionId, Boolean released, List<String> publicAccess,
+                                                                                                String username);
+    Collection findFirstByExternalIdAndReleasedAndPublicAccessInOrderByCreatedAtDesc(String externalId, Boolean released, List<String> publicAccess);
+
 }

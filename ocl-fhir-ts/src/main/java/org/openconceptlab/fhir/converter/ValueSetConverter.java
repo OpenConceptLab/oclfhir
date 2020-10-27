@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import org.apache.commons.lang3.ArrayUtils;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
@@ -16,6 +17,7 @@ import static org.openconceptlab.fhir.util.OclFhirConstants.PURPOSE;
 import static org.openconceptlab.fhir.util.OclFhirUtil.*;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -39,7 +41,7 @@ public class ValueSetConverter {
     @Value("${ocl.servlet.baseurl}")
     private String baseUrl;
 
-    public List<ValueSet> convertToValueSet(List<Collection> collections, String version) {
+    public List<ValueSet> convertToValueSet(List<Collection> collections) {
         List<ValueSet> valueSets = new ArrayList<>();
         collections.forEach(collection -> {
             ValueSet valueSet = toBaseValueSet(collection);
@@ -75,37 +77,70 @@ public class ValueSetConverter {
         return valueSet;
     }
 
+    private Optional<Concept> getConcept(List<ConceptsSource> conceptsSources, String conceptId, String conceptVersion) {
+        if (isValid(conceptVersion)) {
+            return conceptsSources.parallelStream().map(ConceptsSource::getConcept)
+                    .filter(c -> c.getMnemonic().equals(conceptId) && conceptVersion.equals(c.getVersion()))
+                    .findAny();
+        } else {
+            return conceptsSources.parallelStream().map(ConceptsSource::getConcept)
+                    .filter(c -> c.getMnemonic().equals(conceptId))
+                    .max(Comparator.comparing(Concept::getId));
+        }
+    }
+
+    private String[] formatExpression(String expression) {
+        String uri = expression;
+        if (!uri.startsWith("/")) uri = "/" + uri;
+        if (!uri.endsWith("/")) uri = uri + "/";
+        return uri.split("/");
+    }
+
     private void addCompose(ValueSet valueSet, Collection collection, boolean includeConceptDesignation) {
         List<CollectionsConcept> collectionsConcepts = collection.getCollectionsConcepts();
-        collectionsConcepts.forEach(cc -> {
-            Concept concept = cc.getConcept();
-            Source parent = concept.getParent();
-            // compose.include
-            if (isValid(parent.getUri())) {
-                String parentUri = getSystemUrl(parent.getUri());
-                Optional<ValueSet.ConceptSetComponent> includeComponent = valueSet.getCompose().getInclude().parallelStream()
-                        .filter(i -> parentUri.equals(i.getSystem()) &&
-                                parent.getVersion().equals(i.getVersion())).findAny();
-                if (includeComponent.isPresent()) {
-                    ValueSet.ConceptSetComponent include = includeComponent.get();
-                    // compose.include.concept
-                    addConceptReference(include, concept.getMnemonic(), concept.getName(), concept.getConceptsNames(),
-                            parent.getDefaultLocale(), includeConceptDesignation);
-                } else {
-                    ValueSet.ConceptSetComponent include = new ValueSet.ConceptSetComponent();
-                    include.setSystem(getSystemUrl(parent.getUri()));
-                    include.setVersion(parent.getVersion());
-                    // compose.include.concept
-                    addConceptReference(include, concept.getMnemonic(), concept.getName(), concept.getConceptsNames(),
-                            parent.getDefaultLocale(), includeConceptDesignation);
-                    valueSet.getCompose().addInclude(include);
-                }
-                // compose.inactive
-                if (!valueSet.getCompose().getInactive() && !concept.getIsActive()) {
-                    valueSet.getCompose().setInactive(true);
-                }
+        // We have to use expressions to determine actual Source version since its not possible through CollectionsConcepts
+        List<String> expressions = collection.getCollectionsReferences().parallelStream()
+                .map(CollectionsReference::getCollectionReference)
+                .map(CollectionReference::getExpression)
+                .collect(Collectors.toList());
+
+        for (String expression : expressions) {
+            String[] ar = formatExpression(expression);
+            Source source = getSource(ar);
+            if (source == null) continue;
+            Optional<Concept> concept = getConcept(source.getConceptsSources(), getConceptId(ar), getConceptVersion(ar));
+            concept.ifPresent(c -> populateCompose(valueSet, includeConceptDesignation, c, source.getUri()
+                    , source.getVersion(), source.getDefaultLocale()));
+        }
+    }
+
+    private void populateCompose(ValueSet valueSet, boolean includeConceptDesignation, Concept concept, String sourceUri,
+                                 String sourceVersion, String sourceDefaultLocale) {
+        // compose.include
+        if (isValid(sourceUri)) {
+            String parentUri = getSystemUrl(sourceUri);
+            Optional<ValueSet.ConceptSetComponent> includeComponent = valueSet.getCompose().getInclude().parallelStream()
+                    .filter(i -> parentUri.equals(i.getSystem()) &&
+                            sourceVersion.equals(i.getVersion())).findAny();
+            if (includeComponent.isPresent()) {
+                ValueSet.ConceptSetComponent include = includeComponent.get();
+                // compose.include.concept
+                addConceptReference(include, concept.getMnemonic(), concept.getName(), concept.getConceptsNames(),
+                        sourceDefaultLocale, includeConceptDesignation);
+            } else {
+                ValueSet.ConceptSetComponent include = new ValueSet.ConceptSetComponent();
+                include.setSystem(getSystemUrl(sourceUri));
+                include.setVersion(sourceVersion);
+                // compose.include.concept
+                addConceptReference(include, concept.getMnemonic(), concept.getName(), concept.getConceptsNames(),
+                        sourceDefaultLocale, includeConceptDesignation);
+                valueSet.getCompose().addInclude(include);
             }
-        });
+            // compose.inactive
+            if (!valueSet.getCompose().getInactive() && !concept.getIsActive()) {
+                valueSet.getCompose().setInactive(true);
+            }
+        }
     }
 
     private void addConceptReference(ValueSet.ConceptSetComponent includeComponent, String code, String display,
@@ -114,7 +149,7 @@ public class ValueSetConverter {
         // code
         referenceComponent.setCode(code);
         // display
-        List<LocalizedText> lts = names.stream().filter(c -> c.getLocalizedText() != null).map(d -> d.getLocalizedText())
+        List<LocalizedText> lts = names.stream().filter(c -> c.getLocalizedText() != null).map(ConceptsName::getLocalizedText)
                 .collect(Collectors.toList());
         referenceComponent.setDisplay(oclFhirUtil.getDefinition(lts, dictDefaultLocale));
         // designation
@@ -137,8 +172,43 @@ public class ValueSetConverter {
         });
     }
 
-    private String getSystemUrl(final String parentUri) {
+    private String getSourceId(String[] ar) {
+        return ar.length >= 5 && !ar[4].isEmpty() ? ar[4] : EMPTY;
+    }
+
+    private String getSourceVersion(String[] ar) {
+        return ar.length >= 6 && !ar[5].isEmpty() && ar[5].equals("concepts") ? HEAD : ar[5];
+    }
+
+    private String getConceptId(String[] ar) {
+        return ar.length >= 6 && !ar[5].isEmpty() && ar[5].equals("concepts") ?
+                ar.length >= 7 ? ar[6] : EMPTY :
+                ar.length >= 8 ? ar[7] : EMPTY;
+    }
+
+    private String getConceptVersion(String[] ar) {
+        if (ar[6].equals("concepts")) {
+            if (ar.length >=9 && !ar[8].isEmpty()) return ar[8];
+        } else if (ar.length >= 8 && !ar[7].trim().isEmpty()) {
+            return  ar[7];
+        }
+        return EMPTY;
+    }
+
+    private Source getSource(String [] ar) {
+        String ownerType = ar[1].contains(ORG) ? ORG : USER;
+        String owner = ar[2];
+        String sourceId = getSourceId(ar);
+        String sourceVersion = getSourceVersion(ar);
+        return oclFhirUtil.getSourceVersion(sourceId, sourceVersion, publicAccess, ownerType, owner);
+    }
+
+    private String getSystemUrl(String parentUri) {
         String url = baseUrl.split("fhir")[0];
+        String[] source = formatExpression(parentUri);
+        if (source.length >= 6 && isValid(source[5]))
+            parentUri = String.join("/", source[0], source[1], source[2], source[3], source[4],
+                    "_history", source[5]);
         return url.substring(0, url.length() - 1) + parentUri.replace("sources","CodeSystem");
     }
 

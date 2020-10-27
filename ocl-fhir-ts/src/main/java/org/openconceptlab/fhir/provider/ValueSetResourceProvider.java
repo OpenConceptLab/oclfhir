@@ -8,9 +8,7 @@ import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.converter.ValueSetConverter;
 import org.openconceptlab.fhir.model.Collection;
-import org.openconceptlab.fhir.model.Source;
 import org.openconceptlab.fhir.repository.CollectionRepository;
-import org.openconceptlab.fhir.repository.SourceRepository;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,9 +28,9 @@ import static org.openconceptlab.fhir.util.OclFhirUtil.*;
 @Component
 public class ValueSetResourceProvider implements IResourceProvider {
 	
-	private CollectionRepository collectionRepository;
-	private ValueSetConverter valueSetConverter;
-    private OclFhirUtil oclFhirUtil;
+	CollectionRepository collectionRepository;
+	ValueSetConverter valueSetConverter;
+    OclFhirUtil oclFhirUtil;
 
     @Autowired
     public ValueSetResourceProvider(CollectionRepository collectionRepository, ValueSetConverter valueSetConverter, OclFhirUtil oclFhirUtil) {
@@ -47,93 +45,157 @@ public class ValueSetResourceProvider implements IResourceProvider {
     }
 
     /**
-     * Get a single {@link ValueSet} for given {@link IdType}.
-     * @param id {@link ValueSet#id}
-     * @return {@link ValueSet}
-     */
-    @Read
-    @Transactional
-    public ValueSet get(@IdParam IdType id) {
-        List<Collection> collections = getPublicCollectionByMnemonic(new StringType(id.getIdPart()));
-        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, null);
-        if (valueSets.size() >= 1) {
-            return valueSets.get(0);
-        } else {
-            throw new ResourceNotFoundException(id, oclFhirUtil.getNotFoundOutcome(id));
-        }
-    }
-
-    /**
      * Returns all public {@link ValueSet}.
      *
      * @return {@link Bundle}
      */
     @Search
     @Transactional
-    public Bundle getValueSets(RequestDetails details) {
-        List<Collection> collections = getPublicCollections();
-        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, null);
+    public Bundle searchValueSets(RequestDetails details) {
+        List<Collection> collections = filterHead(getCollections(publicAccess));
+        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections);
         return OclFhirUtil.getBundle(valueSets, details.getFhirServerBase(), details.getRequestPath());
     }
 
     /**
      * Returns public {@link ValueSet} for a given Url.
      * @param url
+     * @param _history
      * @return {@link Bundle}
      */
     @Search
     @Transactional
-    public Bundle searchValueSetByUrl(@RequiredParam(name = ValueSet.SP_URL) StringType url, RequestDetails details) {
-        List<Collection> collections = getPublicCollectionByUrl(url);
-        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, null);
+    public Bundle searchValueSetByUrl(@RequiredParam(name = ValueSet.SP_URL) StringType url,
+                                      @OptionalParam(name = _HISTORY) StringType version,
+                                      RequestDetails details) {
+        List<Collection> collections = filterHead(getCollectionByUrl(url, version, publicAccess));
+        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections);
         return OclFhirUtil.getBundle(valueSets, details.getFhirServerBase(), details.getRequestPath());
     }
 
+    /**
+     * Returns all public {@link ValueSet} for a given owner.
+     * @param owner
+     * @return {@link Bundle}
+     */
     @Search
     @Transactional
-    public Bundle searchValueSetByOwner(@RequiredParam(name = "owner") StringType owner, @OptionalParam(name = "id") StringType id
-            , RequestDetails details) {
-        List<Collection> collections = getPublicCollectionByIdOrOwner(id, owner, collectionRepository);
-        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, null);
+    public Bundle searchValueSetByOwner(@RequiredParam(name = OWNER) StringType owner,
+                                        RequestDetails details) {
+        List<Collection> collections = filterHead(getCollectionByOwner(owner, publicAccess));
+        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections);
         return OclFhirUtil.getBundle(valueSets, details.getFhirServerBase(), details.getRequestPath());
     }
 
-    private List<Collection> getPublicCollections() {
-        return collectionRepository.findByPublicAccessIn(publicAccess).parallelStream().filter(s -> "HEAD".equals(s.getVersion()))
+    /**
+     * Returns public {@link ValueSet} for a given owner and Id. Returns given version if provided, otherwise
+     * most recent released version is returned.
+     * @param owner
+     * @param id
+     * @param _history
+     * @return {@link Bundle}
+     */
+    @Search
+    @Transactional
+    public Bundle searchValueSetByOwnerAndId(@RequiredParam(name = OWNER) StringType owner,
+                                               @RequiredParam(name = ID) StringType id,
+                                               @OptionalParam(name = _HISTORY) StringType version,
+                                               RequestDetails details) {
+        List<Collection> collections = filterHead(getCollectionByOwnerAndId(id, owner, version, publicAccess));
+        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections);
+        return OclFhirUtil.getBundle(valueSets, details.getFhirServerBase(), details.getRequestPath());
+    }
+
+    private List<Collection> getCollections(List<String> access) {
+        return collectionRepository.findByPublicAccessIn(access).parallelStream().filter(Collection::getIsLatestVersion)
                 .collect(Collectors.toList());
     }
 
-    private List<Collection> getPublicCollectionByMnemonic(StringType id) {
-        return collectionRepository.findByMnemonicAndPublicAccessIn(id.getValue(), publicAccess)
-                .parallelStream().filter(s -> "HEAD".equals(s.getVersion()))
-                .collect(Collectors.toList());
+    private List<Collection> getCollectionByUrl(StringType url, StringType version, List<String> access) {
+        List<Collection> collections = new ArrayList<>();
+        if (isVersionAll(version)) {
+            // get all versions
+            collections.addAll(collectionRepository.findByExternalIdAndPublicAccessIn(url.getValue(), access));
+        } else {
+            final Collection collection;
+            if (!isValid(version)) {
+                // get most recent released version
+                collection = getMostRecentReleasedCollectionByUrl(url, access);
+            } else {
+                // get a given version
+                collection = collectionRepository.findFirstByExternalIdAndVersionAndPublicAccessIn(url.getValue(), version.getValue(), access);
+            }
+            if (collection != null) collections.add(collection);
+        }
+        if (collections.isEmpty())
+            throw new ResourceNotFoundException(notFound(ValueSet.class, url, version));
+        return collections;
     }
 
-    private List<Collection> getPublicCollectionByUrl(StringType url) {
-        return collectionRepository.findByExternalIdAndPublicAccessIn(url.getValue(), publicAccess)
-                .parallelStream().filter(s -> "HEAD".equals(s.getVersion()))
-                .collect(Collectors.toList());
-    }
-
-    public List<Collection> getPublicCollectionByIdOrOwner(StringType id, StringType owner, CollectionRepository repository) {
+    private List<Collection> getCollectionByOwner(StringType owner, List<String> access) {
         List<Collection> collections = new ArrayList<>();
         String ownerType = getOwnerType(owner.getValue());
         String value = getOwner(owner.getValue());
         if (ORG.equals(ownerType)) {
-            if (isValid(id)) {
-                collections.addAll(repository.findByMnemonicAndOrganizationMnemonicAndPublicAccessIn(id.getValue(), value, publicAccess));
-            } else {
-                collections.addAll(repository.findByOrganizationMnemonicAndPublicAccessIn(value, publicAccess));
-            }
+            collections.addAll(collectionRepository.findByOrganizationMnemonicAndPublicAccessIn(value, access));
         } else {
-            if (isValid(id)) {
-                collections.addAll(repository.findByMnemonicAndUserIdUsernameAndPublicAccessIn(id.getValue(), value, publicAccess));
-            } else {
-                collections.addAll(repository.findByUserIdUsernameAndPublicAccessIn(value, publicAccess));
-            }
+            collections.addAll(collectionRepository.findByUserIdUsernameAndPublicAccessIn(value, access));
         }
-        return collections.parallelStream().filter(s -> "HEAD".equals(s.getVersion()))
-                .collect(Collectors.toList());
+        return collections.parallelStream().filter(Collection::getIsLatestVersion).collect(Collectors.toList());
     }
 
+    private List<Collection> getCollectionByOwnerAndId(StringType id, StringType owner, StringType version, List<String> access) {
+        List<Collection> collections = new ArrayList<>();
+        String ownerType = getOwnerType(owner.getValue());
+        String value = getOwner(owner.getValue());
+
+        if (isVersionAll(version)) {
+            // get all versions
+            if (ORG.equals(ownerType)) {
+                collections.addAll(collectionRepository.findByMnemonicAndOrganizationMnemonicAndPublicAccessIn(id.getValue(),
+                        value, access));
+            } else {
+                collections.addAll(collectionRepository.findByMnemonicAndUserIdUsernameAndPublicAccessIn(id.getValue(),
+                        value, access));
+            }
+        } else {
+            final Collection collection;
+            if (!isValid(version)) {
+                // get most recent released version
+                collection = getMostRecentReleasedCollectionByOwner(id.getValue(), value, ownerType, access);
+            } else {
+                // get a given version
+                if (ORG.equals(ownerType)) {
+                    collection = collectionRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(
+                            id.getValue(), version.getValue(), value, access);
+                } else {
+                    collection = collectionRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(
+                            id.getValue(), version.getValue(), value, access);
+                }
+            }
+            if (collection != null) collections.add(collection);
+        }
+        if (collections.isEmpty())
+            throw new ResourceNotFoundException(notFound(ValueSet.class, owner, id, version));
+        return collections;
+    }
+
+    private Collection getMostRecentReleasedCollectionByOwner(String id, String owner, String ownerType, List<String> access) {
+        if (ORG.equals(ownerType)) {
+            return collectionRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndOrganizationMnemonicOrderByCreatedAtDesc(
+                    id, true, access, owner);
+        }
+        return collectionRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(
+                id, true, access, owner);
+    }
+
+    private Collection getMostRecentReleasedCollectionByUrl(StringType url, List<String> access) {
+        return collectionRepository.findFirstByExternalIdAndReleasedAndPublicAccessInOrderByCreatedAtDesc(
+                url.getValue(), true, access
+        );
+    }
+
+    private List<Collection> filterHead(List<Collection> collections) {
+        return collections.stream().filter(s -> !HEAD.equals(s.getVersion())).collect(Collectors.toList());
+    }
 }

@@ -34,10 +34,10 @@ public class CodeSystemConverter {
 
 	JsonParser parser = new JsonParser();
 
-	private SourceRepository sourceRepository;
-	private ConceptRepository conceptRepository;
-	private OclFhirUtil oclFhirUtil;
-	private UserProfile oclUser;
+	SourceRepository sourceRepository;
+	ConceptRepository conceptRepository;
+	OclFhirUtil oclFhirUtil;
+	UserProfile oclUser;
 
 	@Autowired
 	public CodeSystemConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil
