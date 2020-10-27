@@ -113,6 +113,9 @@ public class Collection extends BaseOclEntity implements Serializable {
 	@Column
 	private String website;
 
+	@Column(name = "canonical_url")
+	private String canonicalUrl;
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	private Organization organization;
 
@@ -386,6 +389,14 @@ public class Collection extends BaseOclEntity implements Serializable {
 
 	public void setWebsite(String website) {
 		this.website = website;
+	}
+
+	public String getCanonicalUrl() {
+		return canonicalUrl;
+	}
+
+	public void setCanonicalUrl(String canonicalUrl) {
+		this.canonicalUrl = canonicalUrl;
 	}
 
 	public Organization getOrganization() {

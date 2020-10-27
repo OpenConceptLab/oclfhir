@@ -1,7 +1,6 @@
 package org.openconceptlab.fhir.converter;
 
 import java.util.*;
-import java.util.Collection;
 import java.util.stream.Collectors;
 
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
@@ -65,8 +64,8 @@ public class CodeSystemConverter {
 	private CodeSystem toBaseCodeSystem(final Source source){
         CodeSystem codeSystem = new CodeSystem();
         // Url
-        if(StringUtils.isNotBlank(source.getExternalId())) {
-        	codeSystem.setUrl(source.getExternalId());
+        if(StringUtils.isNotBlank(source.getCanonicalUrl())) {
+        	codeSystem.setUrl(source.getCanonicalUrl());
         }
         // id
         codeSystem.setId(source.getMnemonic());
@@ -245,7 +244,7 @@ public class CodeSystemConverter {
 			codeSystem.setId(id.get().getValue());
 		}
 		// check for unique URL
-		if(isValid(url) && !sourceRepository.findByExternalIdIs(url).isEmpty())
+		if(isValid(url) && !sourceRepository.findByCanonicalUrlAndPublicAccessIn(url, publicAccess).isEmpty())
 			throw new UnprocessableEntityException(String.format("The CodeSystem of URL '%s' already exists", url));
 
 		// check publisher
@@ -262,7 +261,7 @@ public class CodeSystemConverter {
     public void toSource(final CodeSystem codeSystem){
 		Source source = new Source();
 		source.setMnemonic(codeSystem.getId());
-		source.setExternalId(codeSystem.getUrl());
+		source.setCanonicalUrl(codeSystem.getUrl());
 		source.setCreatedBy(new UserProfile(oclUser.getId()));
 		source.setUpdatedBy(new UserProfile(oclUser.getId()));
 		source.setIsActive(PublicationStatus.ACTIVE.equals(codeSystem.getStatus()));

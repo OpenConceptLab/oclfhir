@@ -59,8 +59,8 @@ public class ValueSetConverter {
         getIdentifier(collection.getUri())
                 .ifPresent(i -> valueSet.getIdentifier().add(i));
         // set Url
-        if(isValid(collection.getExternalId()))
-            valueSet.setUrl(collection.getExternalId());
+        if(isValid(collection.getCanonicalUrl()))
+            valueSet.setUrl(collection.getCanonicalUrl());
         // set version
         valueSet.setVersion(collection.getVersion());
         // set name

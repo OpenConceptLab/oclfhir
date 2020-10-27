@@ -22,19 +22,18 @@ public interface SourceRepository extends BaseOclRepository<Source> {
     List<Source> findByMnemonicAndUserIdUsernameAndPublicAccessIn(String sourceId, String username, List<String> publicAccess);
     List<Source> findByOrganizationMnemonicAndPublicAccessIn(String org, List<String> publicAccess);
     List<Source> findByUserIdUsernameAndPublicAccessIn(String username, List<String> publicAccess);
-    List<Source> findByExternalIdIs(String externalId);
-    List<Source> findByExternalIdAndPublicAccessIn(String externalId, List<String> publicAccess);
+    List<Source> findByCanonicalUrlAndPublicAccessIn(String canonicalUrl, List<String> publicAccess);
 
     // versioned
     Source findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(String sourceId, String version, String orgId, List<String> publicAccess);
     Source findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(String sourceId, String version, String username, List<String> publicAccess);
-    Source findFirstByExternalIdAndVersionAndPublicAccessIn(String externalId, String version, List<String> publicAccess);
+    Source findFirstByCanonicalUrlAndVersionAndPublicAccessIn(String canonicalUrl, String version, List<String> publicAccess);
 
     Source findFirstByMnemonicAndReleasedAndPublicAccessInAndOrganizationMnemonicOrderByCreatedAtDesc(String sourceId, Boolean released, List<String> publicAccess,
                                                                                                       String orgId);
     Source findFirstByMnemonicAndReleasedAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(String sourceId, Boolean released, List<String> publicAccess,
                                                                                                 String username);
-    Source findFirstByExternalIdAndReleasedAndPublicAccessInOrderByCreatedAtDesc(String externalId, Boolean released, List<String> publicAccess);
+    Source findFirstByCanonicalUrlAndReleasedAndPublicAccessInOrderByCreatedAtDesc(String canonicalUrl, Boolean released, List<String> publicAccess);
 
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(value = "update sources set mnemonic = :id where id = :id", nativeQuery = true)

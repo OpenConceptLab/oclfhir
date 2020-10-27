@@ -103,6 +103,9 @@ public class Source extends BaseOclEntity implements Serializable {
 	@Column
 	private String website;
 
+	@Column(name = "canonical_url")
+	private String canonicalUrl;
+
 	@OneToMany(mappedBy="parent", cascade = CascadeType.ALL)
 	private List<Concept> concepts;
 
@@ -357,6 +360,14 @@ public class Source extends BaseOclEntity implements Serializable {
 		if (this.concepts == null)
 			this.concepts = new ArrayList<>();
 		return this.concepts;
+	}
+
+	public String getCanonicalUrl() {
+		return canonicalUrl;
+	}
+
+	public void setCanonicalUrl(String canonicalUrl) {
+		this.canonicalUrl = canonicalUrl;
 	}
 
 	public void setConcepts(List<Concept> concepts) {

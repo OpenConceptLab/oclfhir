@@ -18,18 +18,17 @@ public interface CollectionRepository extends BaseOclRepository<Collection>{
     List<Collection> findByOrganizationMnemonicAndPublicAccessIn(String org, List<String> publicAccess);
     List<Collection> findByUserIdUsernameAndPublicAccessIn(String username, List<String> publicAccess);
     List<Collection> findByOrganizationMnemonicOrUserIdUsername(String org, String username);
-    List<Collection> findByExternalIdIs(String externalId);
-    List<Collection> findByExternalIdAndPublicAccessIn(String externalId, List<String> publicAccess);
+    List<Collection> findByCanonicalUrlAndPublicAccessIn(String canonicalUrl, List<String> publicAccess);
 
     // versioned
     Collection findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(String collectionId, String version, String orgId, List<String> publicAccess);
     Collection findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(String collectionId, String version, String username, List<String> publicAccess);
-    Collection findFirstByExternalIdAndVersionAndPublicAccessIn(String externalId, String version, List<String> publicAccess);
+    Collection findFirstByCanonicalUrlAndVersionAndPublicAccessIn(String canonicalUrl, String version, List<String> publicAccess);
 
     Collection findFirstByMnemonicAndReleasedAndPublicAccessInAndOrganizationMnemonicOrderByCreatedAtDesc(String collectionId, Boolean released, List<String> publicAccess,
                                                                                                       String orgId);
     Collection findFirstByMnemonicAndReleasedAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(String collectionId, Boolean released, List<String> publicAccess,
                                                                                                 String username);
-    Collection findFirstByExternalIdAndReleasedAndPublicAccessInOrderByCreatedAtDesc(String externalId, Boolean released, List<String> publicAccess);
+    Collection findFirstByCanonicalUrlAndReleasedAndPublicAccessInOrderByCreatedAtDesc(String canonicalUrl, Boolean released, List<String> publicAccess);
 
 }

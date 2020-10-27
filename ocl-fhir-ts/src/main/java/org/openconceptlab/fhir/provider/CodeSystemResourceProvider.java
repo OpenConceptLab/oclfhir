@@ -115,7 +115,7 @@ public class CodeSystemResourceProvider implements IResourceProvider {
         List<Source> sources = new ArrayList<>();
         if (isVersionAll(version)) {
             // get all versions
-            sources.addAll(sourceRepository.findByExternalIdAndPublicAccessIn(url.getValue(), access));
+            sources.addAll(sourceRepository.findByCanonicalUrlAndPublicAccessIn(url.getValue(), access));
         } else {
             final Source source;
             if (!isValid(version)) {
@@ -123,7 +123,7 @@ public class CodeSystemResourceProvider implements IResourceProvider {
                 source = getMostRecentReleasedSourceByUrl(url, access);
             } else {
                 // get a given version
-                source = sourceRepository.findFirstByExternalIdAndVersionAndPublicAccessIn(url.getValue(), version.getValue(), access);
+                source = sourceRepository.findFirstByCanonicalUrlAndVersionAndPublicAccessIn(url.getValue(), version.getValue(), access);
             }
             if (source != null) sources.add(source);
         }
@@ -172,7 +172,7 @@ public class CodeSystemResourceProvider implements IResourceProvider {
     }
 
     private Source getMostRecentReleasedSourceByUrl(StringType url, List<String> access) {
-        return sourceRepository.findFirstByExternalIdAndReleasedAndPublicAccessInOrderByCreatedAtDesc(
+        return sourceRepository.findFirstByCanonicalUrlAndReleasedAndPublicAccessInOrderByCreatedAtDesc(
           url.getValue(), true, access
         );
     }

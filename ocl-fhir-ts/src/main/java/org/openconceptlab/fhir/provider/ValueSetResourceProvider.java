@@ -115,7 +115,7 @@ public class ValueSetResourceProvider implements IResourceProvider {
         List<Collection> collections = new ArrayList<>();
         if (isVersionAll(version)) {
             // get all versions
-            collections.addAll(collectionRepository.findByExternalIdAndPublicAccessIn(url.getValue(), access));
+            collections.addAll(collectionRepository.findByCanonicalUrlAndPublicAccessIn(url.getValue(), access));
         } else {
             final Collection collection;
             if (!isValid(version)) {
@@ -123,7 +123,7 @@ public class ValueSetResourceProvider implements IResourceProvider {
                 collection = getMostRecentReleasedCollectionByUrl(url, access);
             } else {
                 // get a given version
-                collection = collectionRepository.findFirstByExternalIdAndVersionAndPublicAccessIn(url.getValue(), version.getValue(), access);
+                collection = collectionRepository.findFirstByCanonicalUrlAndVersionAndPublicAccessIn(url.getValue(), version.getValue(), access);
             }
             if (collection != null) collections.add(collection);
         }
@@ -190,7 +190,7 @@ public class ValueSetResourceProvider implements IResourceProvider {
     }
 
     private Collection getMostRecentReleasedCollectionByUrl(StringType url, List<String> access) {
-        return collectionRepository.findFirstByExternalIdAndReleasedAndPublicAccessInOrderByCreatedAtDesc(
+        return collectionRepository.findFirstByCanonicalUrlAndReleasedAndPublicAccessInOrderByCreatedAtDesc(
                 url.getValue(), true, access
         );
     }
