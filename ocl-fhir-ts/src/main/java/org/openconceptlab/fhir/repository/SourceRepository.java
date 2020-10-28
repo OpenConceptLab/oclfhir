@@ -35,6 +35,15 @@ public interface SourceRepository extends BaseOclRepository<Source> {
                                                                                                 String username);
     Source findFirstByCanonicalUrlAndReleasedAndPublicAccessInOrderByCreatedAtDesc(String canonicalUrl, Boolean released, List<String> publicAccess);
 
+    Source findFirstByCanonicalUrlAndReleasedAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(String canonicalUrl, boolean released,
+                                                                                                              String orgId, List<String> publicAccess);
+
+    Source findFirstByCanonicalUrlAndReleasedAndUserIdUsernameAndPublicAccessInOrderByCreatedAtDesc(String canonicalUrl, boolean released,
+                                                                                                          String username, List<String> publicAccess);
+
+    Source findFirstByCanonicalUrlAndVersionAndOrganizationMnemonicAndPublicAccessIn(String canonicalUrl, String version, String orgId, List<String> publicAccess);
+    Source findFirstByCanonicalUrlAndVersionAndUserIdUsernameAndPublicAccessIn(String canonicalUrl, String version, String username, List<String> publicAccess);
+
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(value = "update sources set mnemonic = :id where id = :id", nativeQuery = true)
     void updateMnemonic(@Param("id") Long id);

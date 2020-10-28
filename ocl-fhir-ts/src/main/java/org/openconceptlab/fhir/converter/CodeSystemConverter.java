@@ -1,6 +1,7 @@
 package org.openconceptlab.fhir.converter;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
@@ -222,6 +223,92 @@ public class CodeSystemConverter {
     		codeSystem.getFilter().add(c);
     	}
     }
+
+    public Parameters getLookupParameters(final Source source, final CodeType code, final CodeType displayLanguage) {
+		Optional<Concept> conceptOpt = source.getConceptsSources().parallelStream()
+				.map(ConceptsSource::getConcept)
+				.filter(c -> c.getMnemonic().equals(code.getCode()))
+				.max(Comparator.comparing(Concept::getId));
+		if (conceptOpt.isPresent()) {
+			Concept concept = conceptOpt.get();
+			Parameters parameters = new Parameters();
+			parameters.addParameter(getParameter(NAME, source.getName()));
+			parameters.addParameter(getParameter(VERSION, source.getVersion()));
+			AtomicBoolean preferred = new AtomicBoolean(false);
+			concept.getConceptsNames().stream().map(ConceptsName::getLocalizedText).forEach(lt -> {
+				// Populates 'display' based on displayLanguage if provided.
+				// sets first preferred or first non-preferred value as 'display'
+				if (isValid(displayLanguage) && displayLanguage.getCode().equals(lt.getLocale())) {
+					if (lt.getLocalePreferred()) {
+						if (parameters.getParameter(DISPLAY) == null) {
+							parameters.addParameter(getParameter(DISPLAY, lt.getName()));
+							preferred.set(true);
+						}
+					} else {
+						if (!preferred.get()) {
+							if (parameters.getParameter(DISPLAY) == null) {
+								parameters.addParameter(getParameter(DISPLAY, lt.getName()));
+							}
+						}
+					}
+				}
+				addDesignationParameters(parameters, lt, displayLanguage);
+			});
+			// default value of 'display'
+			if (!isValid(displayLanguage)) {
+				Optional<LocalizedText> display = concept.getConceptsNames().stream()
+						.map(ConceptsName::getLocalizedText)
+						.filter(c -> c.getLocale().equals(source.getDefaultLocale()))
+						.findAny();
+				if (display.isPresent()) {
+					parameters.addParameter(getParameter(DISPLAY, display.get().getName()));
+				} else {
+					concept.getConceptsNames().stream()
+							.map(ConceptsName::getLocalizedText)
+							.map(LocalizedText::getName)
+							.findAny().ifPresent(name -> parameters.addParameter(getParameter(DISPLAY, name)));
+				}
+			}
+			return parameters;
+		}
+		return null;
+	}
+
+	private void addDesignationParameters(Parameters parameters, final LocalizedText text, final CodeType displayLanguage) {
+		if (isValid(displayLanguage) && !displayLanguage.getCode().equals(text.getLocale())) return;
+		parameters.addParameter().setName(DISPLAY).setPart(getDesignationParameters(text));
+	}
+
+	private List<Parameters.ParametersParameterComponent> getDesignationParameters(final LocalizedText text) {
+		List<Parameters.ParametersParameterComponent> componentList = new ArrayList<>();
+		if (isValid(text.getLocale()))
+			componentList.add(getParameter(LANGUAGE, new CodeType(text.getLocale())));
+		if (isValid(text.getType()))
+			componentList.add(getParameter(USE, new Coding(EMPTY, EMPTY, text.getType())));
+		if (isValid(text.getName()))
+			componentList.add(getParameter(VALUE, new StringType(text.getName())));
+		return componentList;
+	}
+
+	private Parameters.ParametersParameterComponent getParameter(String name, Type value) {
+		Parameters.ParametersParameterComponent component = new Parameters.ParametersParameterComponent();
+		component.setName(name).setValue(value);
+		return component;
+	}
+
+	private Parameters.ParametersParameterComponent getParameter(String name, String value) {
+		Parameters.ParametersParameterComponent component = new Parameters.ParametersParameterComponent();
+		component.setName(name).setValue(new StringType(value));
+		return component;
+	}
+
+	private void addParameter(String name, String value, Parameters parameters) {
+		addParameter(name, new StringType(value), parameters);
+	}
+
+	private void addParameter(String name, Type value, Parameters parameters) {
+		parameters.addParameter().setName(name).setValue(value);
+	}
 
 	/**
 	 * TODO: Update when ready to implement POST

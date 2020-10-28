@@ -33,7 +33,7 @@ public class OclFhirAuthorizationInterceptor extends AuthorizationInterceptor {
               .allow().write().resourcesOfType(CodeSystem.class).withAnyId().andThen()
               .allow().write().resourcesOfType(ValueSet.class).withAnyId().andThen()
               .allow().write().resourcesOfType(ConceptMap.class).withAnyId().andThen()
-              .allow().operation().withAnyName();
+              .allow().operation().withAnyName().atAnyLevel().andAllowAllResponses();
       return ruleBuilder;
    }
 

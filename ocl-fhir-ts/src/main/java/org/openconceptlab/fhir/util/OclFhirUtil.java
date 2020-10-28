@@ -7,6 +7,7 @@ import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import com.google.gson.*;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.repository.SourceRepository;
@@ -112,8 +113,12 @@ public class OclFhirUtil {
         return context.newRestfulGenericClient(serverBase);
     }
 
-    public String getResource(Resource resource) {
+    public String getResourceAsString(Resource resource) {
         return parser.encodeResourceToString(resource);
+    }
+
+    public static IBaseResource getResource(String resource) {
+        return getFhirContext().newJsonParser().parseResource(resource);
     }
 
     public OperationOutcome getNotFoundOutcome(IdType id) {
@@ -149,7 +154,22 @@ public class OclFhirUtil {
     public static boolean isValid(final StringType value) {
         return value != null && StringUtils.isNotBlank(value.getValue());
     }
-    
+
+    public static boolean isValid(final PrimitiveType type) {
+        return type != null && !type.isEmpty();
+    }
+
+    public static StringType getOwnerProperty(final List<CodeType> type) {
+        StringType owner = new StringType();
+        if (type == null || type.isEmpty()) return owner;
+        type.parallelStream()
+                .filter(c -> c.getCode().startsWith(ORG_) || c.getCode().startsWith(USER_))
+                .map(CodeType::getCode)
+                .findFirst()
+                .ifPresent(owner::setValue);
+        return owner;
+    }
+
     public static JsonObject parseExtras(String extras) {
         return jsonParser.parse(extras).getAsJsonObject();
     }
@@ -265,7 +285,7 @@ public class OclFhirUtil {
     }
 
     private Optional<LocalizedText> getPreferred(Stream<LocalizedText> texts) {
-        return texts.filter(f -> f.getLocalePreferred()).findFirst();
+        return texts.filter(LocalizedText::getLocalePreferred).findFirst();
     }
 
     private Optional<LocalizedText> getNonPreferred(Stream<LocalizedText> texts) {

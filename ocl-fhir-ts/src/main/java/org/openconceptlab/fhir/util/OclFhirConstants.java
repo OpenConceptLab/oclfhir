@@ -25,6 +25,11 @@ public final class OclFhirConstants {
 	public static final String PROPERTY = "property";
 	public static final String OP = "op";
 	public static final String value = "value";
+	public static final String DISPLAY = "display";
+	public static final String NAME = "name";
+	public static final String LANGUAGE = "language";
+	public static final String DISP_LANG = "displayLanguage";
+	public static final String LOOKUP = "$lookup";
 
 	public static final String PUBLISHER_REGEX = "^user:.*|^org:.*";
 	public static final String ORG_ = "org:";

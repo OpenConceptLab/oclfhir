@@ -3,6 +3,7 @@ package org.openconceptlab.fhir.provider;
 import ca.uhn.fhir.rest.annotation.*;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.IResourceProvider;
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
@@ -106,6 +107,55 @@ public class CodeSystemResourceProvider implements IResourceProvider {
         return OclFhirUtil.getBundle(codeSystems, details.getFhirServerBase(), details.getRequestPath());
     }
 
+    /**
+     * CodeSystem $lookup operation.
+     * GET request example:
+     * <HOST>/fhir/CodeSystem/$lookup?code=#&system=#&version=#&displayLanguage=#
+     *
+     * POST request example:
+     * {
+     *     "resourceType":"Parameters",
+     *     "parameter": [
+     *          {
+     *             "name":"system",
+     *             "valueUri":""
+     *         },
+     *         {
+     *             "name":"code",
+     *             "valueCode":""
+     *         },
+     *         {
+     *             "name":"version",
+     *             "valueString":""
+     *         },
+     *         {
+     *             "name":"displayLanguage",
+     *             "valueCode":""
+     *         }
+     *     ]
+     * }
+     *
+     * @param code - (Mandatory) Code that is to be located
+     * @param system - (Mandatory) System for the code that is to be located
+     * @param version - (Optional) The version of system
+     * @param displayLanguage - (Optional) The display language
+     * @return Parameters
+     */
+    @Operation(name = LOOKUP, idempotent = true)
+    @Transactional
+    public Parameters codeSystemLookUp(@OperationParam(name = CODE, type = CodeType.class) CodeType code,
+                                       @OperationParam(name = SYSTEM, type = UriType.class) UriType system,
+                                       @OperationParam(name = VERSION, type = StringType.class) StringType version,
+                                       @OperationParam(name = DISP_LANG, type = CodeType.class) CodeType displayLanguage,
+                                       @OperationParam(name = PROPERTY, type = CodeType.class, max = 5) List<CodeType> property) {
+
+        StringType owner = getOwnerProperty(property);
+        validateLookup(code, system);
+        Source source = isValid(owner) ? getSourceByOwnerAndUrl(owner, new StringType(system.getValue()), version, publicAccess) :
+                getSourceByUrl(new StringType(system.getValue()), version, publicAccess).get(0);
+        return codeSystemConverter.getLookupParameters(source, code, displayLanguage);
+    }
+
     private List<Source> getSources(List<String> access) {
         return sourceRepository.findByPublicAccessIn(access).parallelStream().filter(Source::getIsLatestVersion)
                 .collect(Collectors.toList());
@@ -130,6 +180,22 @@ public class CodeSystemResourceProvider implements IResourceProvider {
         if (sources.isEmpty())
             throw new ResourceNotFoundException(notFound(CodeSystem.class, url, version));
         return sources;
+    }
+
+    private Source getSourceByOwnerAndUrl(StringType owner, StringType url, StringType version, List<String> access) {
+        Source source = null;
+        String ownerType = getOwnerType(owner.getValue());
+        String value = getOwner(owner.getValue());
+            if (!isValid(version)) {
+                // get most recent released version
+                source = getMostRecentReleasedSourceByOwnerAndUrl(value, ownerType, url, access);
+            } else {
+                // get a given version
+                source = getSourceVersionByOwnerAndUrl(value, ownerType, url, version, access);
+            }
+        if (source == null)
+            throw new ResourceNotFoundException(notFound(CodeSystem.class, url, version));
+        return source;
     }
 
     private List<Source> getSourceByOwner(StringType owner, List<String> access) {
@@ -177,7 +243,28 @@ public class CodeSystemResourceProvider implements IResourceProvider {
         );
     }
 
+    private Source getMostRecentReleasedSourceByOwnerAndUrl(String owner, String ownerType, StringType url, List<String> access) {
+        if (ORG.equals(ownerType))
+            return sourceRepository.findFirstByCanonicalUrlAndReleasedAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(
+                    url.getValue(), true, owner, access
+            );
+        return sourceRepository.findFirstByCanonicalUrlAndReleasedAndUserIdUsernameAndPublicAccessInOrderByCreatedAtDesc(
+                url.getValue(), true, owner, access
+        );
+    }
+
+    private Source getSourceVersionByOwnerAndUrl(String owner, String ownerType, StringType url, StringType version, List<String> access) {
+        if (ORG.equals(ownerType))
+            return sourceRepository.findFirstByCanonicalUrlAndVersionAndOrganizationMnemonicAndPublicAccessIn(url.getValue(), version.getValue(), owner, access);
+        return sourceRepository.findFirstByCanonicalUrlAndVersionAndUserIdUsernameAndPublicAccessIn(url.getValue(), version.getValue(), owner, access);
+    }
+
     private List<Source> filterHead(List<Source> sources) {
         return sources.stream().filter(s -> !HEAD.equals(s.getVersion())).collect(Collectors.toList());
+    }
+
+    private void validateLookup(CodeType code, UriType system) {
+        if (!isValid(code) || !isValid(system))
+            throw new InvalidRequestException("Could not perform CodeSystem $lookup, both code and system parameters are required.");
     }
 }
