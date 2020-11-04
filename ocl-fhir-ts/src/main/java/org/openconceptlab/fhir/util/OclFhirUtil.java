@@ -7,6 +7,7 @@ import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import com.google.gson.*;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.aspectj.apache.bcel.classfile.Code;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.model.*;
@@ -82,19 +83,19 @@ public class OclFhirUtil {
         return getSourceVersion(new StringType(id), new StringType(version), access, ownerType, owner);
     }
 
-    public Source getSourceVersion(StringType id, StringType version, List<String> access, String ownerType, String owner) {
+    public Source getSourceVersion(StringType id, StringType version, List<String> access, String ownerType, String ownerId) {
         final Source source;
         if (!isValid(version)) {
             // get most recent released version
-            source = getMostRecentReleasedSourceByOwner(id.getValue(), owner, ownerType, access);
+            source = getMostRecentReleasedSourceByOwner(id.getValue(), ownerId, ownerType, access);
         } else {
             // get a given version
             if (ORG.equals(ownerType)) {
                 source = sourceRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(
-                        id.getValue(), version.getValue(), owner, access);
+                        id.getValue(), version.getValue(), ownerId, access);
             } else {
                 source = sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(
-                        id.getValue(), version.getValue(), owner, access);
+                        id.getValue(), version.getValue(), ownerId, access);
             }
         }
         return source;
@@ -155,19 +156,12 @@ public class OclFhirUtil {
         return value != null && StringUtils.isNotBlank(value.getValue());
     }
 
-    public static boolean isValid(final PrimitiveType type) {
-        return type != null && !type.isEmpty();
+    public static boolean isValid(final CodeType code) {
+        return code != null && StringUtils.isNotBlank(code.getCode());
     }
 
-    public static StringType getOwnerProperty(final List<CodeType> type) {
-        StringType owner = new StringType();
-        if (type == null || type.isEmpty()) return owner;
-        type.parallelStream()
-                .filter(c -> c.getCode().startsWith(ORG_) || c.getCode().startsWith(USER_))
-                .map(CodeType::getCode)
-                .findFirst()
-                .ifPresent(owner::setValue);
-        return owner;
+    public static boolean isValid(final PrimitiveType type) {
+        return type != null && !type.isEmpty();
     }
 
     public static JsonObject parseExtras(String extras) {
@@ -317,6 +311,38 @@ public class OclFhirUtil {
 
     public static ResponseEntity<String> notFound(int status, String body) {
         return ResponseEntity.status(status).body(body);
+    }
+
+    public static StringType newStringType(UriType type) {
+        StringType stringType = new StringType();
+        if (type != null) stringType.setValue(type.getValue());
+        return stringType;
+    }
+
+    public static String newString(UriType type) {
+        return newStringType(type).getValue();
+    }
+
+    public static StringType newStringType(CodeType type) {
+        StringType stringType = new StringType();
+        if (type != null) stringType.setValue(type.getCode());
+        return stringType;
+    }
+
+    public static StringType newStringType(String value) {
+        return new StringType(value);
+    }
+
+    public static String newString(CodeType type) {
+        return newStringType(type).getValue();
+    }
+
+    public static String newString(StringType type) {
+        return isValid(type) ? type.getValue() : EMPTY;
+    }
+
+    public static String getCode(CodeType type) {
+        return isValid(type) ? type.getCode() : EMPTY;
     }
 
 }

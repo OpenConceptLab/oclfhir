@@ -142,6 +142,7 @@
 	</dependencies>
 
 	<build>
+		<finalName>oclfhir</finalName>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

@@ -27,12 +27,10 @@ public class OclFhirAuthorizationInterceptor extends AuthorizationInterceptor {
       RuleBuilder ruleBuilder = new RuleBuilder();
       ruleBuilder
               .allow().metadata().andThen()
-              .allow().read().resourcesOfType(CodeSystem.class).withAnyId().andThen()
-              .allow().read().resourcesOfType(ValueSet.class).withAnyId().andThen()
-              .allow().read().resourcesOfType(ConceptMap.class).withAnyId().andThen()
-              .allow().write().resourcesOfType(CodeSystem.class).withAnyId().andThen()
-              .allow().write().resourcesOfType(ValueSet.class).withAnyId().andThen()
-              .allow().write().resourcesOfType(ConceptMap.class).withAnyId().andThen()
+              .allow().read().allResources().withAnyId().andThen()
+              //.allow().write().resourcesOfType(CodeSystem.class).withAnyId().andThen()
+              //.allow().write().resourcesOfType(ValueSet.class).withAnyId().andThen()
+              //.allow().write().resourcesOfType(ConceptMap.class).withAnyId().andThen()
               .allow().operation().withAnyName().atAnyLevel().andAllowAllResponses();
       return ruleBuilder;
    }

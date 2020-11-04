@@ -30,6 +30,12 @@ public final class OclFhirConstants {
 	public static final String LANGUAGE = "language";
 	public static final String DISP_LANG = "displayLanguage";
 	public static final String LOOKUP = "$lookup";
+	public static final String URL = "url";
+	public static final String VALIDATE_CODE = "$validate-code";
+	public static final String DESIGNATION = "designation";
+	public static final String RESULT = "result";
+	public static final String MESSAGE = "message";
+	public static final String CODING = "coding";
 
 	public static final String PUBLISHER_REGEX = "^user:.*|^org:.*";
 	public static final String ORG_ = "org:";

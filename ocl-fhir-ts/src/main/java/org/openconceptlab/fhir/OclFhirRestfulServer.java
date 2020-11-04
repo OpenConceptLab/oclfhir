@@ -14,6 +14,8 @@ import org.openconceptlab.fhir.provider.OclCapabilityStatementProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.PropertySource;
+import org.springframework.context.annotation.PropertySources;
 import org.springframework.stereotype.Component;
 
 /**
@@ -24,20 +26,24 @@ import org.springframework.stereotype.Component;
 @WebServlet(urlPatterns = "/fhir/*", loadOnStartup = 1)
 public class OclFhirRestfulServer extends RestfulServer {
 
-	@Autowired
 	private CodeSystemResourceProvider codeSystemResourceProvider;
-
-	@Autowired
 	private ValueSetResourceProvider valueSetResourceProvider;
-
-	@Autowired
 	private OclCapabilityStatementProvider oclCapabilityStatementProvider;
+	private OclFhirAuthorizationInterceptor oclFhirAuthorizationInterceptor;
+	private OclFhirLoggingInterceptor oclFhirLoggingInterceptor;
 
 	@Autowired
-	OclFhirAuthorizationInterceptor oclFhirAuthorizationInterceptor;
-
-	@Autowired
-	OclFhirLoggingInterceptor oclFhirLoggingInterceptor;
+	public OclFhirRestfulServer(CodeSystemResourceProvider codeSystemResourceProvider,
+								ValueSetResourceProvider valueSetResourceProvider,
+								OclCapabilityStatementProvider oclCapabilityStatementProvider,
+								OclFhirAuthorizationInterceptor oclFhirAuthorizationInterceptor,
+								OclFhirLoggingInterceptor oclFhirLoggingInterceptor) {
+		this.codeSystemResourceProvider = codeSystemResourceProvider;
+		this.valueSetResourceProvider = valueSetResourceProvider;
+		this.oclCapabilityStatementProvider = oclCapabilityStatementProvider;
+		this.oclFhirAuthorizationInterceptor = oclFhirAuthorizationInterceptor;
+		this.oclFhirLoggingInterceptor = oclFhirLoggingInterceptor;
+	}
 
 	@Value("${ocl.servlet.baseurl}")
 	private String baseUrl;

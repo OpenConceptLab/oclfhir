@@ -101,7 +101,7 @@ public class CodeSystemResourceProvider implements IResourceProvider {
                                                @RequiredParam(name = ID) StringType id,
                                                @OptionalParam(name = VERSION) StringType version,
                                                RequestDetails details) {
-        List<Source> sources = filterHead(getSourceByOwnerAndId(id, owner, version, publicAccess));
+        List<Source> sources = filterHead(getSourceByOwnerAndIdAndVersion(id, owner, version, publicAccess));
         boolean includeConcepts = !isVersionAll(version);
         List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, includeConcepts);
         return OclFhirUtil.getBundle(codeSystems, details.getFhirServerBase(), details.getRequestPath());
@@ -147,13 +147,34 @@ public class CodeSystemResourceProvider implements IResourceProvider {
                                        @OperationParam(name = SYSTEM, type = UriType.class) UriType system,
                                        @OperationParam(name = VERSION, type = StringType.class) StringType version,
                                        @OperationParam(name = DISP_LANG, type = CodeType.class) CodeType displayLanguage,
-                                       @OperationParam(name = PROPERTY, type = CodeType.class, max = 5) List<CodeType> property) {
+                                       @OperationParam(name = OWNER, type = StringType.class) StringType owner) {
 
-        StringType owner = getOwnerProperty(property);
-        validateLookup(code, system);
-        Source source = isValid(owner) ? getSourceByOwnerAndUrl(owner, new StringType(system.getValue()), version, publicAccess) :
-                getSourceByUrl(new StringType(system.getValue()), version, publicAccess).get(0);
+        validateOperation(code, system, LOOKUP);
+        Source source = isValid(owner) ? getSourceByOwnerAndUrl(owner, newStringType(system), version, publicAccess) :
+                getSourceByUrl(newStringType(system), version, publicAccess).get(0);
         return codeSystemConverter.getLookupParameters(source, code, displayLanguage);
+    }
+
+    @Operation(name = VALIDATE_CODE, idempotent = true)
+    @Transactional
+    public Parameters codeSystemValidateCode(@OperationParam(name = URL, type = UriType.class) UriType url,
+                                             @OperationParam(name = CODE, type = CodeType.class) CodeType code,
+                                             @OperationParam(name = VERSION, type = StringType.class) StringType version,
+                                             @OperationParam(name = DISPLAY, type = StringType.class) StringType display,
+                                             @OperationParam(name = DISP_LANG, type = CodeType.class) CodeType displayLanguage,
+                                             @OperationParam(name = CODING, type = Coding.class) Coding coding,
+                                             @OperationParam(name = OWNER, type = StringType.class) StringType owner) {
+
+        if (coding != null) {
+            url = new UriType(coding.getSystem());
+            code = new CodeType(coding.getCode());
+            version = new StringType(coding.getVersion());
+            display = new StringType(coding.getDisplay());
+        }
+        validateOperation(code, url, VALIDATE_CODE);
+        Source source = isValid(owner) ? getSourceByOwnerAndUrl(owner, newStringType(url), version, publicAccess) :
+                getSourceByUrl(newStringType(url), version, publicAccess).get(0);
+        return codeSystemConverter.validateCode(source, getCode(code), display, displayLanguage);
     }
 
     private List<Source> getSources(List<String> access) {
@@ -210,7 +231,7 @@ public class CodeSystemResourceProvider implements IResourceProvider {
         return sources.parallelStream().filter(Source::getIsLatestVersion).collect(Collectors.toList());
     }
 
-    private List<Source> getSourceByOwnerAndId(StringType id, StringType owner, StringType version, List<String> access) {
+    private List<Source> getSourceByOwnerAndIdAndVersion(StringType id, StringType owner, StringType version, List<String> access) {
         List<Source> sources = new ArrayList<>();
         String ownerType = getOwnerType(owner.getValue());
         String value = getOwner(owner.getValue());
@@ -232,8 +253,8 @@ public class CodeSystemResourceProvider implements IResourceProvider {
         return sources;
     }
 
-    private void addSourceVersion(StringType id, StringType version, List<String> access, List<Source> sources, String ownerType, String value) {
-        final Source source = oclFhirUtil.getSourceVersion(id, version, access, ownerType, value);
+    private void addSourceVersion(StringType id, StringType version, List<String> access, List<Source> sources, String ownerType, String ownerId) {
+        final Source source = oclFhirUtil.getSourceVersion(id, version, access, ownerType, ownerId);
         if (source != null) sources.add(source);
     }
 
@@ -263,8 +284,10 @@ public class CodeSystemResourceProvider implements IResourceProvider {
         return sources.stream().filter(s -> !HEAD.equals(s.getVersion())).collect(Collectors.toList());
     }
 
-    private void validateLookup(CodeType code, UriType system) {
-        if (!isValid(code) || !isValid(system))
-            throw new InvalidRequestException("Could not perform CodeSystem $lookup, both code and system parameters are required.");
+    private void validateOperation(CodeType code, UriType system, String operation) {
+        if (!isValid(code) || !isValid(system)) {
+            String msg = "Could not perform CodeSystem %s operation, both code and %s parameters are required.";
+                throw new InvalidRequestException(String.format(msg, operation, LOOKUP.equals(operation) ? SYSTEM : URL));
+        }
     }
 }

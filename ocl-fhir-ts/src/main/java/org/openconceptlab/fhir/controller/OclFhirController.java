@@ -65,15 +65,33 @@ public class OclFhirController {
                                          @RequestParam(name = CODE) String code,
                                          @RequestParam(name = VERSION, required = false) String version,
                                          @RequestParam(name = DISP_LANG, required = false) String displayLanguage) {
-        Parameters parameters = generateParameters(system, code, version, displayLanguage, formatOrg(org));
-        return handleLookup(parameters);
+        Parameters parameters = lookupParameters(system, code, version, displayLanguage, formatOrg(org));
+        return handleFhirOperation(parameters, CodeSystem.class, LOOKUP);
     }
 
     @PostMapping(path = {"/orgs/{org}/CodeSystem/$lookup"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> lookUpCodeSystemsByOrg(@PathVariable String org, @RequestBody String parameters){
         Parameters params = (Parameters) getResource(parameters);
-        params.addParameter().setName(PROPERTY).setValue(new StringType(formatOrg(org)));
-        return handleLookup(params);
+        params.addParameter().setName(OWNER).setValue(newStringType(formatOrg(org)));
+        return handleFhirOperation(params, CodeSystem.class, LOOKUP);
+    }
+
+    @GetMapping(path = {"/orgs/{org}/CodeSystem/$validate-code"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> validateCodeSystemsByOrg(@PathVariable String org,
+                                                           @RequestParam(name = URL) String url,
+                                                           @RequestParam(name = CODE) String code,
+                                                           @RequestParam(name = VERSION, required = false) String version,
+                                                           @RequestParam(name = DISPLAY, required = false) String display,
+                                                           @RequestParam(name = DISP_LANG, required = false) String displayLanguage) {
+        Parameters parameters = validateCodeParameters(url, code, version, display, displayLanguage, formatOrg(org));
+        return handleFhirOperation(parameters, CodeSystem.class, VALIDATE_CODE);
+    }
+
+    @PostMapping(path = {"/orgs/{org}/CodeSystem/$validate-code"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> validateCodeSystemsByOrg(@PathVariable String org, @RequestBody String parameters){
+        Parameters params = (Parameters) getResource(parameters);
+        params.addParameter().setName(OWNER).setValue(newStringType(formatOrg(org)));
+        return handleFhirOperation(params, CodeSystem.class, VALIDATE_CODE);
     }
 
     @GetMapping(path = {"/orgs/{org}/ValueSet/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
@@ -120,15 +138,33 @@ public class OclFhirController {
                                                          @RequestParam(name = CODE) String code,
                                                          @RequestParam(name = VERSION, required = false) String version,
                                                          @RequestParam(name = DISP_LANG, required = false) String displayLanguage) {
-        Parameters parameters = generateParameters(system, code, version, displayLanguage, formatUser(user));
-        return handleLookup(parameters);
+        Parameters parameters = lookupParameters(system, code, version, displayLanguage, formatUser(user));
+        return handleFhirOperation(parameters, CodeSystem.class, LOOKUP);
     }
 
     @PostMapping(path = {"/users/{user}/CodeSystem/$lookup"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> lookUpCodeSystemsByUser(@PathVariable String user, @RequestBody String parameters){
         Parameters params = (Parameters) getResource(parameters);
-        params.addParameter().setName(PROPERTY).setValue(new StringType(formatUser(user)));
-        return handleLookup(params);
+        params.addParameter().setName(OWNER).setValue(newStringType(formatUser(user)));
+        return handleFhirOperation(params, CodeSystem.class, LOOKUP);
+    }
+
+    @GetMapping(path = {"/users/{user}/CodeSystem/$validate-code"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> validateCodeSystemsByUser(@PathVariable String user,
+                                                           @RequestParam(name = URL) String url,
+                                                           @RequestParam(name = CODE) String code,
+                                                           @RequestParam(name = VERSION, required = false) String version,
+                                                           @RequestParam(name = DISPLAY, required = false) String display,
+                                                           @RequestParam(name = DISP_LANG, required = false) String displayLanguage) {
+        Parameters parameters = validateCodeParameters(url, code, version, display, displayLanguage, formatUser(user));
+        return handleFhirOperation(parameters, CodeSystem.class, VALIDATE_CODE);
+    }
+
+    @PostMapping(path = {"/users/{user}/CodeSystem/$validate-code"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> validateCodeSystemsByUser(@PathVariable String user, @RequestBody String parameters){
+        Parameters params = (Parameters) getResource(parameters);
+        params.addParameter().setName(OWNER).setValue(newStringType(formatUser(user)));
+        return handleFhirOperation(params, CodeSystem.class, VALIDATE_CODE);
     }
 
     @GetMapping(path = {"/users/{user}/ValueSet/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
@@ -161,9 +197,9 @@ public class OclFhirController {
         }
     }
 
-    private ResponseEntity<String> handleLookup(Parameters parameters) {
+    private ResponseEntity<String> handleFhirOperation(Parameters parameters, Class<? extends Resource> type, String operation) {
         try {
-            return ResponseEntity.ok(oclFhirUtil.getResourceAsString(lookUpCodeSystem(parameters)));
+            return ResponseEntity.ok(oclFhirUtil.getResourceAsString(performFhirOperation(parameters, type, operation)));
         } catch (ResourceNotFoundException e) {
             return notFound(e.getStatusCode(), e.getResponseBody());
         } catch (Exception e) {
@@ -186,24 +222,38 @@ public class OclFhirController {
         return oclFhirUtil.getResourceAsString(bundle);
     }
 
-    private Parameters lookUpCodeSystem(Parameters parameters) {
+    private Parameters performFhirOperation(Parameters parameters, Class<? extends Resource> type, String operation) {
         return oclFhirUtil.getClient()
                 .operation()
-                .onType(CodeSystem.class)
-                .named(LOOKUP)
+                .onType(type)
+                .named(operation)
                 .withParameters(parameters)
                 .execute();
     }
 
-    private Parameters generateParameters(String system, String code, String version, String displayLanguage, String owner) {
+    private Parameters generateParameters(String code, String version, String displayLanguage, String owner) {
         Parameters parameters = new Parameters();
-        parameters.addParameter().setName(SYSTEM).setValue(new UriType(system));
         parameters.addParameter().setName(CODE).setValue(new CodeType(code));
         if (isValid(version))
-            parameters.addParameter().setName(VERSION).setValue(new StringType(version));
+            parameters.addParameter().setName(VERSION).setValue(newStringType(version));
         if (isValid(displayLanguage))
             parameters.addParameter().setName(DISP_LANG).setValue(new CodeType(displayLanguage));
-        parameters.addParameter().setName(PROPERTY).setValue(new StringType(owner));
+        parameters.addParameter().setName(OWNER).setValue(newStringType(owner));
+        return parameters;
+    }
+
+    private Parameters lookupParameters(String system, String code, String version, String displayLanguage, String owner) {
+        Parameters parameters = generateParameters(code, version, displayLanguage, owner);
+        parameters.addParameter().setName(SYSTEM).setValue(new UriType(system));
+        return parameters;
+    }
+
+    private Parameters validateCodeParameters(String url, String code, String version, String display, String displayLanguage,
+                                              String owner) {
+        Parameters parameters = generateParameters(code, version, displayLanguage, owner);
+        parameters.addParameter().setName(URL).setValue(new UriType(url));
+        if (isValid(display))
+            parameters.addParameter().setName(DISPLAY).setValue(newStringType(display));
         return parameters;
     }
 

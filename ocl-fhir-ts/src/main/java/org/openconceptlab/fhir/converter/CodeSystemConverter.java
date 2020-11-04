@@ -1,7 +1,6 @@
 package org.openconceptlab.fhir.converter;
 
 import java.util.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
@@ -225,58 +224,94 @@ public class CodeSystemConverter {
     }
 
     public Parameters getLookupParameters(final Source source, final CodeType code, final CodeType displayLanguage) {
-		Optional<Concept> conceptOpt = source.getConceptsSources().parallelStream()
-				.map(ConceptsSource::getConcept)
-				.filter(c -> c.getMnemonic().equals(code.getCode()))
-				.max(Comparator.comparing(Concept::getId));
+		Optional<Concept> conceptOpt = validateConcept(source, code.getCode());
 		if (conceptOpt.isPresent()) {
 			Concept concept = conceptOpt.get();
 			Parameters parameters = new Parameters();
 			parameters.addParameter(getParameter(NAME, source.getName()));
 			parameters.addParameter(getParameter(VERSION, source.getVersion()));
-			AtomicBoolean preferred = new AtomicBoolean(false);
-			concept.getConceptsNames().stream().map(ConceptsName::getLocalizedText).forEach(lt -> {
-				// Populates 'display' based on displayLanguage if provided.
-				// sets first preferred or first non-preferred value as 'display'
-				if (isValid(displayLanguage) && displayLanguage.getCode().equals(lt.getLocale())) {
-					if (lt.getLocalePreferred()) {
-						if (parameters.getParameter(DISPLAY) == null) {
-							parameters.addParameter(getParameter(DISPLAY, lt.getName()));
-							preferred.set(true);
-						}
-					} else {
-						if (!preferred.get()) {
-							if (parameters.getParameter(DISPLAY) == null) {
-								parameters.addParameter(getParameter(DISPLAY, lt.getName()));
-							}
-						}
-					}
-				}
-				addDesignationParameters(parameters, lt, displayLanguage);
-			});
-			// default value of 'display'
-			if (!isValid(displayLanguage)) {
-				Optional<LocalizedText> display = concept.getConceptsNames().stream()
-						.map(ConceptsName::getLocalizedText)
-						.filter(c -> c.getLocale().equals(source.getDefaultLocale()))
-						.findAny();
-				if (display.isPresent()) {
-					parameters.addParameter(getParameter(DISPLAY, display.get().getName()));
-				} else {
-					concept.getConceptsNames().stream()
-							.map(ConceptsName::getLocalizedText)
-							.map(LocalizedText::getName)
-							.findAny().ifPresent(name -> parameters.addParameter(getParameter(DISPLAY, name)));
-				}
-			}
+			List<LocalizedText> names = getNames(concept);
+			getDisplayForLookUp(names, isValid(displayLanguage) ? displayLanguage.getCode() : EMPTY, source.getDefaultLocale())
+					.ifPresent(display -> parameters.addParameter(getParameter(DISPLAY, display)));
+			addDesignationParameters(parameters, names, getCode(displayLanguage));
 			return parameters;
 		}
 		return null;
 	}
 
-	private void addDesignationParameters(Parameters parameters, final LocalizedText text, final CodeType displayLanguage) {
-		if (isValid(displayLanguage) && !displayLanguage.getCode().equals(text.getLocale())) return;
-		parameters.addParameter().setName(DISPLAY).setPart(getDesignationParameters(text));
+	private List<LocalizedText> getNames(Concept concept) {
+		return concept.getConceptsNames().stream().map(ConceptsName::getLocalizedText).collect(Collectors.toList());
+	}
+
+	private Optional<Concept> validateConcept(Source source, String code) {
+		Optional<Concept> conceptOpt = source.getConceptsSources().parallelStream()
+				.map(ConceptsSource::getConcept)
+				.filter(c -> c.getMnemonic().equals(code))
+				.max(Comparator.comparing(Concept::getId));
+		return conceptOpt;
+	}
+
+	private Optional<String> localePreferredDisplay(List<LocalizedText> names, String displayLanguage) {
+		return names.stream()
+				.sorted(Comparator.comparing(LocalizedText::getLocalePreferred, Comparator.reverseOrder()))
+				.filter(name -> !isValid(displayLanguage) || name.getLocale().equals(displayLanguage))
+				.map(LocalizedText::getName)
+				.findFirst();
+	}
+
+	private Optional<String> defaultLocaleDisplay(List<LocalizedText> names, String defaultLocale) {
+		return names.stream()
+				.sorted(Comparator.comparing(LocalizedText::getLocalePreferred, Comparator.reverseOrder()))
+				.filter(name -> !isValid(defaultLocale) || name.getLocale().equals(defaultLocale))
+				.map(LocalizedText::getName)
+				.findFirst();
+	}
+
+	private Optional<String> anyDisplay(List<LocalizedText> names) {
+		return names.stream().map(LocalizedText::getName).findFirst();
+	}
+
+	private Optional<String> getDisplayForLookUp(List<LocalizedText> names, String displayLanguage, String defaultLocale) {
+		Optional<String> preferred = localePreferredDisplay(names, displayLanguage);
+		if (preferred.isPresent()) return preferred;
+		Optional<String> srcdefaultLocale = defaultLocaleDisplay(names, defaultLocale);
+		if (srcdefaultLocale.isPresent()) return srcdefaultLocale;
+		return anyDisplay(names);
+	}
+
+	private void addDesignationParameters(Parameters parameters, List<LocalizedText> names, String displayLanguage) {
+		names.stream()
+				.filter(name -> !isValid(displayLanguage) || name.getLocale().equals(displayLanguage))
+				.forEach(name -> {
+					parameters.addParameter().setName(DESIGNATION).setPart(getDesignationParameters(name));
+				});
+	}
+
+	public Parameters validateCode(final Source source, final String code, final StringType display, final CodeType displayLanguage) {
+		Parameters parameters = new Parameters();
+		BooleanType result = new BooleanType(false);
+		parameters.addParameter().setName(RESULT).setValue(result);
+		Optional<Concept> conceptOpt = validateConcept(source, code);
+		if (conceptOpt.isPresent()) {
+			if (isValid(display)) {
+				List<LocalizedText> names = getNames(conceptOpt.get());
+				boolean match = validateDisplay(names, display, displayLanguage);
+				if (!match) {
+					parameters.addParameter().setName(MESSAGE).setValue(newStringType("Invalid display."));
+				} else {
+					result.setValue(true);
+				}
+			} else {
+				result.setValue(true);
+			}
+		}
+		return parameters;
+	}
+
+	private boolean validateDisplay(List<LocalizedText> names, final StringType display, final CodeType displayLanguage) {
+		return names.parallelStream()
+				.filter(name -> name.getName().equals(display.getValue()))
+				.anyMatch(name -> !isValid(displayLanguage) || name.getLocale().equals(displayLanguage.getCode()));
 	}
 
 	private List<Parameters.ParametersParameterComponent> getDesignationParameters(final LocalizedText text) {
