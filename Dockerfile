@@ -1,10 +1,7 @@
-FROM openjdk:14.0.2
-#RUN addgroup -S spring && adduser -S spring -G spring
-#USER spring:spring
-#RUN apt-get install curl tar bash procps
+#Stage 1: Build
+FROM openjdk:14 as build
 
 RUN mkdir /code
-COPY . /code
 
 ARG MAVEN_VERSION=3.6.3
 ARG USER_HOME_DIR="/code"
@@ -28,13 +25,22 @@ RUN mkdir -p /usr/share/maven /usr/share/maven/ref \
 ENV MAVEN_HOME /usr/share/maven
 ENV MAVEN_CONFIG "$USER_HOME_DIR/.m2"
 
+COPY . /code
+
 RUN cd /code \
   && echo "Building oclfhir project" \
   && mvn clean install
 
-RUN chmod u+x /code/startup.sh
-RUN ls -lrt /code/startup.sh
+#Stage 2: Runtime  
+FROM openjdk:14-jdk-alpine
+
+RUN addgroup -S spring && adduser -S spring -G spring
+USER spring:spring
+
+# Copy the jar file from the build environment
+COPY --from=build /code/ocl-fhir-ts/target/*.jar ocl-fhir-ts/target/
 
 EXPOSE 7000
-CMD bash /code/startup.sh
+
+ENTRYPOINT ["java", "-Dhibernate.types.print.banner=false", "-jar", "ocl-fhir-ts/target/oclfhir.jar"]
 
