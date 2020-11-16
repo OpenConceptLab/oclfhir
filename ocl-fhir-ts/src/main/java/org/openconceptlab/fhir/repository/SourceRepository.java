@@ -17,6 +17,7 @@ import java.util.List;
 @Repository
 public interface SourceRepository extends BaseOclRepository<Source> {
 
+    List<Source> findByPublicAccessIn(List<String> publicAccess);
     List<Source> findByMnemonicAndPublicAccessIn(String mnemonic, List<String> publicAccess);
     List<Source> findByMnemonicAndOrganizationMnemonicAndPublicAccessIn(String sourceId, String orgId, List<String> publicAccess);
     List<Source> findByMnemonicAndUserIdUsernameAndPublicAccessIn(String sourceId, String username, List<String> publicAccess);

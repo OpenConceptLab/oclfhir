@@ -1,8 +1,10 @@
 package org.openconceptlab.fhir.converter;
 
 import java.util.*;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
+import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
@@ -19,6 +21,7 @@ import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 import static org.openconceptlab.fhir.util.OclFhirUtil.*;
 
 import org.openconceptlab.fhir.repository.ConceptRepository;
+import org.openconceptlab.fhir.repository.ConceptsSourceRepository;
 import org.openconceptlab.fhir.repository.SourceRepository;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,14 +40,16 @@ public class CodeSystemConverter {
 	ConceptRepository conceptRepository;
 	OclFhirUtil oclFhirUtil;
 	UserProfile oclUser;
+	ConceptsSourceRepository conceptsSourceRepository;
 
 	@Autowired
 	public CodeSystemConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil
-			, UserProfile oclUser) {
+			, UserProfile oclUser, ConceptsSourceRepository conceptsSourceRepository) {
 		this.sourceRepository = sourceRepository;
 		this.conceptRepository = conceptRepository;
 		this.oclFhirUtil = oclFhirUtil;
 		this.oclUser = oclUser;
+		this.conceptsSourceRepository = conceptsSourceRepository;
 	}
 
 	public List<CodeSystem> convertToCodeSystem(List<Source> sources, boolean includeConcepts) {

@@ -36,12 +36,16 @@ public final class OclFhirConstants {
 	public static final String RESULT = "result";
 	public static final String MESSAGE = "message";
 	public static final String CODING = "coding";
+	public static final String SYSTEM_VERSION = "systemVersion";
+	public static final String VALUESET_VERSION = "valueSetVersion";
 
 	public static final String PUBLISHER_REGEX = "^user:.*|^org:.*";
 	public static final String ORG_ = "org:";
 	public static final String USER_ = "user:";
 	public static final String ORG = "org";
 	public static final String USER = "user";
+	public static final String ORGS = "orgs";
+	public static final String USERS = "users";
 	public static final String SEP = ":";
 	public static final List<String> publicAccess = Arrays.asList("View", "Edit");
 	public static final String OWNER = "owner";

@@ -12,6 +12,7 @@ import java.util.List;
 @Repository
 public interface CollectionRepository extends BaseOclRepository<Collection>{
 
+    List<Collection> findByPublicAccessIn(List<String> publicAccess);
     List<Collection> findByMnemonicAndPublicAccessIn(String mnemonic, List<String> publicAccess);
     List<Collection> findByMnemonicAndOrganizationMnemonicAndPublicAccessIn(String collectionId, String orgId, List<String> publicAccess);
     List<Collection> findByMnemonicAndUserIdUsernameAndPublicAccessIn(String collectionId, String username, List<String> publicAccess);
@@ -30,5 +31,18 @@ public interface CollectionRepository extends BaseOclRepository<Collection>{
     Collection findFirstByMnemonicAndReleasedAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(String collectionId, Boolean released, List<String> publicAccess,
                                                                                                 String username);
     Collection findFirstByCanonicalUrlAndReleasedAndPublicAccessInOrderByCreatedAtDesc(String canonicalUrl, Boolean released, List<String> publicAccess);
+    Collection findFirstByCanonicalUrlAndReleasedAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(String canonicalUrl, boolean released,
+                                                                                                          String orgId, List<String> publicAccess);
+
+    Collection findFirstByCanonicalUrlAndReleasedAndUserIdUsernameAndPublicAccessInOrderByCreatedAtDesc(String canonicalUrl, boolean released,
+                                                                                                    String username, List<String> publicAccess);
+
+    Collection findFirstByCanonicalUrlAndVersionAndOrganizationMnemonicAndPublicAccessIn(String canonicalUrl, String version, String orgId, List<String> publicAccess);
+    Collection findFirstByCanonicalUrlAndVersionAndUserIdUsernameAndPublicAccessIn(String canonicalUrl, String version, String username, List<String> publicAccess);
+
+    Collection findFirstByMnemonicAndReleasedAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(String collectionId, boolean released,
+                                                                                                      String orgId, List<String> publicAccess);
+
+    Collection findFirstByMnemonicAndReleasedAndUserIdUsernameAndPublicAccessInOrderByCreatedAtDesc(String collectionId, boolean released, String username, List<String> publicAccess);
 
 }

@@ -4,9 +4,11 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import org.apache.commons.lang3.ArrayUtils;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.model.*;
+import org.openconceptlab.fhir.model.Collection;
+import org.openconceptlab.fhir.repository.ConceptRepository;
+import org.openconceptlab.fhir.repository.ConceptsSourceRepository;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,11 +17,9 @@ import org.springframework.stereotype.Component;
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 import static org.openconceptlab.fhir.util.OclFhirConstants.PURPOSE;
 import static org.openconceptlab.fhir.util.OclFhirUtil.*;
+import static org.openconceptlab.fhir.util.OclFhirUtil.getOwner;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -32,10 +32,14 @@ public class ValueSetConverter {
     JsonParser parser = new JsonParser();
 
     OclFhirUtil oclFhirUtil;
+    ConceptsSourceRepository conceptsSourceRepository;
+    ConceptRepository conceptRepository;
 
     @Autowired
-    public ValueSetConverter(OclFhirUtil oclFhirUtil) {
+    public ValueSetConverter(OclFhirUtil oclFhirUtil, ConceptsSourceRepository conceptsSourceRepository, ConceptRepository conceptRepository) {
         this.oclFhirUtil = oclFhirUtil;
+        this.conceptsSourceRepository = conceptsSourceRepository;
+        this.conceptRepository = conceptRepository;
     }
 
     @Value("${ocl.servlet.baseurl}")
@@ -89,11 +93,11 @@ public class ValueSetConverter {
         }
     }
 
-    private String[] formatExpression(String expression) {
+    private String formatExpression(String expression) {
         String uri = expression;
         if (!uri.startsWith("/")) uri = "/" + uri;
         if (!uri.endsWith("/")) uri = uri + "/";
-        return uri.split("/");
+        return uri;
     }
 
     private void addCompose(ValueSet valueSet, Collection collection, boolean includeConceptDesignation) {
@@ -104,23 +108,39 @@ public class ValueSetConverter {
                 .map(CollectionReference::getExpression)
                 .collect(Collectors.toList());
 
-        for (String expression : expressions) {
-            String[] ar = formatExpression(expression);
-            Source source = getSource(ar);
-            if (source == null) continue;
-            Optional<Concept> concept = getConcept(source.getConceptsSources(), getConceptId(ar), getConceptVersion(ar));
-            concept.ifPresent(c -> populateCompose(valueSet, includeConceptDesignation, c, source.getUri()
-                    , source.getVersion(), source.getDefaultLocale()));
-        }
+        // lets get all the source versions first to reduce the database calls
+        Set<Source> sources = expressions.parallelStream().map(m -> formatExpression(m).split("/"))
+                .map(m -> ownerType(m) + "|" + ownerId(m) + "|" + getSourceId(m) + "|" + getSourceVersion(m))
+                .distinct()
+                .map(m -> m.split("\\|"))
+                .filter(m -> m.length == 4)
+                .map(m -> oclFhirUtil.getSourceVersion(m[2], m[3], publicAccess, m[0], m[1]))
+                .collect(Collectors.toSet());
+
+        // for each source let's evaluate expressions for concept and concept version and populate compose
+        sources.forEach(source -> {
+            expressions.stream().map(m -> formatExpression(m).split("/"))
+                    .filter(m -> source.getMnemonic().equals(getSourceId(m)) && source.getVersion().equals(getSourceVersion(m)))
+                    .forEach(m -> {
+                        String conceptId = getConceptId(m);
+                        String conceptVersion = getConceptVersion(m);
+                        if (isValid(conceptId)) {
+                            // we can not simply get concepts list from the source considering huge number of concepts, this is alternate
+                            // way to get only concepts that we care about and not retrieve whole list. This has improved performance and consumes less memory
+                            Optional<Concept> conceptOpt = oclFhirUtil.getSourceConcept(source, conceptId, conceptVersion);
+                            conceptOpt.ifPresent(c -> populateCompose(valueSet, includeConceptDesignation, c, source.getCanonicalUrl()
+                                    , source.getVersion(), source.getDefaultLocale()));
+                        }
+                    });
+        });
     }
 
-    private void populateCompose(ValueSet valueSet, boolean includeConceptDesignation, Concept concept, String sourceUri,
+    private void populateCompose(ValueSet valueSet, boolean includeConceptDesignation, Concept concept, String sourceCanonicalUrl,
                                  String sourceVersion, String sourceDefaultLocale) {
         // compose.include
-        if (isValid(sourceUri)) {
-            String parentUri = getSystemUrl(sourceUri);
+        if (isValid(sourceCanonicalUrl)) {
             Optional<ValueSet.ConceptSetComponent> includeComponent = valueSet.getCompose().getInclude().parallelStream()
-                    .filter(i -> parentUri.equals(i.getSystem()) &&
+                    .filter(i -> sourceCanonicalUrl.equals(i.getSystem()) &&
                             sourceVersion.equals(i.getVersion())).findAny();
             if (includeComponent.isPresent()) {
                 ValueSet.ConceptSetComponent include = includeComponent.get();
@@ -129,7 +149,7 @@ public class ValueSetConverter {
                         sourceDefaultLocale, includeConceptDesignation);
             } else {
                 ValueSet.ConceptSetComponent include = new ValueSet.ConceptSetComponent();
-                include.setSystem(getSystemUrl(sourceUri));
+                include.setSystem(sourceCanonicalUrl);
                 include.setVersion(sourceVersion);
                 // compose.include.concept
                 addConceptReference(include, concept.getMnemonic(), concept.getName(), concept.getConceptsNames(),
@@ -137,7 +157,7 @@ public class ValueSetConverter {
                 valueSet.getCompose().addInclude(include);
             }
             // compose.inactive
-            if (!valueSet.getCompose().getInactive() && !concept.getIsActive()) {
+            if (!valueSet.getCompose().getInactive() && concept.getRetired()) {
                 valueSet.getCompose().setInactive(true);
             }
         }
@@ -172,6 +192,65 @@ public class ValueSetConverter {
         });
     }
 
+    public Parameters validateCode(Collection collection, UriType system, StringType systemVersion, String code, StringType display,
+                                   CodeType displayLanguage, StringType owner, List<String> access) {
+        Parameters parameters = new Parameters();
+        BooleanType result = new BooleanType(false);
+        parameters.addParameter().setName(RESULT).setValue(result);
+        // determine owner
+        owner = !isValid(owner) ? determineOwner(collection) : owner;
+        String ownerType = getOwnerType(owner.getValue());
+        String ownerId = getOwner(owner.getValue());
+        // determine source
+        Source source = oclFhirUtil.getSourceByOwnerAndUrl(owner, newStringType(system.getValue()), systemVersion, access);
+        // determine expression
+        String expression = buildExpression(source.getMnemonic(), source.getVersion(), code, ownerType, ownerId);
+        Optional<CollectionReference> reference = collection.getCollectionsReferences().parallelStream()
+                .map(CollectionsReference::getCollectionReference)
+                .filter(f -> f.getExpression().contains(expression))
+                .findAny();
+        if (reference.isPresent()) {
+            if (isValid(display)) {
+                Optional<Concept> conceptOpt = oclFhirUtil.getSourceConcept(source, code, EMPTY);
+                if (conceptOpt.isPresent()) {
+                    List<LocalizedText> names = oclFhirUtil.getNames(conceptOpt.get());
+                    boolean match = oclFhirUtil.validateDisplay(names, display, displayLanguage);
+                    if (!match) {
+                        parameters.addParameter().setName(MESSAGE).setValue(newStringType("Invalid display."));
+                    } else {
+                        result.setValue(true);
+                    }
+                }
+            } else {
+                result.setValue(true);
+            }
+        }
+        return parameters;
+    }
+
+    private StringType determineOwner(Collection collection) {
+        if (collection.getOrganization() != null) {
+            return new StringType(ORG_ + collection.getOrganization().getMnemonic());
+        } else {
+            return new StringType(USER_ + collection.getUserId().getUsername());
+        }
+    }
+
+    private String buildExpression(String sourceId, String sourceVersion, String conceptId, String ownerType, String ownerId) {
+        return new StringBuilder()
+                .append("/")
+                .append(ORG.equals(ownerType) ? ORGS : USERS)
+                .append("/").append(ownerId)
+                .append("/sources/")
+                .append(sourceId)
+                .append("/")
+                .append(!isValid(sourceVersion) || HEAD.equals(sourceVersion) ? EMPTY : sourceVersion+"/")
+                .append("concepts/")
+                .append(conceptId)
+                .append("/")
+                .toString();
+    }
+
     private String getSourceId(String[] ar) {
         return ar.length >= 5 && !ar[4].isEmpty() ? ar[4] : EMPTY;
     }
@@ -195,6 +274,14 @@ public class ValueSetConverter {
         return EMPTY;
     }
 
+    private String ownerType(String [] ar) {
+        return ar[1].contains(ORG) ? ORG : USER;
+    }
+
+    private String ownerId(String [] ar) {
+        return ar[2];
+    }
+
     private Source getSource(String [] ar) {
         String ownerType = ar[1].contains(ORG) ? ORG : USER;
         String owner = ar[2];
@@ -205,7 +292,7 @@ public class ValueSetConverter {
 
     private String getSystemUrl(String parentUri) {
         String url = baseUrl.split("fhir")[0];
-        String[] source = formatExpression(parentUri);
+        String[] source = formatExpression(parentUri).split("/");
         if (source.length >= 6 && isValid(source[5]))
             parentUri = String.join("/", source[0], source[1], source[2], source[3], source[4],
                     VERSION, source[5]);

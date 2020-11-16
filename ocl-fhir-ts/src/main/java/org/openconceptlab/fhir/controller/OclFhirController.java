@@ -83,7 +83,7 @@ public class OclFhirController {
                                                            @RequestParam(name = VERSION, required = false) String version,
                                                            @RequestParam(name = DISPLAY, required = false) String display,
                                                            @RequestParam(name = DISP_LANG, required = false) String displayLanguage) {
-        Parameters parameters = validateCodeParameters(url, code, version, display, displayLanguage, formatOrg(org));
+        Parameters parameters = codeSystemVCParameters(url, code, version, display, displayLanguage, formatOrg(org));
         return handleFhirOperation(parameters, CodeSystem.class, VALIDATE_CODE);
     }
 
@@ -111,6 +111,28 @@ public class OclFhirController {
     @GetMapping(path = {"/orgs/{org}/ValueSet"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> searchValueSetsByOrg(@PathVariable String org) {
         return handleSearchResource(ValueSet.class, OWNER, formatOrg(org));
+    }
+
+    @GetMapping(path = {"/orgs/{org}/ValueSet/$validate-code"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> validateValueSetByOrg(@PathVariable String org,
+                                                        @RequestParam(name = URL) String url,
+                                                        @RequestParam(name = VALUESET_VERSION, required = false) String valueSetVersion,
+                                                        @RequestParam(name = CODE) String code,
+                                                        @RequestParam(name = SYSTEM) String system,
+                                                        @RequestParam(name = SYSTEM_VERSION, required = false) String systemVersion,
+                                                        @RequestParam(name = DISPLAY, required = false) String display,
+                                                        @RequestParam(name = DISP_LANG, required = false) String displayLanguage) {
+
+        Parameters parameters = valueSetVCParameters(url, EMPTY, valueSetVersion, code, system, systemVersion, display,
+                displayLanguage, formatOrg(org));
+        return handleFhirOperation(parameters, ValueSet.class, VALIDATE_CODE);
+    }
+
+    @PostMapping(path = {"/orgs/{org}/ValueSet/$validate-code"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> validateValueSetByOrg(@PathVariable String org, @RequestBody String parameters){
+        Parameters params = (Parameters) getResource(parameters);
+        params.addParameter().setName(OWNER).setValue(newStringType(formatOrg(org)));
+        return handleFhirOperation(params, ValueSet.class, VALIDATE_CODE);
     }
 
     @GetMapping(path = {"/users/{user}/CodeSystem/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
@@ -156,7 +178,7 @@ public class OclFhirController {
                                                            @RequestParam(name = VERSION, required = false) String version,
                                                            @RequestParam(name = DISPLAY, required = false) String display,
                                                            @RequestParam(name = DISP_LANG, required = false) String displayLanguage) {
-        Parameters parameters = validateCodeParameters(url, code, version, display, displayLanguage, formatUser(user));
+        Parameters parameters = codeSystemVCParameters(url, code, version, display, displayLanguage, formatUser(user));
         return handleFhirOperation(parameters, CodeSystem.class, VALIDATE_CODE);
     }
 
@@ -184,6 +206,28 @@ public class OclFhirController {
     @GetMapping(path = {"/users/{user}/ValueSet"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> searchValueSetsByUser(@PathVariable String user) {
         return handleSearchResource(ValueSet.class, OWNER, formatUser(user));
+    }
+
+    @GetMapping(path = {"/users/{user}/ValueSet/$validate-code"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> validateValueSetByUser(@PathVariable String user,
+                                                         @RequestParam(name = URL) String url,
+                                                         @RequestParam(name = VALUESET_VERSION, required = false) String valueSetVersion,
+                                                         @RequestParam(name = CODE) String code,
+                                                         @RequestParam(name = SYSTEM) String system,
+                                                         @RequestParam(name = SYSTEM_VERSION, required = false) String systemVersion,
+                                                         @RequestParam(name = DISPLAY, required = false) String display,
+                                                         @RequestParam(name = DISP_LANG, required = false) String displayLanguage) {
+
+        Parameters parameters = valueSetVCParameters(url, EMPTY, valueSetVersion, code, system, systemVersion, display,
+                displayLanguage, formatUser(user));
+        return handleFhirOperation(parameters, ValueSet.class, VALIDATE_CODE);
+    }
+
+    @PostMapping(path = {"/users/{user}/ValueSet/$validate-code"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> validateValueSetByUser(@PathVariable String user, @RequestBody String parameters){
+        Parameters params = (Parameters) getResource(parameters);
+        params.addParameter().setName(OWNER).setValue(newStringType(formatUser(user)));
+        return handleFhirOperation(params, ValueSet.class, VALIDATE_CODE);
     }
 
     private ResponseEntity<String> handleSearchResource(final Class<? extends MetadataResource> resourceClass, final String... args) {
@@ -231,11 +275,9 @@ public class OclFhirController {
                 .execute();
     }
 
-    private Parameters generateParameters(String code, String version, String displayLanguage, String owner) {
+    private Parameters generateParameters(String code, String displayLanguage, String owner) {
         Parameters parameters = new Parameters();
         parameters.addParameter().setName(CODE).setValue(new CodeType(code));
-        if (isValid(version))
-            parameters.addParameter().setName(VERSION).setValue(newStringType(version));
         if (isValid(displayLanguage))
             parameters.addParameter().setName(DISP_LANG).setValue(new CodeType(displayLanguage));
         parameters.addParameter().setName(OWNER).setValue(newStringType(owner));
@@ -243,15 +285,36 @@ public class OclFhirController {
     }
 
     private Parameters lookupParameters(String system, String code, String version, String displayLanguage, String owner) {
-        Parameters parameters = generateParameters(code, version, displayLanguage, owner);
+        Parameters parameters = generateParameters(code, displayLanguage, owner);
         parameters.addParameter().setName(SYSTEM).setValue(new UriType(system));
+        if (isValid(version))
+            parameters.addParameter().setName(VERSION).setValue(newStringType(version));
         return parameters;
     }
 
-    private Parameters validateCodeParameters(String url, String code, String version, String display, String displayLanguage,
+    private Parameters codeSystemVCParameters(String url, String code, String version, String display, String displayLanguage,
                                               String owner) {
-        Parameters parameters = generateParameters(code, version, displayLanguage, owner);
+        Parameters parameters = generateParameters(code, displayLanguage, owner);
         parameters.addParameter().setName(URL).setValue(new UriType(url));
+        if (isValid(version))
+            parameters.addParameter().setName(VERSION).setValue(newStringType(version));
+        if (isValid(display))
+            parameters.addParameter().setName(DISPLAY).setValue(newStringType(display));
+        return parameters;
+    }
+
+    private Parameters valueSetVCParameters(String url, String valueSetId, String valueSetVersion, String code, String system, String systemVersion,
+                                            String display, String displayLanguage, String owner) {
+        Parameters parameters = generateParameters(code, displayLanguage, owner);
+        parameters.addParameter().setName(SYSTEM).setValue(new UriType(system));
+        if (isValid(url))
+            parameters.addParameter().setName(URL).setValue(new UriType(url));
+        if (isValid(valueSetId))
+            parameters.addParameter().setName("valueSetId").setValue(newStringType(valueSetId));
+        if (isValid(valueSetVersion))
+            parameters.addParameter().setName(SYSTEM_VERSION).setValue(newStringType(systemVersion));
+        if (isValid(systemVersion))
+            parameters.addParameter().setName(VALUESET_VERSION).setValue(newStringType(valueSetVersion));
         if (isValid(display))
             parameters.addParameter().setName(DISPLAY).setValue(newStringType(display));
         return parameters;

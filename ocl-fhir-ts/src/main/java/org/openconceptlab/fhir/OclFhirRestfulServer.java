@@ -14,8 +14,6 @@ import org.openconceptlab.fhir.provider.OclCapabilityStatementProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.PropertySource;
-import org.springframework.context.annotation.PropertySources;
 import org.springframework.stereotype.Component;
 
 /**

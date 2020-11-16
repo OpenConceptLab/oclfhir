@@ -106,16 +106,16 @@ public class Source extends BaseOclEntity implements Serializable {
 	@Column(name = "canonical_url")
 	private String canonicalUrl;
 
-	@OneToMany(mappedBy="parent", cascade = CascadeType.ALL)
+	@OneToMany(mappedBy="parent", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 	private List<Concept> concepts;
 
-	@OneToMany(mappedBy="parent", cascade = CascadeType.ALL)
+	@OneToMany(mappedBy="parent", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 	private List<Mapping> mappings;
 
-	@OneToMany(mappedBy="source", cascade = CascadeType.ALL)
+	@OneToMany(mappedBy="source", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 	private List<ConceptsSource> conceptsSources;
 
-	@OneToMany(mappedBy="source", cascade = CascadeType.ALL)
+	@OneToMany(mappedBy="source", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 	private List<MappingsSource> mappingsSources;
 
 	@ManyToOne
@@ -411,7 +411,9 @@ public class Source extends BaseOclEntity implements Serializable {
 	}
 
 	public List<ConceptsSource> getConceptsSources() {
-		return this.conceptsSources != null ? this.conceptsSources : new ArrayList<>();
+		if (this.conceptsSources == null)
+			this.conceptsSources = new ArrayList<>();
+		return this.conceptsSources;
 	}
 
 	public void setConceptsSources(List<ConceptsSource> conceptsSources) {
@@ -429,7 +431,9 @@ public class Source extends BaseOclEntity implements Serializable {
 	}
 
 	public List<MappingsSource> getMappingsSources() {
-		return this.mappingsSources != null ? this.mappingsSources : new ArrayList<>();
+		if (this.mappingsSources == null)
+			this.mappingsSources = new ArrayList<>();
+		return this.mappingsSources;
 	}
 
 	public void setMappingsSources(List<MappingsSource> mappingsSources) {

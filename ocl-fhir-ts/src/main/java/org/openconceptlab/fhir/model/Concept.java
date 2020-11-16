@@ -256,6 +256,9 @@ public class Concept extends BaseOclEntity implements Serializable {
 	}
 
 	public Boolean getRetired() {
+		if (this.retired == null) {
+			this.retired = false;
+		}
 		return this.retired;
 	}
 

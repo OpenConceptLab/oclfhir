@@ -4,6 +4,7 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
+import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import com.google.gson.*;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -11,6 +12,8 @@ import org.aspectj.apache.bcel.classfile.Code;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.model.*;
+import org.openconceptlab.fhir.repository.ConceptRepository;
+import org.openconceptlab.fhir.repository.ConceptsSourceRepository;
 import org.openconceptlab.fhir.repository.SourceRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,10 +23,8 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
@@ -33,12 +34,20 @@ public class OclFhirUtil {
     
     @Value("${server.port}")
     private String port;
-    private static FhirContext context;
+    private static final FhirContext context;
     private SourceRepository sourceRepository;
+    private ConceptRepository conceptRepository;
+    private ConceptsSourceRepository conceptsSourceRepository;
 
     @Autowired
-    public OclFhirUtil(SourceRepository sourceRepository) {
+    public OclFhirUtil(SourceRepository sourceRepository, ConceptRepository conceptRepository, ConceptsSourceRepository conceptsSourceRepository) {
         this.sourceRepository = sourceRepository;
+        this.conceptRepository = conceptRepository;
+        this.conceptsSourceRepository = conceptsSourceRepository;
+    }
+
+    public OclFhirUtil(){
+        super();
     }
 
     static {
@@ -108,6 +117,44 @@ public class OclFhirUtil {
         }
         return sourceRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(
                 id, true, access, owner);
+    }
+
+    public Source getSourceByOwnerAndUrl(StringType owner, StringType url, StringType version, List<String> access) {
+        Source source = null;
+        String ownerType = getOwnerType(owner.getValue());
+        String value = getOwner(owner.getValue());
+        if (!isValid(version)) {
+            // get most recent released version
+            source = getMostRecentReleasedSourceByOwnerAndUrl(value, ownerType, url, access);
+        } else {
+            // get a given version
+            source = getSourceVersionByOwnerAndUrl(value, ownerType, url, version, access);
+        }
+        if (source == null)
+            throw new ResourceNotFoundException(notFound(CodeSystem.class, url, version));
+        return source;
+    }
+
+    public Source getMostRecentReleasedSourceByUrl(StringType url, List<String> access) {
+        return sourceRepository.findFirstByCanonicalUrlAndReleasedAndPublicAccessInOrderByCreatedAtDesc(
+                url.getValue(), true, access
+        );
+    }
+
+    private Source getMostRecentReleasedSourceByOwnerAndUrl(String owner, String ownerType, StringType url, List<String> access) {
+        if (ORG.equals(ownerType))
+            return sourceRepository.findFirstByCanonicalUrlAndReleasedAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(
+                    url.getValue(), true, owner, access
+            );
+        return sourceRepository.findFirstByCanonicalUrlAndReleasedAndUserIdUsernameAndPublicAccessInOrderByCreatedAtDesc(
+                url.getValue(), true, owner, access
+        );
+    }
+
+    private Source getSourceVersionByOwnerAndUrl(String owner, String ownerType, StringType url, StringType version, List<String> access) {
+        if (ORG.equals(ownerType))
+            return sourceRepository.findFirstByCanonicalUrlAndVersionAndOrganizationMnemonicAndPublicAccessIn(url.getValue(), version.getValue(), owner, access);
+        return sourceRepository.findFirstByCanonicalUrlAndVersionAndUserIdUsernameAndPublicAccessIn(url.getValue(), version.getValue(), owner, access);
     }
 
     public IGenericClient getClient() {
@@ -286,6 +333,27 @@ public class OclFhirUtil {
         return texts.filter(f -> !f.getLocalePreferred()).findFirst();
     }
 
+    public Optional<Concept> getSourceConcept(Source source, String conceptId, String conceptVersion) {
+        List<ConceptsSource> cs = conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(
+                source.getId(),
+                conceptRepository.findByMnemonic(conceptId).stream().map(Concept::getId).collect(Collectors.toList())
+        );
+        return cs
+                .stream().map(ConceptsSource::getConcept)
+                .filter(c -> !isValid(conceptVersion) || conceptVersion.equals(c.getVersion()))
+                .findFirst();
+    }
+
+    public List<LocalizedText> getNames(Concept concept) {
+        return concept.getConceptsNames().stream().map(ConceptsName::getLocalizedText).collect(Collectors.toList());
+    }
+
+    public boolean validateDisplay(List<LocalizedText> names, final StringType display, final CodeType displayLanguage) {
+        return names.parallelStream()
+                .filter(name -> name.getName().equals(display.getValue()))
+                .anyMatch(name -> !isValid(displayLanguage) || name.getLocale().equals(displayLanguage.getCode()));
+    }
+
     public static String notFound(Class<? extends MetadataResource> cls, StringType url, StringType version) {
         return String.format("Resource of type %s with URL %s%s is not known",
                 cls.getSimpleName(),
@@ -320,7 +388,7 @@ public class OclFhirUtil {
     }
 
     public static String newString(UriType type) {
-        return newStringType(type).getValue();
+        return isValid(type) ? type.getValue() : EMPTY;
     }
 
     public static StringType newStringType(CodeType type) {

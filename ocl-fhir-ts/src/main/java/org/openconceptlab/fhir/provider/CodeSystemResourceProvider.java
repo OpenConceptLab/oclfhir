@@ -150,7 +150,7 @@ public class CodeSystemResourceProvider implements IResourceProvider {
                                        @OperationParam(name = OWNER, type = StringType.class) StringType owner) {
 
         validateOperation(code, system, LOOKUP);
-        Source source = isValid(owner) ? getSourceByOwnerAndUrl(owner, newStringType(system), version, publicAccess) :
+        Source source = isValid(owner) ? oclFhirUtil.getSourceByOwnerAndUrl(owner, newStringType(system), version, publicAccess) :
                 getSourceByUrl(newStringType(system), version, publicAccess).get(0);
         return codeSystemConverter.getLookupParameters(source, code, displayLanguage);
     }
@@ -172,7 +172,7 @@ public class CodeSystemResourceProvider implements IResourceProvider {
             display = new StringType(coding.getDisplay());
         }
         validateOperation(code, url, VALIDATE_CODE);
-        Source source = isValid(owner) ? getSourceByOwnerAndUrl(owner, newStringType(url), version, publicAccess) :
+        Source source = isValid(owner) ? oclFhirUtil.getSourceByOwnerAndUrl(owner, newStringType(url), version, publicAccess) :
                 getSourceByUrl(newStringType(url), version, publicAccess).get(0);
         return codeSystemConverter.validateCode(source, getCode(code), display, displayLanguage);
     }
@@ -191,7 +191,7 @@ public class CodeSystemResourceProvider implements IResourceProvider {
             final Source source;
             if (!isValid(version)) {
                 // get most recent released version
-                source = getMostRecentReleasedSourceByUrl(url, access);
+                source = oclFhirUtil.getMostRecentReleasedSourceByUrl(url, access);
             } else {
                 // get a given version
                 source = sourceRepository.findFirstByCanonicalUrlAndVersionAndPublicAccessIn(url.getValue(), version.getValue(), access);
@@ -201,22 +201,6 @@ public class CodeSystemResourceProvider implements IResourceProvider {
         if (sources.isEmpty())
             throw new ResourceNotFoundException(notFound(CodeSystem.class, url, version));
         return sources;
-    }
-
-    private Source getSourceByOwnerAndUrl(StringType owner, StringType url, StringType version, List<String> access) {
-        Source source = null;
-        String ownerType = getOwnerType(owner.getValue());
-        String value = getOwner(owner.getValue());
-            if (!isValid(version)) {
-                // get most recent released version
-                source = getMostRecentReleasedSourceByOwnerAndUrl(value, ownerType, url, access);
-            } else {
-                // get a given version
-                source = getSourceVersionByOwnerAndUrl(value, ownerType, url, version, access);
-            }
-        if (source == null)
-            throw new ResourceNotFoundException(notFound(CodeSystem.class, url, version));
-        return source;
     }
 
     private List<Source> getSourceByOwner(StringType owner, List<String> access) {
@@ -256,28 +240,6 @@ public class CodeSystemResourceProvider implements IResourceProvider {
     private void addSourceVersion(StringType id, StringType version, List<String> access, List<Source> sources, String ownerType, String ownerId) {
         final Source source = oclFhirUtil.getSourceVersion(id, version, access, ownerType, ownerId);
         if (source != null) sources.add(source);
-    }
-
-    private Source getMostRecentReleasedSourceByUrl(StringType url, List<String> access) {
-        return sourceRepository.findFirstByCanonicalUrlAndReleasedAndPublicAccessInOrderByCreatedAtDesc(
-          url.getValue(), true, access
-        );
-    }
-
-    private Source getMostRecentReleasedSourceByOwnerAndUrl(String owner, String ownerType, StringType url, List<String> access) {
-        if (ORG.equals(ownerType))
-            return sourceRepository.findFirstByCanonicalUrlAndReleasedAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(
-                    url.getValue(), true, owner, access
-            );
-        return sourceRepository.findFirstByCanonicalUrlAndReleasedAndUserIdUsernameAndPublicAccessInOrderByCreatedAtDesc(
-                url.getValue(), true, owner, access
-        );
-    }
-
-    private Source getSourceVersionByOwnerAndUrl(String owner, String ownerType, StringType url, StringType version, List<String> access) {
-        if (ORG.equals(ownerType))
-            return sourceRepository.findFirstByCanonicalUrlAndVersionAndOrganizationMnemonicAndPublicAccessIn(url.getValue(), version.getValue(), owner, access);
-        return sourceRepository.findFirstByCanonicalUrlAndVersionAndUserIdUsernameAndPublicAccessIn(url.getValue(), version.getValue(), owner, access);
     }
 
     private List<Source> filterHead(List<Source> sources) {
