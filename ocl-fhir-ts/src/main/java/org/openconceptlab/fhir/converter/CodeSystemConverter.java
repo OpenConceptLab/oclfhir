@@ -171,7 +171,7 @@ public class CodeSystemConverter {
 			definitionComponent.getProperty().add(new ConceptPropertyComponent(new CodeType(DATATYPE),
 					new StringType(concept.getDatatype())));
 			definitionComponent.getProperty().add(new ConceptPropertyComponent(new CodeType(INACTIVE),
-					new BooleanType(!concept.getIsActive())));
+					new BooleanType(concept.getRetired())));
 			// add concept in CodeSystem
 			codeSystem.getConcept().add(definitionComponent);
 		}
@@ -229,45 +229,26 @@ public class CodeSystemConverter {
     }
 
     public Parameters getLookupParameters(final Source source, final CodeType code, final CodeType displayLanguage) {
-		Optional<Concept> conceptOpt = validateConcept(source, code.getCode());
+		Optional<Concept> conceptOpt = oclFhirUtil.getSourceConcept(source, code.getCode(), EMPTY);
 		if (conceptOpt.isPresent()) {
 			Concept concept = conceptOpt.get();
 			Parameters parameters = new Parameters();
 			parameters.addParameter(getParameter(NAME, source.getName()));
 			parameters.addParameter(getParameter(VERSION, source.getVersion()));
-			List<LocalizedText> names = getNames(concept);
+			List<LocalizedText> names = oclFhirUtil.getNames(concept);
 			getDisplayForLookUp(names, isValid(displayLanguage) ? displayLanguage.getCode() : EMPTY, source.getDefaultLocale())
 					.ifPresent(display -> parameters.addParameter(getParameter(DISPLAY, display)));
 			addDesignationParameters(parameters, names, getCode(displayLanguage));
 			return parameters;
+		} else {
+			throw new ResourceNotFoundException("The code " + code.getCode() + " is invalid.");
 		}
-		return null;
 	}
 
-	private List<LocalizedText> getNames(Concept concept) {
-		return concept.getConceptsNames().stream().map(ConceptsName::getLocalizedText).collect(Collectors.toList());
-	}
-
-	private Optional<Concept> validateConcept(Source source, String code) {
-		Optional<Concept> conceptOpt = source.getConceptsSources().parallelStream()
-				.map(ConceptsSource::getConcept)
-				.filter(c -> c.getMnemonic().equals(code))
-				.max(Comparator.comparing(Concept::getId));
-		return conceptOpt;
-	}
-
-	private Optional<String> localePreferredDisplay(List<LocalizedText> names, String displayLanguage) {
+	private Optional<String> getDisplayForLanguage(List<LocalizedText> names, String displayLanguage) {
 		return names.stream()
 				.sorted(Comparator.comparing(LocalizedText::getLocalePreferred, Comparator.reverseOrder()))
 				.filter(name -> !isValid(displayLanguage) || name.getLocale().equals(displayLanguage))
-				.map(LocalizedText::getName)
-				.findFirst();
-	}
-
-	private Optional<String> defaultLocaleDisplay(List<LocalizedText> names, String defaultLocale) {
-		return names.stream()
-				.sorted(Comparator.comparing(LocalizedText::getLocalePreferred, Comparator.reverseOrder()))
-				.filter(name -> !isValid(defaultLocale) || name.getLocale().equals(defaultLocale))
 				.map(LocalizedText::getName)
 				.findFirst();
 	}
@@ -277,11 +258,15 @@ public class CodeSystemConverter {
 	}
 
 	private Optional<String> getDisplayForLookUp(List<LocalizedText> names, String displayLanguage, String defaultLocale) {
-		Optional<String> preferred = localePreferredDisplay(names, displayLanguage);
-		if (preferred.isPresent()) return preferred;
-		Optional<String> srcdefaultLocale = defaultLocaleDisplay(names, defaultLocale);
-		if (srcdefaultLocale.isPresent()) return srcdefaultLocale;
-		return anyDisplay(names);
+		if (isValid(displayLanguage)) {
+			return getDisplayForLanguage(names, displayLanguage);
+		}
+		Optional<String> defaultLocaleDisp = getDisplayForLanguage(names, defaultLocale);
+		if (defaultLocaleDisp.isPresent()) {
+			return defaultLocaleDisp;
+		} else {
+			return anyDisplay(names);
+		}
 	}
 
 	private void addDesignationParameters(Parameters parameters, List<LocalizedText> names, String displayLanguage) {
@@ -296,11 +281,11 @@ public class CodeSystemConverter {
 		Parameters parameters = new Parameters();
 		BooleanType result = new BooleanType(false);
 		parameters.addParameter().setName(RESULT).setValue(result);
-		Optional<Concept> conceptOpt = validateConcept(source, code);
+		Optional<Concept> conceptOpt = oclFhirUtil.getSourceConcept(source, code, EMPTY);
 		if (conceptOpt.isPresent()) {
 			if (isValid(display)) {
-				List<LocalizedText> names = getNames(conceptOpt.get());
-				boolean match = validateDisplay(names, display, displayLanguage);
+				List<LocalizedText> names = oclFhirUtil.getNames(conceptOpt.get());
+				boolean match = oclFhirUtil.validateDisplay(names, display, displayLanguage);
 				if (!match) {
 					parameters.addParameter().setName(MESSAGE).setValue(newStringType("Invalid display."));
 				} else {
@@ -311,12 +296,6 @@ public class CodeSystemConverter {
 			}
 		}
 		return parameters;
-	}
-
-	private boolean validateDisplay(List<LocalizedText> names, final StringType display, final CodeType displayLanguage) {
-		return names.parallelStream()
-				.filter(name -> name.getName().equals(display.getValue()))
-				.anyMatch(name -> !isValid(displayLanguage) || name.getLocale().equals(displayLanguage.getCode()));
 	}
 
 	private List<Parameters.ParametersParameterComponent> getDesignationParameters(final LocalizedText text) {
