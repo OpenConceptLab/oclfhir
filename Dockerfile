@@ -32,7 +32,9 @@ RUN cd /code \
   && mvn clean install
 
 #Stage 2: Runtime  
-FROM openjdk:14-jdk-alpine
+FROM openjdk:14-jdk-alpine as runtime
+
+RUN apk add --update bash && rm -rf /var/cache/apk/*
 
 RUN addgroup -S spring && adduser -S spring -G spring
 USER spring:spring
@@ -40,7 +42,10 @@ USER spring:spring
 # Copy the jar file from the build environment
 COPY --from=build /code/ocl-fhir-ts/target/*.jar ocl-fhir-ts/target/
 
+COPY startup.sh startup.sh
+COPY wait_for_it.sh wait_for_it.sh
+
 EXPOSE 7000
 
-ENTRYPOINT ["java", "-Dhibernate.types.print.banner=false", "-jar", "ocl-fhir-ts/target/oclfhir.jar"]
+ENTRYPOINT ["bash", "-c", "./startup.sh"]
 
