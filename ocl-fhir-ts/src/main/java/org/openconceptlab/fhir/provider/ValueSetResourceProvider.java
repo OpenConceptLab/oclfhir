@@ -5,6 +5,7 @@ import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
+import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.converter.ValueSetConverter;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Component;
 import javax.transaction.Transactional;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.openconceptlab.fhir.util.OclFhirUtil.*;
@@ -29,8 +31,8 @@ import static org.openconceptlab.fhir.util.OclFhirUtil.*;
  */
 @Component
 public class ValueSetResourceProvider implements IResourceProvider {
-	
-	CollectionRepository collectionRepository;
+
+    CollectionRepository collectionRepository;
 	ValueSetConverter valueSetConverter;
     OclFhirUtil oclFhirUtil;
 
@@ -124,8 +126,6 @@ public class ValueSetResourceProvider implements IResourceProvider {
                                            @OperationParam(name = CODING, type = Coding.class) Coding coding,
                                            @OperationParam(name = OWNER, type = StringType.class) StringType owner) {
 
-
-
         if (isValid(code) && coding != null)
             throw new UnprocessableEntityException("Either code or coding should be provided, can not accept both.");
         if (coding != null) {
@@ -140,6 +140,44 @@ public class ValueSetResourceProvider implements IResourceProvider {
                     getCollectionByUrl(newStringType(url), valueSetVersion, publicAccess).get(0);
         return valueSetConverter.validateCode(collection, system, systemVersion
                 , newString(code), display, displayLanguage, owner, publicAccess);
+    }
+
+    @Operation(name = EXPAND, idempotent = true)
+    @Transactional
+    public ValueSet valueSetExpand(@OperationParam(name = URL, type = UriType.class) UriType url,
+                                   @OperationParam(name = VALUESET_VERSION, type = StringType.class) StringType valueSetVersion,
+                                   @OperationParam(name = OFFSET, type = IntegerType.class) IntegerType offset,
+                                   @OperationParam(name = COUNT, type = IntegerType.class) IntegerType count,
+                                   @OperationParam(name = INCLUDE_DESIGNATIONS, type = BooleanType.class) BooleanType includeDesignations,
+                                   @OperationParam(name = INCLUDE_DEFINITION, type = BooleanType.class) BooleanType includeDefinition,
+                                   @OperationParam(name = ACTIVE_ONLY, type = BooleanType.class) BooleanType activeOnly,
+                                   @OperationParam(name = DISPLAY_LANGUAGE, type = CodeType.class) CodeType displayLanguage,
+                                   @OperationParam(name = EXCLUDE_SYSTEM, type = CanonicalType.class, max = OperationParam.MAX_UNLIMITED) Set<CanonicalType> excludeSystems,
+                                   @OperationParam(name = SYSTEMVERSION, type = CanonicalType.class, max = OperationParam.MAX_UNLIMITED) Set<CanonicalType> systemVersions,
+                                   @OperationParam(name = FILTER, type = StringType.class) StringType filter,
+                                   @OperationParam(name = OWNER, type = StringType.class) StringType owner) {
+        validate(url, offset, count);
+        Collection collection = isValid(owner) ? getCollectionByOwnerAndUrl(owner, newStringType(url), valueSetVersion, publicAccess) :
+                getCollectionByUrl(newStringType(url), valueSetVersion, publicAccess).get(0);
+        if (!isValid(offset)) offset = new IntegerType(0);
+        if (!isValid(count)) count = new IntegerType(1000);
+        // by default include all designations
+        if (!isValid(includeDesignations)) includeDesignations = new BooleanType(true);
+        // by default exclude ValueSet definition
+        if (!isValid(includeDefinition)) includeDefinition = new BooleanType(false);
+        // by default only include active concepts
+        if (!isValid(activeOnly)) activeOnly = new BooleanType(true);
+        List<String> excludeSystemsList = new ArrayList<>();
+        List<String> systemVersionsList = new ArrayList<>();
+        if (excludeSystems != null)
+            excludeSystemsList = excludeSystems.parallelStream()
+                    .filter(OclFhirUtil::isValid).map(PrimitiveType::getValue).collect(Collectors.toList());
+        if (systemVersions != null)
+            systemVersionsList = systemVersions.parallelStream()
+                    .filter(OclFhirUtil::isValid).map(PrimitiveType::getValue).collect(Collectors.toList());
+        validateSystemVersion(systemVersionsList);
+        return valueSetConverter.expand(collection, offset, count, includeDesignations, includeDefinition,
+                activeOnly, displayLanguage, excludeSystemsList, systemVersionsList, filter);
     }
 
     private List<Collection> getCollections(List<String> access) {
@@ -279,5 +317,22 @@ public class ValueSetResourceProvider implements IResourceProvider {
             throw new UnprocessableEntityException("Either of code or coding must be provided.");
         if (coding != null && (!isValid(coding.getSystem()) || !isValid(coding.getCode())))
             throw new UnprocessableEntityException("Both system and code of coding must be provided.");
+    }
+
+    private void validate(UriType url, IntegerType offset, IntegerType count) {
+        if (!isValid(url))
+            throw new UnprocessableEntityException("Url parameter of $expand operation must be provided.");
+        if (isValid(offset) && offset.getValue() < 0)
+            throw new UnprocessableEntityException("Offset parameter of $expand operation can not be negative.");
+        if (isValid(count) && count.getValue() < 0)
+            throw new UnprocessableEntityException("Count parameter of $expand operation can not be negative.");
+    }
+
+    private void validateSystemVersion(List<String> systemVersions) {
+        systemVersions.stream().map(m -> m.split("\\|")[0]).collect(Collectors.groupingBy(String::toLowerCase, Collectors.counting()))
+                .forEach((k,v) -> {
+                    if (v > 1) {
+                        throw new UnprocessableEntityException("ValueSet $expand parameter system-version can not contain duplicate system url. Duplicate system url="+k+" found.");
+                    } });
     }
 }

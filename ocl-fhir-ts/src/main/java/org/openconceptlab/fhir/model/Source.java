@@ -1,5 +1,7 @@
 package org.openconceptlab.fhir.model;
 
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.hibernate.annotations.Type;
 
 import java.io.Serializable;
@@ -482,4 +484,16 @@ public class Source extends BaseOclEntity implements Serializable {
 		this.userId = userProfile3;
 	}
 
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		Source source = (Source) o;
+		return new EqualsBuilder().append(id, source.id).isEquals();
+	}
+
+	@Override
+	public int hashCode() {
+		return new HashCodeBuilder(17, 37).append(id).toHashCode();
+	}
 }

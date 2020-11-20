@@ -2,7 +2,7 @@ package org.openconceptlab.fhir.controller;
 
 import ca.uhn.fhir.rest.gclient.IQuery;
 import ca.uhn.fhir.rest.gclient.StringClientParam;
-import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import ca.uhn.fhir.rest.server.exceptions.BaseServerResponseException;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
@@ -135,6 +135,30 @@ public class OclFhirController {
         return handleFhirOperation(params, ValueSet.class, VALIDATE_CODE);
     }
 
+    @GetMapping(path = {"/orgs/{org}/ValueSet/$expand"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> expandValueSetByOrg(@PathVariable String org,
+                                                      @RequestParam(name = URL) String url,
+                                                      @RequestParam(name = VALUESET_VERSION, required = false) String valueSetVersion,
+                                                      @RequestParam(name = OFFSET, required = false, defaultValue = "0") Integer offset,
+                                                      @RequestParam(name = COUNT, required = false, defaultValue = "1000") Integer count,
+                                                      @RequestParam(name = INCLUDE_DESIGNATIONS, defaultValue = "true") Boolean includeDesignations,
+                                                      @RequestParam(name = INCLUDE_DEFINITION, defaultValue = "false") Boolean includeDefinition,
+                                                      @RequestParam(name = ACTIVE_ONLY, defaultValue = "true") Boolean activeOnly,
+                                                      @RequestParam(name = DISPLAY_LANGUAGE, required = false) String displayLanguage,
+                                                      @RequestParam(name = FILTER, required = false) String filter) {
+
+        Parameters parameters = valueSetExpandParameters(url, valueSetVersion, offset, count, includeDesignations,
+                includeDefinition, activeOnly, displayLanguage, filter, formatOrg(org));
+        return handleFhirOperation(parameters, ValueSet.class, EXPAND);
+    }
+
+    @PostMapping(path = {"/orgs/{org}/ValueSet/$expand"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> expandValueSetByOrg(@PathVariable String org, @RequestBody String parameters){
+        Parameters params = (Parameters) getResource(parameters);
+        params.addParameter().setName(OWNER).setValue(newStringType(formatOrg(org)));
+        return handleFhirOperation(params, ValueSet.class, EXPAND);
+    }
+
     @GetMapping(path = {"/users/{user}/CodeSystem/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> getCodeSystemByUser(@PathVariable String user, @PathVariable String id) {
         return handleSearchResource(CodeSystem.class, OWNER, formatUser(user), ID, id);
@@ -230,12 +254,36 @@ public class OclFhirController {
         return handleFhirOperation(params, ValueSet.class, VALIDATE_CODE);
     }
 
+    @GetMapping(path = {"/users/{user}/ValueSet/$expand"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> expandValueSetByUser(@PathVariable String user,
+                                                       @RequestParam(name = URL) String url,
+                                                       @RequestParam(name = VALUESET_VERSION, required = false) String valueSetVersion,
+                                                       @RequestParam(name = OFFSET, required = false, defaultValue = "0") Integer offset,
+                                                       @RequestParam(name = COUNT, required = false, defaultValue = "1000") Integer count,
+                                                       @RequestParam(name = INCLUDE_DESIGNATIONS, defaultValue = "true") Boolean includeDesignations,
+                                                       @RequestParam(name = INCLUDE_DEFINITION, defaultValue = "false") Boolean includeDefinition,
+                                                       @RequestParam(name = ACTIVE_ONLY, defaultValue = "true") Boolean activeOnly,
+                                                       @RequestParam(name = DISPLAY_LANGUAGE, required = false) String displayLanguage,
+                                                       @RequestParam(name = FILTER, required = false) String filter) {
+
+        Parameters parameters = valueSetExpandParameters(url, valueSetVersion, offset, count, includeDesignations,
+                includeDefinition, activeOnly, displayLanguage, filter, formatUser(user));
+        return handleFhirOperation(parameters, ValueSet.class, EXPAND);
+    }
+
+    @PostMapping(path = {"/users/{user}/ValueSet/$expand"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> expandValueSetByUser(@PathVariable String user, @RequestBody String parameters){
+        Parameters params = (Parameters) getResource(parameters);
+        params.addParameter().setName(OWNER).setValue(newStringType(formatUser(user)));
+        return handleFhirOperation(params, ValueSet.class, EXPAND);
+    }
+
     private ResponseEntity<String> handleSearchResource(final Class<? extends MetadataResource> resourceClass, final String... args) {
         try {
             String resource = searchResource(resourceClass, args);
             return ResponseEntity.ok(resource);
-        } catch (ResourceNotFoundException e) {
-            return notFound(e.getStatusCode(), e.getResponseBody());
+        } catch (BaseServerResponseException e) {
+            return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBody());
         } catch (Exception e) {
             return badRequest();
         }
@@ -244,8 +292,8 @@ public class OclFhirController {
     private ResponseEntity<String> handleFhirOperation(Parameters parameters, Class<? extends Resource> type, String operation) {
         try {
             return ResponseEntity.ok(oclFhirUtil.getResourceAsString(performFhirOperation(parameters, type, operation)));
-        } catch (ResourceNotFoundException e) {
-            return notFound(e.getStatusCode(), e.getResponseBody());
+        } catch (BaseServerResponseException e) {
+            return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBody());
         } catch (Exception e) {
             return badRequest();
         }
@@ -317,6 +365,26 @@ public class OclFhirController {
             parameters.addParameter().setName(VALUESET_VERSION).setValue(newStringType(valueSetVersion));
         if (isValid(display))
             parameters.addParameter().setName(DISPLAY).setValue(newStringType(display));
+        return parameters;
+    }
+
+    private Parameters valueSetExpandParameters(String url, String valueSetVersion, Integer offset, Integer count, Boolean includeDesignations,
+                                                Boolean includeDefinition, Boolean activeOnly, String displayLanguage, String filter, String owner) {
+        Parameters parameters = new Parameters();
+        if (isValid(url))
+            parameters.addParameter().setName(URL).setValue(newUri(url));
+        if (isValid(valueSetVersion))
+            parameters.addParameter().setName(VALUESET_VERSION).setValue(newStringType(valueSetVersion));
+        if (isValid(displayLanguage))
+            parameters.addParameter().setName(DISPLAY_LANGUAGE).setValue(newStringType(displayLanguage));
+        if (isValid(filter))
+            parameters.addParameter().setName(FILTER).setValue(newStringType(filter));
+        parameters.addParameter().setName(OFFSET).setValue(newInteger(offset));
+        parameters.addParameter().setName(COUNT).setValue(newInteger(count));
+        parameters.addParameter().setName(INCLUDE_DESIGNATIONS).setValue(newBoolean(includeDesignations));
+        parameters.addParameter().setName(INCLUDE_DEFINITION).setValue(newBoolean(includeDefinition));
+        parameters.addParameter().setName(ACTIVE_ONLY).setValue(newBoolean(activeOnly));
+        parameters.addParameter().setName(OWNER).setValue(newStringType(owner));
         return parameters;
     }
 

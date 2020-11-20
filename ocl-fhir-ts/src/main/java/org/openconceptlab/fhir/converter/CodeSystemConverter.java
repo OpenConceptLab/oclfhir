@@ -245,23 +245,15 @@ public class CodeSystemConverter {
 		}
 	}
 
-	private Optional<String> getDisplayForLanguage(List<LocalizedText> names, String displayLanguage) {
-		return names.stream()
-				.sorted(Comparator.comparing(LocalizedText::getLocalePreferred, Comparator.reverseOrder()))
-				.filter(name -> !isValid(displayLanguage) || name.getLocale().equals(displayLanguage))
-				.map(LocalizedText::getName)
-				.findFirst();
-	}
-
 	private Optional<String> anyDisplay(List<LocalizedText> names) {
 		return names.stream().map(LocalizedText::getName).findFirst();
 	}
 
 	private Optional<String> getDisplayForLookUp(List<LocalizedText> names, String displayLanguage, String defaultLocale) {
 		if (isValid(displayLanguage)) {
-			return getDisplayForLanguage(names, displayLanguage);
+			return oclFhirUtil.getDisplayForLanguage(names, displayLanguage);
 		}
-		Optional<String> defaultLocaleDisp = getDisplayForLanguage(names, defaultLocale);
+		Optional<String> defaultLocaleDisp = oclFhirUtil.getDisplayForLanguage(names, defaultLocale);
 		if (defaultLocaleDisp.isPresent()) {
 			return defaultLocaleDisp;
 		} else {

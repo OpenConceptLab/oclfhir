@@ -32,12 +32,22 @@ public final class OclFhirConstants {
 	public static final String LOOKUP = "$lookup";
 	public static final String URL = "url";
 	public static final String VALIDATE_CODE = "$validate-code";
+	public static final String EXPAND = "$expand";
 	public static final String DESIGNATION = "designation";
 	public static final String RESULT = "result";
 	public static final String MESSAGE = "message";
 	public static final String CODING = "coding";
 	public static final String SYSTEM_VERSION = "systemVersion";
 	public static final String VALUESET_VERSION = "valueSetVersion";
+	public static final String OFFSET = "offset";
+	public static final String COUNT = "count";
+	public static final String INCLUDE_DESIGNATIONS = "includeDesignations";
+	public static final String INCLUDE_DEFINITION = "includeDefinition";
+	public static final String ACTIVE_ONLY = "activeOnly";
+	public static final String DISPLAY_LANGUAGE = "displayLanguage";
+	public static final String EXCLUDE_SYSTEM = "exclude-system";
+	public static final String SYSTEMVERSION = "system-version";
+	public static final String FILTER = "filter";
 
 	public static final String PUBLISHER_REGEX = "^user:.*|^org:.*";
 	public static final String ORG_ = "org:";

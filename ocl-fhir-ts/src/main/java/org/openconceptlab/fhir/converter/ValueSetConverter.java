@@ -1,5 +1,6 @@
 package org.openconceptlab.fhir.converter;
 
+import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -9,10 +10,13 @@ import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.model.Collection;
 import org.openconceptlab.fhir.repository.ConceptRepository;
 import org.openconceptlab.fhir.repository.ConceptsSourceRepository;
+import org.openconceptlab.fhir.repository.SourceRepository;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import javax.swing.text.html.Option;
 
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 import static org.openconceptlab.fhir.util.OclFhirConstants.PURPOSE;
@@ -34,12 +38,15 @@ public class ValueSetConverter {
     OclFhirUtil oclFhirUtil;
     ConceptsSourceRepository conceptsSourceRepository;
     ConceptRepository conceptRepository;
+    SourceRepository sourceRepository;
 
     @Autowired
-    public ValueSetConverter(OclFhirUtil oclFhirUtil, ConceptsSourceRepository conceptsSourceRepository, ConceptRepository conceptRepository) {
+    public ValueSetConverter(OclFhirUtil oclFhirUtil, ConceptsSourceRepository conceptsSourceRepository,
+                             ConceptRepository conceptRepository, SourceRepository sourceRepository) {
         this.oclFhirUtil = oclFhirUtil;
         this.conceptsSourceRepository = conceptsSourceRepository;
         this.conceptRepository = conceptRepository;
+        this.sourceRepository = sourceRepository;
     }
 
     @Value("${ocl.servlet.baseurl}")
@@ -103,36 +110,108 @@ public class ValueSetConverter {
     private void addCompose(ValueSet valueSet, Collection collection, boolean includeConceptDesignation) {
         List<CollectionsConcept> collectionsConcepts = collection.getCollectionsConcepts();
         // We have to use expressions to determine actual Source version since its not possible through CollectionsConcepts
-        List<String> expressions = collection.getCollectionsReferences().parallelStream()
-                .map(CollectionsReference::getCollectionReference)
-                .map(CollectionReference::getExpression)
-                .collect(Collectors.toList());
+        List<String> expressions = getExpressions(collection);
 
         // lets get all the source versions first to reduce the database calls
-        Set<Source> sources = expressions.parallelStream().map(m -> formatExpression(m).split("/"))
-                .map(m -> ownerType(m) + "|" + ownerId(m) + "|" + getSourceId(m) + "|" + getSourceVersion(m))
-                .distinct()
-                .map(m -> m.split("\\|"))
-                .filter(m -> m.length == 4)
-                .map(m -> oclFhirUtil.getSourceVersion(m[2], m[3], publicAccess, m[0], m[1]))
-                .collect(Collectors.toSet());
+        List<Source> sources = getSourcesFromExpressions(expressions);
 
         // for each source let's evaluate expressions for concept and concept version and populate compose
         sources.forEach(source -> {
             expressions.stream().map(m -> formatExpression(m).split("/"))
                     .filter(m -> source.getMnemonic().equals(getSourceId(m)) && source.getVersion().equals(getSourceVersion(m)))
-                    .forEach(m -> {
+                    .forEachOrdered(m -> {
                         String conceptId = getConceptId(m);
                         String conceptVersion = getConceptVersion(m);
                         if (isValid(conceptId)) {
                             // we can not simply get concepts list from the source considering huge number of concepts, this is alternate
                             // way to get only concepts that we care about and not retrieve whole list. This has improved performance and consumes less memory
                             Optional<Concept> conceptOpt = oclFhirUtil.getSourceConcept(source, conceptId, conceptVersion);
-                            conceptOpt.ifPresent(c -> populateCompose(valueSet, includeConceptDesignation, c, source.getCanonicalUrl()
-                                    , source.getVersion(), source.getDefaultLocale()));
+                            conceptOpt.ifPresent(c -> {
+                                populateCompose(valueSet, includeConceptDesignation, c, source.getCanonicalUrl()
+                                        , source.getVersion(), source.getDefaultLocale());
+                            });
                         }
                     });
         });
+    }
+
+    private List<Source> getSourcesFromExpressions(List<String> expressions, List<String> sourceVersions) {
+        if (sourceVersions.isEmpty()) return getSourcesFromExpressions(expressions);
+        // get the sources given based on input parameter source-version
+        List<Source> sourcesProvided = new ArrayList<>();
+        for (String sv : sourceVersions) {
+            String[] ar = sv.split("\\|");
+            if (ar.length == 2) {
+                Source source = sourceRepository.findFirstByCanonicalUrlAndVersionAndPublicAccessIn(ar[0], ar[1], publicAccess);
+                if (source == null)
+                    throw new UnprocessableEntityException("Code system of url=" + ar[0] + ", version=" + ar[1] + " does not exist.");
+                sourcesProvided.add(source);
+            }
+        }
+        Map<String, String> map = sourcesProvided.parallelStream().collect(Collectors.toMap(Source::getMnemonic, Source::getVersion));
+
+        // final list of sources and will only include sources that are referenced in expressions
+        // this is to cover the edge case where user provides source that is not referenced in expression and we would
+        // want to use sources that are referenced in expressions
+        List<Source> filtered = new ArrayList<>();
+        expressions.parallelStream().map(m -> formatExpression(m).split("/"))
+                .map(m -> ownerType(m) + "|" + ownerId(m) + "|" + getSourceId(m) + "|" + getSourceVersion(m))
+                .distinct()
+                .map(m -> m.split("\\|"))
+                .filter(m -> m.length == 4)
+                .map(m -> {
+                    String sourceId = m[2];
+                    String sourceVersion = m[3];
+                    // If sourceId is part of input system-version and expression's source's version is HEAD only then we'll
+                    // want to override the source.
+                    if (map.containsKey(sourceId) && HEAD.equals(sourceVersion)) {
+                        return sourcesProvided.parallelStream().filter(s -> s.getMnemonic().equals(sourceId)).findFirst().get();
+                    } else {
+                    // if source is not part of the system-version then don't override
+                        return oclFhirUtil.getSourceVersion(m[2], m[3], publicAccess, m[0], m[1]);
+                    }
+                })
+                .filter(Objects::nonNull)
+                .forEach(filtered::add);
+
+        return filtered.stream().sorted(Comparator.comparing(Source::getCanonicalUrl).thenComparing(Source::getCreatedAt).reversed())
+                .collect(Collectors.toList());
+    }
+
+
+    private List<Source> getSourcesFromExpressions(List<String> expressions) {
+        return expressions.parallelStream().map(m -> formatExpression(m).split("/"))
+                .map(m -> ownerType(m) + "|" + ownerId(m) + "|" + getSourceId(m) + "|" + getSourceVersion(m))
+                .distinct()
+                .map(m -> m.split("\\|"))
+                .filter(m -> m.length == 4)
+                .map(m -> oclFhirUtil.getSourceVersion(m[2], m[3], publicAccess, m[0], m[1]))
+                .sorted(Comparator.comparing(Source::getCanonicalUrl).thenComparing(Source::getCreatedAt).reversed())
+                .collect(Collectors.toList());
+    }
+
+    private List<String> getExpressions(Collection collection) {
+        return collection.getCollectionsReferences().parallelStream()
+                .map(CollectionsReference::getCollectionReference)
+                .map(CollectionReference::getExpression)
+                .sorted()
+                .collect(Collectors.toList());
+    }
+
+    private List<String> getExpressions(Collection collection, IntegerType offset, IntegerType count) {
+        List<String> expressions = getExpressions(collection);
+        if (count.getValue() == 0)
+            return expressions;
+        if (offset.getValue() < expressions.size()) {
+            int start = offset.getValue();
+            int end = expressions.size();
+            if (start + count.getValue() < end)
+                end = start + count.getValue();
+            expressions = expressions.subList(start, end);
+        } else {
+            expressions.clear();
+        }
+        return expressions;
     }
 
     private void populateCompose(ValueSet valueSet, boolean includeConceptDesignation, Concept concept, String sourceCanonicalUrl,
@@ -174,22 +253,36 @@ public class ValueSetConverter {
         referenceComponent.setDisplay(oclFhirUtil.getDefinition(lts, dictDefaultLocale));
         // designation
         if (includeConceptDesignation)
-            addConceptReferenceDesignation(names, referenceComponent);
+            addConceptReferenceDesignation(lts, referenceComponent);
         includeComponent.getConcept().add(referenceComponent);
     }
 
-    private void addConceptReferenceDesignation(List<ConceptsName> names, ValueSet.ConceptReferenceComponent referenceComponent) {
-        names.parallelStream().forEach(n -> {
-            LocalizedText lt = n.getLocalizedText();
-            ValueSet.ConceptReferenceDesignationComponent designationComponent = new ValueSet.ConceptReferenceDesignationComponent();
-            if(lt != null) {
-                designationComponent.setLanguage(lt.getLocale());
-                if (isValid(lt.getType()))
-                    designationComponent.getUse().setCode(lt.getType());
-                designationComponent.setValue(lt.getName());
-                referenceComponent.addDesignation(designationComponent);
-            }
+    private void addConceptReferenceDesignation(List<LocalizedText> names, ValueSet.ConceptReferenceComponent referenceComponent) {
+        names.parallelStream().forEach(lt -> {
+            ValueSet.ConceptReferenceDesignationComponent component = toConceptRefDesignationComp(lt);
+            if (component != null)
+                referenceComponent.addDesignation(component);
         });
+    }
+
+    private void addConceptReferenceDesignation(List<LocalizedText> names, ValueSet.ValueSetExpansionContainsComponent expansionComponent) {
+        names.parallelStream().forEach(lt -> {
+            ValueSet.ConceptReferenceDesignationComponent component = toConceptRefDesignationComp(lt);
+            if (component != null)
+                expansionComponent.addDesignation(component);
+        });
+    }
+
+    private ValueSet.ConceptReferenceDesignationComponent toConceptRefDesignationComp(LocalizedText text) {
+        if (text != null) {
+            ValueSet.ConceptReferenceDesignationComponent designationComponent = new ValueSet.ConceptReferenceDesignationComponent();
+            designationComponent.setLanguage(text.getLocale());
+            if (isValid(text.getType()))
+                designationComponent.getUse().setCode(text.getType());
+            designationComponent.setValue(text.getName());
+            return designationComponent;
+        }
+        return null;
     }
 
     public Parameters validateCode(Collection collection, UriType system, StringType systemVersion, String code, StringType display,
@@ -226,6 +319,139 @@ public class ValueSetConverter {
             }
         }
         return parameters;
+    }
+
+    public ValueSet expand(Collection collection, IntegerType offset, IntegerType count, BooleanType includeDesignations,
+                           BooleanType includeDefinition, BooleanType activeOnly, CodeType displayLanguage,
+                           List<String> excludeSystem, List<String> systemVersion, StringType filter) {
+        ValueSet valueSet;
+        if (isTrue(includeDefinition)) {
+            valueSet = toBaseValueSet(collection);
+        } else {
+            valueSet = new ValueSet();
+            addStatus(valueSet, collection.getIsActive(), collection.getRetired() != null ? collection.getRetired() : false,
+                    collection.getReleased());
+        }
+        CanonicalType canonicalReference = new CanonicalType(
+                collection.getCanonicalUrl() + "|" + collection.getVersion());
+        valueSet.getCompose().getIncludeFirstRep().getValueSet().add(canonicalReference);
+
+        ValueSet.ValueSetExpansionComponent expansion = valueSet.getExpansion();
+        // identifier
+        expansion.setIdentifier(UUID.randomUUID().toString());
+        // timestamp
+        expansion.setTimestamp(new Date());
+        // add expansion parameters
+        addParameter(expansion, URL, new UriType(collection.getCanonicalUrl()));
+        addParameter(expansion, VALUESET_VERSION, newStringType(collection.getVersion()));
+        addParameter(expansion, OFFSET, offset);
+        addParameter(expansion, COUNT, count);
+        addParameter(expansion, INCLUDE_DESIGNATIONS, includeDesignations);
+        addParameter(expansion, INCLUDE_DEFINITION, includeDefinition);
+        addParameter(expansion, ACTIVE_ONLY, activeOnly);
+        if (isValid(displayLanguage))
+            addParameter(expansion, DISPLAY_LANGUAGE, displayLanguage);
+        if (isValid(filter))
+            addParameter(expansion, "filter", filter);
+
+        // offset
+        expansion.setOffset(offset.getValue());
+
+        // get expressions and filter by offset and count
+        // returns all expression if count = 0
+        List<String> expressions = getExpressions(collection, offset, count);
+
+        // if count = 0 then client is asking how large the expansion is.(As per FHIR spec)
+        if (count.getValue() == 0) {
+            expansion.setTotal(expressions.size());
+            return valueSet;
+        }
+
+        // separator = __ and if value itself has _ then enclose value in ""
+        // filter = EMR__HRP__KP , match on EMR, HRP and KP
+        // filter = EMR__"HRH_"__KP, match on EMR, HRP_ and KP
+        List<String> filters = new ArrayList<>();
+        if (isValid(filter)) {
+            String[] arr = filter.getValue().split("__");
+            for (String s : arr) {
+                filters.add(s.replaceAll("\"", EMPTY));
+            }
+        }
+
+        List<Source> sources = getSourcesFromExpressions(expressions, systemVersion)
+                .stream()
+                .filter(s ->
+                        !excludeSystem.contains(canonical(s.getCanonicalUrl(), s.getVersion())) ||
+                                !excludeSystem.contains(s.getCanonicalUrl()))
+                .collect(Collectors.toList());
+        Map<String, String> map = systemVersion.parallelStream().map(m -> m.split("\\|"))
+                .filter(m -> m.length == 2)
+                .collect(Collectors.toMap(m -> m[0], m->m[1]));
+        sources.forEach(source -> {
+            expressions.stream().map(m -> formatExpression(m).split("/"))
+                    .filter(m -> {
+                        if (map.containsKey(source.getCanonicalUrl()))
+                            return map.get(source.getCanonicalUrl()).equals(source.getVersion());
+                        return source.getMnemonic().equals(getSourceId(m)) && source.getVersion().equals(getSourceVersion(m));
+                    })
+                    .forEachOrdered(m -> {
+                        String conceptId = getConceptId(m);
+                        String conceptVersion = getConceptVersion(m);
+                        if (isValid(conceptId)) {
+                            Optional<Concept> conceptOpt = oclFhirUtil.getSourceConcept(source, conceptId, conceptVersion);
+                             conceptOpt.ifPresent(c -> {
+                                // only return non retired concepts when activeOnly is true
+                                if (c.getRetired() && activeOnly.booleanValue()) {
+                                    return;
+                                }
+                                // apply concept code filter if provided
+                                if (!filters.isEmpty()) {
+                                    if (filters.parallelStream().noneMatch(conceptId::contains))
+                                        return;
+                                }
+                                ValueSet.ValueSetExpansionContainsComponent component = new ValueSet.ValueSetExpansionContainsComponent();
+                                component.setSystem(source.getCanonicalUrl());
+                                component.setVersion(source.getVersion());
+                                component.setInactive(c.getRetired());
+                                component.setCode(c.getMnemonic());
+                                List<LocalizedText> names = oclFhirUtil.getNames(c);
+                                if (isValid(displayLanguage)) {
+                                    oclFhirUtil.getDisplayForLanguage(names, displayLanguage.getCode())
+                                            .ifPresent(component::setDisplay);
+                                } else {
+                                    oclFhirUtil.getDisplayForLanguage(names, source.getDefaultLocale())
+                                            .ifPresent(component::setDisplay);
+                                }
+                                if (includeDesignations.getValue()) {
+                                    addConceptReferenceDesignation(names, component);
+                                }
+                                expansion.getContains().add(component);
+                            });
+                        }
+                    });
+        });
+        // sort based on canonical_url,version desc and code asc
+        List<ValueSet.ValueSetExpansionContainsComponent> sorted = expansion.getContains().stream()
+                        .sorted(Comparator.comparing(ValueSet.ValueSetExpansionContainsComponent::getSystem)
+                        .thenComparing(ValueSet.ValueSetExpansionContainsComponent::getVersion)
+                        .reversed()
+                        .thenComparing(ValueSet.ValueSetExpansionContainsComponent::getCode))
+                        .collect(Collectors.toList());
+        expansion.setContains(sorted);
+        // total
+        expansion.setTotal(expansion.getContains().size());
+        return valueSet;
+    }
+
+    private String canonical(String url, String version) {
+        return url + "|" + version;
+    }
+
+    private void addParameter(ValueSet.ValueSetExpansionComponent expansion, String name, Type value) {
+        ValueSet.ValueSetExpansionParameterComponent component = new ValueSet.ValueSetExpansionParameterComponent();
+        component.setName(name);
+        component.setValue(value);
+        expansion.getParameter().add(component);
     }
 
     private StringType determineOwner(Collection collection) {

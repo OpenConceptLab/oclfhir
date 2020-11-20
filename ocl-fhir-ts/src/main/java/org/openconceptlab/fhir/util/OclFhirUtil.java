@@ -207,6 +207,10 @@ public class OclFhirUtil {
         return code != null && StringUtils.isNotBlank(code.getCode());
     }
 
+    public static boolean isTrue(final BooleanType booleanType) {
+        return isValid(booleanType) && booleanType.getValue();
+    }
+
     public static boolean isValid(final PrimitiveType type) {
         return type != null && !type.isEmpty();
     }
@@ -354,6 +358,14 @@ public class OclFhirUtil {
                 .anyMatch(name -> !isValid(displayLanguage) || name.getLocale().equals(displayLanguage.getCode()));
     }
 
+    public Optional<String> getDisplayForLanguage(List<LocalizedText> names, String displayLanguage) {
+        return names.stream()
+                .sorted(Comparator.comparing(LocalizedText::getLocalePreferred, Comparator.reverseOrder()))
+                .filter(name -> !isValid(displayLanguage) || name.getLocale().equals(displayLanguage))
+                .map(LocalizedText::getName)
+                .findFirst();
+    }
+
     public static String notFound(Class<? extends MetadataResource> cls, StringType url, StringType version) {
         return String.format("Resource of type %s with URL %s%s is not known",
                 cls.getSimpleName(),
@@ -399,6 +411,18 @@ public class OclFhirUtil {
 
     public static StringType newStringType(String value) {
         return new StringType(value);
+    }
+
+    public static UriType newUri(String url) {
+        return new UriType(url);
+    }
+
+    public static BooleanType newBoolean(Boolean value) {
+        return new BooleanType(value);
+    }
+
+    public static IntegerType newInteger(Integer value) {
+        return new IntegerType(value);
     }
 
     public static String newString(CodeType type) {
