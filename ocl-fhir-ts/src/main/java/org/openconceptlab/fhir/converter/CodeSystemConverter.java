@@ -264,8 +264,10 @@ public class CodeSystemConverter {
 		Optional<Concept> conceptOpt = oclFhirUtil.getSourceConcept(source, code, EMPTY);
 		if (conceptOpt.isPresent()) {
 			if (isValid(display)) {
+				StringType updated = newStringType(display.getValue().replaceAll("^\"", "")
+						.replaceAll("\"$", ""));
 				List<LocalizedText> names = oclFhirUtil.getNames(conceptOpt.get());
-				boolean match = oclFhirUtil.validateDisplay(names, display, displayLanguage);
+				boolean match = oclFhirUtil.validateDisplay(names, updated, displayLanguage);
 				if (!match) {
 					parameters.addParameter().setName(MESSAGE).setValue(newStringType("Invalid display."));
 				} else {
