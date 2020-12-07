@@ -5,6 +5,7 @@ import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.converter.CodeSystemConverter;
@@ -52,7 +53,7 @@ public class CodeSystemResourceProvider implements IResourceProvider {
     @Transactional
     public Bundle searchCodeSystems(RequestDetails details) {
         List<Source> sources = filterHead(getSources(publicAccess));
-        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false);
+        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false, 0);
         return OclFhirUtil.getBundle(codeSystems, details.getFhirServerBase(), details.getRequestPath());
     }
 
@@ -66,10 +67,12 @@ public class CodeSystemResourceProvider implements IResourceProvider {
     @Transactional
     public Bundle searchCodeSystemByUrl(@RequiredParam(name = CodeSystem.SP_URL) StringType url,
                                         @OptionalParam(name = VERSION) StringType version,
+                                        @OptionalParam(name = PAGE) StringType page,
                                         RequestDetails details) {
         List<Source> sources = filterHead(getSourceByUrl(url, version, publicAccess));
         boolean includeConcepts = !isValid(version) || !isVersionAll(version);
-        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, includeConcepts);
+        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, includeConcepts,
+                getPage(page));
         return OclFhirUtil.getBundle(codeSystems, details.getFhirServerBase(), details.getRequestPath());
     }
 
@@ -83,7 +86,7 @@ public class CodeSystemResourceProvider implements IResourceProvider {
     public Bundle searchCodeSystemByOwner(@RequiredParam(name = OWNER) StringType owner,
                                           RequestDetails details) {
         List<Source> sources = filterHead(getSourceByOwner(owner, publicAccess));
-        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false);
+        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false, 0);
         return OclFhirUtil.getBundle(codeSystems, details.getFhirServerBase(), details.getRequestPath());
     }
 
@@ -100,10 +103,11 @@ public class CodeSystemResourceProvider implements IResourceProvider {
     public Bundle searchCodeSystemByOwnerAndId(@RequiredParam(name = OWNER) StringType owner,
                                                @RequiredParam(name = ID) StringType id,
                                                @OptionalParam(name = VERSION) StringType version,
+                                               @OptionalParam(name = PAGE) StringType page,
                                                RequestDetails details) {
         List<Source> sources = filterHead(getSourceByOwnerAndIdAndVersion(id, owner, version, publicAccess));
         boolean includeConcepts = !isVersionAll(version);
-        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, includeConcepts);
+        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, includeConcepts, getPage(page));
         return OclFhirUtil.getBundle(codeSystems, details.getFhirServerBase(), details.getRequestPath());
     }
 
@@ -143,8 +147,8 @@ public class CodeSystemResourceProvider implements IResourceProvider {
      */
     @Operation(name = LOOKUP, idempotent = true)
     @Transactional
-    public Parameters codeSystemLookUp(@OperationParam(name = CODE, type = CodeType.class) CodeType code,
-                                       @OperationParam(name = SYSTEM, type = UriType.class) UriType system,
+    public Parameters codeSystemLookUp(@OperationParam(name = CODE, type = CodeType.class, min = 1) CodeType code,
+                                       @OperationParam(name = SYSTEM, type = UriType.class, min = 1) UriType system,
                                        @OperationParam(name = VERSION, type = StringType.class) StringType version,
                                        @OperationParam(name = DISP_LANG, type = CodeType.class) CodeType displayLanguage,
                                        @OperationParam(name = OWNER, type = StringType.class) StringType owner) {
@@ -157,8 +161,8 @@ public class CodeSystemResourceProvider implements IResourceProvider {
 
     @Operation(name = VALIDATE_CODE, idempotent = true)
     @Transactional
-    public Parameters codeSystemValidateCode(@OperationParam(name = URL, type = UriType.class) UriType url,
-                                             @OperationParam(name = CODE, type = CodeType.class) CodeType code,
+    public Parameters codeSystemValidateCode(@OperationParam(name = URL, type = UriType.class, min = 1) UriType url,
+                                             @OperationParam(name = CODE, type = CodeType.class, min = 1) CodeType code,
                                              @OperationParam(name = VERSION, type = StringType.class) StringType version,
                                              @OperationParam(name = DISPLAY, type = StringType.class) StringType display,
                                              @OperationParam(name = DISP_LANG, type = CodeType.class) CodeType displayLanguage,

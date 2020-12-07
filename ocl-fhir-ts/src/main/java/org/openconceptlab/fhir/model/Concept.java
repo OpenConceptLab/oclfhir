@@ -109,11 +109,11 @@ public class Concept extends BaseOclEntity implements Serializable {
 	private UserProfile updatedBy;
 
 //	@LazyCollection(LazyCollectionOption.FALSE)
-	@OneToMany(mappedBy="concept", cascade = CascadeType.ALL)
+	@OneToMany(mappedBy="concept", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 	private List<ConceptsDescription> conceptsDescriptions;
 
 //	@LazyCollection(LazyCollectionOption.FALSE)
-	@OneToMany(mappedBy="concept", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+	@OneToMany(mappedBy="concept", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 	private List<ConceptsName> conceptsNames;
 
 	public Concept() {

@@ -231,7 +231,7 @@ public class Source extends BaseOclEntity implements Serializable {
 	}
 
 	public Boolean getIsActive() {
-		return this.isActive;
+		return this.isActive != null && this.isActive;
 	}
 
 	public void setIsActive(Boolean isActive) {
@@ -303,7 +303,7 @@ public class Source extends BaseOclEntity implements Serializable {
 	}
 
 	public Boolean getRetired() {
-		return this.retired;
+		return this.retired != null && this.retired;
 	}
 
 	public void setRetired(Boolean retired) {

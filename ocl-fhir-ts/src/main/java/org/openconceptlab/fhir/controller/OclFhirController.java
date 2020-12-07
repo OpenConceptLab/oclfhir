@@ -41,7 +41,11 @@ public class OclFhirController {
     }
 
     @GetMapping(path = {"/orgs/{org}/CodeSystem/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<String> getCodeSystemByOrg(@PathVariable(name = ORG) String org, @PathVariable(name = ID) String id) {
+    public ResponseEntity<String> getCodeSystemByOrg(@PathVariable(name = ORG) String org,
+                                                     @PathVariable(name = ID) String id,
+                                                     @RequestParam(name = PAGE, required = false) String page) {
+        if (isValid(page))
+            return handleSearchResource(CodeSystem.class, OWNER, formatOrg(org), ID, id, PAGE, page);
         return handleSearchResource(CodeSystem.class, OWNER, formatOrg(org), ID, id);
     }
 
@@ -50,7 +54,10 @@ public class OclFhirController {
                 produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> getCodeSystemVersionsByOrg(@PathVariable(name = ORG) String org,
                                                              @PathVariable(name = ID) String id,
-                                                             @PathVariable(name = VERSION) Optional<String> version) {
+                                                             @PathVariable(name = VERSION) Optional<String> version,
+                                                             @RequestParam(name = PAGE, required = false) String page) {
+        if (isValid(page))
+            return handleSearchResource(CodeSystem.class, OWNER, formatOrg(org), ID, id, VERSION, version.orElse(ALL), PAGE, page);
         return handleSearchResource(CodeSystem.class, OWNER, formatOrg(org), ID, id, VERSION, version.orElse(ALL));
     }
 
@@ -95,7 +102,11 @@ public class OclFhirController {
     }
 
     @GetMapping(path = {"/orgs/{org}/ValueSet/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<String> getValueSetByOrg(@PathVariable String org, @PathVariable String id) {
+    public ResponseEntity<String> getValueSetByOrg(@PathVariable String org,
+                                                   @PathVariable String id,
+                                                   @RequestParam(name = PAGE, required = false) String page) {
+        if (isValid(page))
+            return handleSearchResource(ValueSet.class, OWNER, formatOrg(org), ID, id, PAGE, page);
         return handleSearchResource(ValueSet.class, OWNER, formatOrg(org), ID, id);
     }
 
@@ -104,7 +115,10 @@ public class OclFhirController {
                 produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> getValueSetVersionsByOrg(@PathVariable(name = ORG) String org,
                                                            @PathVariable(name = ID) String id,
-                                                           @PathVariable(name = VERSION) Optional<String> version) {
+                                                           @PathVariable(name = VERSION) Optional<String> version,
+                                                           @RequestParam(name = PAGE, required = false) String page) {
+        if (isValid(page))
+            return handleSearchResource(ValueSet.class, OWNER, formatOrg(org), ID, id, VERSION, version.orElse(ALL), PAGE, page);
         return handleSearchResource(ValueSet.class, OWNER, formatOrg(org), ID, id, VERSION, version.orElse(ALL));
     }
 
@@ -160,7 +174,11 @@ public class OclFhirController {
     }
 
     @GetMapping(path = {"/users/{user}/CodeSystem/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<String> getCodeSystemByUser(@PathVariable String user, @PathVariable String id) {
+    public ResponseEntity<String> getCodeSystemByUser(@PathVariable String user,
+                                                      @PathVariable String id,
+                                                      @RequestParam(name = PAGE, required = false) String page) {
+        if (isValid(page))
+            return handleSearchResource(CodeSystem.class, OWNER, formatUser(user), ID, id, PAGE, page);
         return handleSearchResource(CodeSystem.class, OWNER, formatUser(user), ID, id);
     }
 
@@ -169,7 +187,10 @@ public class OclFhirController {
                 produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> getCodeSystemVersionsByUser(@PathVariable(name = USER) String user,
                                                               @PathVariable(name = ID) String id,
-                                                              @PathVariable(name = VERSION) Optional<String> version) {
+                                                              @PathVariable(name = VERSION) Optional<String> version,
+                                                              @RequestParam(name = PAGE, required = false) String page) {
+        if (isValid(page))
+            return handleSearchResource(CodeSystem.class, OWNER, formatUser(user), ID, id, VERSION, version.orElse(ALL), PAGE, page);
         return handleSearchResource(CodeSystem.class, OWNER, formatUser(user), ID, id, VERSION, version.orElse(ALL));
     }
 
@@ -214,7 +235,11 @@ public class OclFhirController {
     }
 
     @GetMapping(path = {"/users/{user}/ValueSet/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<String> getValueSetByUser(@PathVariable String user, @PathVariable String id) {
+    public ResponseEntity<String> getValueSetByUser(@PathVariable String user,
+                                                    @PathVariable String id,
+                                                    @RequestParam(name = PAGE, required = false) String page) {
+        if (isValid(page))
+            return handleSearchResource(ValueSet.class, OWNER, formatUser(user), ID, id, PAGE, page);
         return handleSearchResource(ValueSet.class, OWNER, formatUser(user), ID, id);
     }
 
@@ -223,7 +248,10 @@ public class OclFhirController {
                 produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> getValueSetVersionsByUser(@PathVariable(name = USER) String user,
                                                             @PathVariable(name = ID) String id,
-                                                            @PathVariable(name = VERSION) Optional<String> version) {
+                                                            @PathVariable(name = VERSION) Optional<String> version,
+                                                            @RequestParam(name = PAGE, required = false) String page) {
+        if (isValid(page))
+            return handleSearchResource(ValueSet.class, OWNER, formatUser(user), ID, id, VERSION, version.orElse(ALL), PAGE, page);
         return handleSearchResource(ValueSet.class, OWNER, formatUser(user), ID, id, VERSION, version.orElse(ALL));
     }
 
@@ -359,9 +387,9 @@ public class OclFhirController {
             parameters.addParameter().setName(URL).setValue(new UriType(url));
         if (isValid(valueSetId))
             parameters.addParameter().setName("valueSetId").setValue(newStringType(valueSetId));
-        if (isValid(valueSetVersion))
-            parameters.addParameter().setName(SYSTEM_VERSION).setValue(newStringType(systemVersion));
         if (isValid(systemVersion))
+            parameters.addParameter().setName(SYSTEM_VERSION).setValue(newStringType(systemVersion));
+        if (isValid(valueSetVersion))
             parameters.addParameter().setName(VALUESET_VERSION).setValue(newStringType(valueSetVersion));
         if (isValid(display))
             parameters.addParameter().setName(DISPLAY).setValue(newStringType(display));

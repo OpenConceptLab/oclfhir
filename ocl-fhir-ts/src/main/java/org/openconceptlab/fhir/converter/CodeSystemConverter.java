@@ -1,13 +1,10 @@
 package org.openconceptlab.fhir.converter;
 
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Multimap;
 import com.google.gson.*;
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.*;
@@ -25,6 +22,7 @@ import org.openconceptlab.fhir.repository.ConceptsSourceRepository;
 import org.openconceptlab.fhir.repository.SourceRepository;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 /**
@@ -52,14 +50,14 @@ public class CodeSystemConverter {
 		this.conceptsSourceRepository = conceptsSourceRepository;
 	}
 
-	public List<CodeSystem> convertToCodeSystem(List<Source> sources, boolean includeConcepts) {
+	public List<CodeSystem> convertToCodeSystem(List<Source> sources, boolean includeConcepts, int page) {
 		List<CodeSystem> codeSystems = new ArrayList<>();
 		sources.forEach(source -> {
 			// convert to base
 			CodeSystem codeSystem = toBaseCodeSystem(source);
 			if (includeConcepts) {
 				// add concepts
-				addConceptsToCodeSystem(codeSystem, source);
+				addConceptsToCodeSystem(codeSystem, source, page);
 			}
 			codeSystems.add(codeSystem);
 		});
@@ -96,7 +94,7 @@ public class CodeSystemConverter {
             codeSystem.setDescription(source.getDescription());
         }
         // count
-        codeSystem.setCount((int) getConceptsCount(source));
+		codeSystem.setCount(conceptRepository.findConceptCountInSource(source.getId()));
         // property
 		addProperty(codeSystem);
         return codeSystem;
@@ -131,19 +129,9 @@ public class CodeSystemConverter {
 		return source.getConceptsSources().parallelStream().map(m -> m.getConcept().getMnemonic()).distinct().count();
 	}
 
-	private void addConceptsToCodeSystem(final CodeSystem codeSystem, final Source source) {
-		// ConceptsSource includes all concept versions, we need to include only most recent concept version
-		List<Concept> filtered = new ArrayList<>();
-		Multimap<String, Concept> mnemonicToConceptMap = HashMultimap.create();
-		source.getConceptsSources()
-				.stream()
-				.map(ConceptsSource::getConcept)
-				.forEach(c -> mnemonicToConceptMap.put(c.getMnemonic(), c));
-		mnemonicToConceptMap.asMap().forEach((mnemonic, concepts) -> {
-			concepts.stream().max(Comparator.comparing(Concept::getId)).ifPresent(filtered::add);
-		});
-
-		for (Concept concept : filtered) {
+	private void addConceptsToCodeSystem(final CodeSystem codeSystem, final Source source, int page) {
+		List<Concept> concepts = conceptRepository.findConcepts(source.getId(), PageRequest.of(page, 100));
+		for (Concept concept : concepts) {
 			CodeSystem.ConceptDefinitionComponent definitionComponent = new CodeSystem.ConceptDefinitionComponent();
 			// code
 			definitionComponent.setCode(concept.getMnemonic());
