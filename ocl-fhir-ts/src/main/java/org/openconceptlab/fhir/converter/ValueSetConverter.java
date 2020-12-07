@@ -314,10 +314,12 @@ public class ValueSetConverter {
                 .findAny();
         if (reference.isPresent()) {
             if (isValid(display)) {
+                StringType updated = newStringType(display.getValue().replaceAll("^\"", "")
+                        .replaceAll("\"$", ""));
                 Optional<Concept> conceptOpt = oclFhirUtil.getSourceConcept(source, code, EMPTY);
                 if (conceptOpt.isPresent()) {
                     List<LocalizedText> names = oclFhirUtil.getNames(conceptOpt.get());
-                    boolean match = oclFhirUtil.validateDisplay(names, display, displayLanguage);
+                    boolean match = oclFhirUtil.validateDisplay(names, updated, displayLanguage);
                     if (!match) {
                         parameters.addParameter().setName(MESSAGE).setValue(newStringType("Invalid display."));
                     } else {
@@ -390,9 +392,19 @@ public class ValueSetConverter {
 
         List<Source> sources = getSourcesFromExpressions(expressions, systemVersion)
                 .stream()
-                .filter(s ->
-                        !excludeSystem.contains(canonical(s.getCanonicalUrl(), s.getVersion())) ||
-                                !excludeSystem.contains(s.getCanonicalUrl()))
+                .filter(s -> {
+                    for(String es : excludeSystem) {
+                        String [] ar = es.split("\\|");
+                        if ((ar.length == 2 && !isValid(ar[1])) || ar.length == 1) {
+                            if (s.getCanonicalUrl().equals(es) || s.getCanonicalUrl().equals(ar[0])) {
+                                return false;
+                            }
+                        } else {
+                            return !es.equals(canonical(s.getCanonicalUrl(), s.getVersion()));
+                        }
+                    }
+                    return true;
+                })
                 .collect(Collectors.toList());
         Map<String, String> map = systemVersion.parallelStream().map(m -> m.split("\\|"))
                 .filter(m -> m.length == 2)
