@@ -3,6 +3,7 @@ package org.openconceptlab.fhir.provider;
 import ca.uhn.fhir.rest.annotation.*;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.IResourceProvider;
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import org.apache.commons.lang3.StringUtils;
@@ -61,7 +62,7 @@ public class ValueSetResourceProvider implements IResourceProvider {
     @Transactional
     public Bundle searchValueSets(RequestDetails details) {
         List<Collection> collections = filterHead(getCollections(publicAccess));
-        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections);
+        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, null);
         return OclFhirUtil.getBundle(valueSets, details.getFhirServerBase(), details.getRequestPath());
     }
 
@@ -75,9 +76,10 @@ public class ValueSetResourceProvider implements IResourceProvider {
     @Transactional
     public Bundle searchValueSetByUrl(@RequiredParam(name = ValueSet.SP_URL) StringType url,
                                       @OptionalParam(name = VERSION) StringType version,
+                                      @OptionalParam(name = PAGE) StringType page,
                                       RequestDetails details) {
         List<Collection> collections = filterHead(getCollectionByUrl(url, version, publicAccess));
-        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections);
+        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, isVersionAll(version) ? null : getPage(page));
         return OclFhirUtil.getBundle(valueSets, details.getFhirServerBase(), details.getRequestPath());
     }
 
@@ -91,7 +93,7 @@ public class ValueSetResourceProvider implements IResourceProvider {
     public Bundle searchValueSetByOwner(@RequiredParam(name = OWNER) StringType owner,
                                         RequestDetails details) {
         List<Collection> collections = filterHead(getCollectionByOwner(owner, publicAccess));
-        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections);
+        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, null);
         return OclFhirUtil.getBundle(valueSets, details.getFhirServerBase(), details.getRequestPath());
     }
 
@@ -106,20 +108,21 @@ public class ValueSetResourceProvider implements IResourceProvider {
     @Search
     @Transactional
     public Bundle searchValueSetByOwnerAndId(@RequiredParam(name = OWNER) StringType owner,
-                                               @RequiredParam(name = ID) StringType id,
-                                               @OptionalParam(name = VERSION) StringType version,
-                                               RequestDetails details) {
+                                             @RequiredParam(name = ID) StringType id,
+                                             @OptionalParam(name = VERSION) StringType version,
+                                             @OptionalParam(name = PAGE) StringType page,
+                                             RequestDetails details) {
         List<Collection> collections = filterHead(getCollectionByOwnerAndId(id, owner, version, publicAccess));
-        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections);
+        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, isVersionAll(version) ? null : getPage(page));
         return OclFhirUtil.getBundle(valueSets, details.getFhirServerBase(), details.getRequestPath());
     }
 
     @Operation(name = VALIDATE_CODE, idempotent = true)
     @Transactional
-    public Parameters valueSetValidateCode(@OperationParam(name = URL, type = UriType.class) UriType url,
+    public Parameters valueSetValidateCode(@OperationParam(name = URL, type = UriType.class, min = 1) UriType url,
                                            @OperationParam(name = VALUESET_VERSION, type = StringType.class) StringType valueSetVersion,
-                                           @OperationParam(name = CODE, type = CodeType.class) CodeType code,
-                                           @OperationParam(name = SYSTEM, type = UriType.class) UriType system,
+                                           @OperationParam(name = CODE, type = CodeType.class, min = 1) CodeType code,
+                                           @OperationParam(name = SYSTEM, type = UriType.class, min = 1) UriType system,
                                            @OperationParam(name = SYSTEM_VERSION, type = StringType.class) StringType systemVersion,
                                            @OperationParam(name = DISPLAY, type = StringType.class) StringType display,
                                            @OperationParam(name = DISP_LANG, type = CodeType.class) CodeType displayLanguage,
@@ -144,7 +147,7 @@ public class ValueSetResourceProvider implements IResourceProvider {
 
     @Operation(name = EXPAND, idempotent = true)
     @Transactional
-    public ValueSet valueSetExpand(@OperationParam(name = URL, type = UriType.class) UriType url,
+    public ValueSet valueSetExpand(@OperationParam(name = URL, type = UriType.class, min = 1) UriType url,
                                    @OperationParam(name = VALUESET_VERSION, type = StringType.class) StringType valueSetVersion,
                                    @OperationParam(name = OFFSET, type = IntegerType.class) IntegerType offset,
                                    @OperationParam(name = COUNT, type = IntegerType.class) IntegerType count,
@@ -160,7 +163,8 @@ public class ValueSetResourceProvider implements IResourceProvider {
         Collection collection = isValid(owner) ? getCollectionByOwnerAndUrl(owner, newStringType(url), valueSetVersion, publicAccess) :
                 getCollectionByUrl(newStringType(url), valueSetVersion, publicAccess).get(0);
         if (!isValid(offset)) offset = new IntegerType(0);
-        if (!isValid(count)) count = new IntegerType(1000);
+        if (!isValid(count)) count = new IntegerType(100);
+        if (count.getValue() > 100) count.setValue(100);
         // by default include all designations
         if (!isValid(includeDesignations)) includeDesignations = new BooleanType(true);
         // by default exclude ValueSet definition
@@ -171,10 +175,16 @@ public class ValueSetResourceProvider implements IResourceProvider {
         List<String> systemVersionsList = new ArrayList<>();
         if (excludeSystems != null)
             excludeSystemsList = excludeSystems.parallelStream()
-                    .filter(OclFhirUtil::isValid).map(PrimitiveType::getValue).collect(Collectors.toList());
+                    .filter(OclFhirUtil::isValid)
+                    .map(PrimitiveType::getValue)
+                    .map(String::trim)
+                    .collect(Collectors.toList());
         if (systemVersions != null)
             systemVersionsList = systemVersions.parallelStream()
-                    .filter(OclFhirUtil::isValid).map(PrimitiveType::getValue).collect(Collectors.toList());
+                    .filter(OclFhirUtil::isValid)
+                    .map(PrimitiveType::getValue)
+                    .map(String::trim)
+                    .collect(Collectors.toList());
         validateSystemVersion(systemVersionsList);
         return valueSetConverter.expand(collection, offset, count, includeDesignations, includeDefinition,
                 activeOnly, displayLanguage, excludeSystemsList, systemVersionsList, filter);

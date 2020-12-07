@@ -48,6 +48,7 @@ public final class OclFhirConstants {
 	public static final String EXCLUDE_SYSTEM = "exclude-system";
 	public static final String SYSTEMVERSION = "system-version";
 	public static final String FILTER = "filter";
+	public static final String PAGE = "page";
 
 	public static final String PUBLISHER_REGEX = "^user:.*|^org:.*";
 	public static final String ORG_ = "org:";

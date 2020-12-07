@@ -52,11 +52,12 @@ public class ValueSetConverter {
     @Value("${ocl.servlet.baseurl}")
     private String baseUrl;
 
-    public List<ValueSet> convertToValueSet(List<Collection> collections) {
+    public List<ValueSet> convertToValueSet(List<Collection> collections, Integer page) {
         List<ValueSet> valueSets = new ArrayList<>();
         collections.forEach(collection -> {
             ValueSet valueSet = toBaseValueSet(collection);
-            addCompose(valueSet, collection, false);
+            if (page != null)
+                addCompose(valueSet, collection, false, page);
             valueSets.add(valueSet);
         });
         return valueSets;
@@ -107,10 +108,12 @@ public class ValueSetConverter {
         return uri;
     }
 
-    private void addCompose(ValueSet valueSet, Collection collection, boolean includeConceptDesignation) {
-        List<CollectionsConcept> collectionsConcepts = collection.getCollectionsConcepts();
+    private void addCompose(ValueSet valueSet, Collection collection, boolean includeConceptDesignation, Integer page) {
         // We have to use expressions to determine actual Source version since its not possible through CollectionsConcepts
-        List<String> expressions = getExpressions(collection);
+        IntegerType offset = new IntegerType(page * 100);
+        IntegerType count = new IntegerType(100);
+
+        List<String> expressions = getExpressions(collection, offset, count);
 
         // lets get all the source versions first to reduce the database calls
         List<Source> sources = getSourcesFromExpressions(expressions);
@@ -167,7 +170,7 @@ public class ValueSetConverter {
                     if (map.containsKey(sourceId) && HEAD.equals(sourceVersion)) {
                         return sourcesProvided.parallelStream().filter(s -> s.getMnemonic().equals(sourceId)).findFirst().get();
                     } else {
-                    // if source is not part of the system-version then don't override
+                        // if source is not part of the system-version then don't override
                         return oclFhirUtil.getSourceVersion(m[2], m[3], publicAccess, m[0], m[1]);
                     }
                 })
@@ -191,11 +194,18 @@ public class ValueSetConverter {
     }
 
     private List<String> getExpressions(Collection collection) {
-        return collection.getCollectionsReferences().parallelStream()
+        Map<String, String> map = new TreeMap<>();
+        collection.getCollectionsReferences().stream()
                 .map(CollectionsReference::getCollectionReference)
                 .map(CollectionReference::getExpression)
-                .sorted()
-                .collect(Collectors.toList());
+                .forEach(e -> {
+                    String [] ar = formatExpression(e).split("/");
+                    String conceptId = getConceptId(ar);
+                    if (isValid(conceptId))
+                        map.put(conceptId + getConceptVersion(ar), e);
+                });
+
+        return new ArrayList<>(map.values());
     }
 
     private List<String> getExpressions(Collection collection, IntegerType offset, IntegerType count) {

@@ -437,4 +437,10 @@ public class OclFhirUtil {
         return isValid(type) ? type.getCode() : EMPTY;
     }
 
+    public static int getPage(StringType page) {
+        if (isValid(page) && !StringUtils.isNumeric(page.getValue())) {
+            throw new InvalidRequestException("Page value must be positive numeric value.");
+        }
+        return page == null || page.getValue().matches("0|1") ? 0 : Integer.parseInt(page.getValue()) - 1;
+    }
 }
