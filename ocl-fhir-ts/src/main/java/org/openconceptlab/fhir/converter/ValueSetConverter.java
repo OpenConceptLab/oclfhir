@@ -364,7 +364,9 @@ public class ValueSetConverter {
         if (isValid(displayLanguage))
             addParameter(expansion, DISPLAY_LANGUAGE, displayLanguage);
         if (isValid(filter))
-            addParameter(expansion, "filter", filter);
+            addParameter(expansion, FILTER, filter);
+        excludeSystem.forEach(e -> addParameter(expansion, EXCLUDE_SYSTEM, newStringType(e)));
+        systemVersion.forEach(e -> addParameter(expansion, SYSTEMVERSION, newStringType(e)));
 
         // offset
         expansion.setOffset(offset.getValue());
