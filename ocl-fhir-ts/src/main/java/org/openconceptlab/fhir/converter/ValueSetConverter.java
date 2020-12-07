@@ -202,7 +202,7 @@ public class ValueSetConverter {
                     String [] ar = formatExpression(e).split("/");
                     String conceptId = getConceptId(ar);
                     if (isValid(conceptId))
-                        map.put(conceptId + getConceptVersion(ar), e);
+                        map.put(conceptId + getConceptVersion(ar) + getSourceId(ar) + getSourceVersion(ar), e);
                 });
 
         return new ArrayList<>(map.values());
