@@ -7,6 +7,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
+import java.util.Date;
+
 /**
  * The OclFhirLoggingInterceptor class.
  * @author harpatel1
@@ -17,7 +19,7 @@ public class OclFhirLoggingInterceptor {
 
     @Hook(Pointcut.SERVER_INCOMING_REQUEST_POST_PROCESSED)
     public boolean logRequestDetails(RequestDetails theRequest) {
-        ourLog.info("Handling {} client operation on ID {}", theRequest.getRequestType(), theRequest.getId());
+        ourLog.info("{} Handling {} client operation for url {}", new Date(), theRequest.getRequestType(), theRequest.getCompleteUrl());
         return true;
     }
 }
