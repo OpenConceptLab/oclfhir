@@ -5,6 +5,7 @@ import org.hibernate.annotations.Type;
 import java.io.Serializable;
 import javax.persistence.*;
 import java.sql.Timestamp;
+import java.util.Date;
 import java.util.List;
 
 
@@ -20,6 +21,33 @@ public class Collection extends BaseOclEntity implements Serializable {
 	@Id
 	@GeneratedValue(strategy=GenerationType.IDENTITY)
 	private Long id;
+
+	@Type(type = "jsonb")
+	@Column(name="identifier", columnDefinition = "jsonb")
+	private String identifier;
+
+	@Column(name = "publisher")
+	private String publisher;
+
+	@Type(type = "jsonb")
+	@Column(name="contact", columnDefinition = "jsonb")
+	private String contact;
+
+	@Type(type = "jsonb")
+	@Column(name="jurisdiction", columnDefinition = "jsonb")
+	private String jurisdiction;
+
+	@Column(name = "purpose")
+	private String purpose;
+
+	@Column(name = "copyright")
+	private String copyright;
+
+	@Column(name = "immutable")
+	private Boolean immutable;
+
+	@Column(name = "revision_date")
+	private Date revisionDate;
 
 	@Column(name="_background_process_ids")
 	private String backgroundProcessIds;
@@ -149,6 +177,70 @@ public class Collection extends BaseOclEntity implements Serializable {
 
 	public void setId(Long id) {
 		this.id = id;
+	}
+
+	public String getIdentifier() {
+		return identifier;
+	}
+
+	public void setIdentifier(String identifier) {
+		this.identifier = identifier;
+	}
+
+	public String getPublisher() {
+		return publisher;
+	}
+
+	public void setPublisher(String publisher) {
+		this.publisher = publisher;
+	}
+
+	public String getContact() {
+		return contact;
+	}
+
+	public void setContact(String contact) {
+		this.contact = contact;
+	}
+
+	public String getJurisdiction() {
+		return jurisdiction;
+	}
+
+	public void setJurisdiction(String jurisdiction) {
+		this.jurisdiction = jurisdiction;
+	}
+
+	public String getPurpose() {
+		return purpose;
+	}
+
+	public void setPurpose(String purpose) {
+		this.purpose = purpose;
+	}
+
+	public String getCopyright() {
+		return copyright;
+	}
+
+	public void setCopyright(String copyright) {
+		this.copyright = copyright;
+	}
+
+	public Boolean getImmutable() {
+		return this.immutable;
+	}
+
+	public void setImmutable(Boolean immutable) {
+		this.immutable = immutable;
+	}
+
+	public Date getRevisionDate() {
+		return revisionDate;
+	}
+
+	public void setRevisionDate(Date revisionDate) {
+		this.revisionDate = revisionDate;
 	}
 
 	public String getBackgroundProcessIds() {

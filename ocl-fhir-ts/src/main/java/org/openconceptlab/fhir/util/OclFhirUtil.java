@@ -8,9 +8,12 @@ import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import com.google.gson.*;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.aspectj.apache.bcel.classfile.Code;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
+import org.openconceptlab.fhir.converter.CodeSystemConverter;
 import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.repository.ConceptRepository;
 import org.openconceptlab.fhir.repository.ConceptsSourceRepository;
@@ -34,6 +37,7 @@ public class OclFhirUtil {
     
     @Value("${server.port}")
     private String port;
+    private static final Log log = LogFactory.getLog(OclFhirUtil.class);
     private static final FhirContext context;
     private SourceRepository sourceRepository;
     private ConceptRepository conceptRepository;
@@ -399,10 +403,6 @@ public class OclFhirUtil {
         return stringType;
     }
 
-    public static String newString(UriType type) {
-        return isValid(type) ? type.getValue() : EMPTY;
-    }
-
     public static StringType newStringType(CodeType type) {
         StringType stringType = new StringType();
         if (type != null) stringType.setValue(type.getCode());
@@ -429,10 +429,6 @@ public class OclFhirUtil {
         return newStringType(type).getValue();
     }
 
-    public static String newString(StringType type) {
-        return isValid(type) ? type.getValue() : EMPTY;
-    }
-
     public static String getCode(CodeType type) {
         return isValid(type) ? type.getCode() : EMPTY;
     }
@@ -442,5 +438,47 @@ public class OclFhirUtil {
             throw new InvalidRequestException("Page value must be positive numeric value.");
         }
         return page == null || page.getValue().matches("0|1") ? 0 : Integer.parseInt(page.getValue()) - 1;
+    }
+
+    public static <T extends MetadataResource> void addJsonFields(T resource, String identifier, String contact, String jurisdiction) {
+        JsonObject object = new JsonObject();
+        object.addProperty(RESOURCE_TYPE, resource.getClass().getSimpleName());
+        addJsonProperty(object, resource.getClass().getSimpleName(), IDENTIFIER, identifier);
+        addJsonProperty(object, resource.getClass().getSimpleName(), CONTACT, contact);
+        addJsonProperty(object, resource.getClass().getSimpleName(), JURISDICTION, jurisdiction);
+
+        if (resource instanceof CodeSystem) {
+            CodeSystem cs = (CodeSystem) getFhirContext().newJsonParser().parseResource(gson.toJson(object));
+            ((CodeSystem) resource).setIdentifier(cs.getIdentifier());
+            resource.setContact(cs.getContact());
+            resource.setJurisdiction(cs.getJurisdiction());
+        } else if (resource instanceof ValueSet) {
+            ValueSet vs = (ValueSet) getFhirContext().newJsonParser().parseResource(gson.toJson(object));
+            ((ValueSet) resource).setIdentifier(vs.getIdentifier());
+            resource.setContact(vs.getContact());
+            resource.setJurisdiction(vs.getJurisdiction());
+        }
+    }
+
+    private static void addJsonProperty(JsonObject object, String resourceType, String property, String value) {
+        if (isValid(value)) {
+            try {
+                JsonArray array = jsonArray(value);
+                object.add(property, array);
+            } catch (Exception e) {
+                log.warn(String.format("Error parsing {}.{} ", resourceType, property) + e.getMessage(), e);
+            }
+        }
+    }
+
+    public static JsonArray jsonArray(String value) {
+        JsonElement e = jsonParser.parse(value);
+        JsonArray ar = new JsonArray();
+        if (! (e instanceof JsonArray)) {
+            ar.add(e);
+        } else {
+            ar = e.getAsJsonArray();
+        }
+        return ar;
     }
 }

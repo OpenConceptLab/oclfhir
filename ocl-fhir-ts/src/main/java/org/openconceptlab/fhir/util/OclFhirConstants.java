@@ -21,7 +21,6 @@ public final class OclFhirConstants {
 	public static final String COPYRIGHT = "copyright";
 	public static final String VS_COMPOSE_INACTIVE = "compose.inactive";
 	public static final String VS_COMPOSE_INCLUDE = "compose.include";
-	public static final String VS_COMPOSE_FILTER = "compose.filter";
 	public static final String PROPERTY = "property";
 	public static final String OP = "op";
 	public static final String value = "value";
@@ -49,6 +48,10 @@ public final class OclFhirConstants {
 	public static final String SYSTEMVERSION = "system-version";
 	public static final String FILTER = "filter";
 	public static final String PAGE = "page";
+	public static final String RESOURCE_TYPE = "resourceType";
+	public static final String IDENTIFIER = "identifier";
+	public static final String CONTACT = "contact";
+	public static final String JURISDICTION = "jurisdiction";
 
 	public static final String PUBLISHER_REGEX = "^user:.*|^org:.*";
 	public static final String ORG_ = "org:";

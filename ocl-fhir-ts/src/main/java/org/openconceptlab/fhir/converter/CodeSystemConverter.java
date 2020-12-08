@@ -2,6 +2,7 @@ package org.openconceptlab.fhir.converter;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
@@ -97,6 +98,31 @@ public class CodeSystemConverter {
 		codeSystem.setCount(conceptRepository.findConceptCountInSource(source.getId()));
         // property
 		addProperty(codeSystem);
+		// publisher
+		if (isValid(source.getPublisher()))
+			codeSystem.setPublisher(source.getPublisher());
+		// override default identifier with database value
+		// identifier, contact, jurisdiction
+		addJsonFields(codeSystem, source.getIdentifier(), source.getContact(), source.getJurisdiction());
+		// purpose
+		if (isValid(source.getPurpose()))
+			codeSystem.setPurpose(source.getPurpose());
+		// copyright
+		if (isValid(source.getCopyright()))
+			codeSystem.setCopyright(source.getCopyright());
+		// content_type
+		if (isValid(source.getContentType())) {
+			Optional<String> content = Stream.of(CodeSystem.CodeSystemContentMode.values()).map(Enum::toString).filter(m -> source.getContentType().equals(m))
+					.findAny();
+			if (content.isPresent()) {
+				codeSystem.setContent(CodeSystem.CodeSystemContentMode.fromCode(content.get()));
+			} else {
+				codeSystem.setContent(CodeSystem.CodeSystemContentMode.NULL);
+			}
+		}
+		// revision date
+		if (source.getRevisionDate() != null)
+			codeSystem.setDate(source.getRevisionDate());
         return codeSystem;
     }
 
@@ -123,10 +149,6 @@ public class CodeSystemConverter {
 		component.setDescription(description);
 		component.setType(type);
 		return component;
-	}
-
-	private long getConceptsCount(final Source source) {
-		return source.getConceptsSources().parallelStream().map(m -> m.getConcept().getMnemonic()).distinct().count();
 	}
 
 	private void addConceptsToCodeSystem(final CodeSystem codeSystem, final Source source, int page) {

@@ -25,6 +25,7 @@ import static org.openconceptlab.fhir.util.OclFhirUtil.getOwner;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * The ValueSerConverter.
@@ -86,6 +87,24 @@ public class ValueSetConverter {
         // set status
         addStatus(valueSet, collection.getIsActive(), collection.getRetired() != null ? collection.getRetired() : false,
                 collection.getReleased());
+        // publisher
+        if (isValid(collection.getPublisher()))
+            valueSet.setPublisher(collection.getPublisher());
+        // override default identifier with database value
+        // identifier, contact, jurisdiction
+        addJsonFields(valueSet, collection.getIdentifier(), collection.getContact(), collection.getJurisdiction());
+        // purpose
+        if (isValid(collection.getPurpose()))
+            valueSet.setPurpose(collection.getPurpose());
+        // copyright
+        if (isValid(collection.getCopyright()))
+            valueSet.setCopyright(collection.getCopyright());
+        // immutable
+        if (collection.getImmutable() != null)
+            valueSet.setImmutable(collection.getImmutable());
+        // revision date
+        if (collection.getRevisionDate() != null)
+            valueSet.setDate(collection.getRevisionDate());
         return valueSet;
     }
 
@@ -180,7 +199,6 @@ public class ValueSetConverter {
         return filtered.stream().sorted(Comparator.comparing(Source::getCanonicalUrl).thenComparing(Source::getCreatedAt).reversed())
                 .collect(Collectors.toList());
     }
-
 
     private List<Source> getSourcesFromExpressions(List<String> expressions) {
         return expressions.parallelStream().map(m -> formatExpression(m).split("/"))
