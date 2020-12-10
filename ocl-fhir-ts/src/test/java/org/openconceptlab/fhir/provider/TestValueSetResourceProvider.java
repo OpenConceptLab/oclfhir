@@ -14,34 +14,11 @@ import org.mockito.stubbing.OngoingStubbing;
 import org.openconceptlab.fhir.base.OclFhirTest;
 import org.openconceptlab.fhir.model.*;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 public class TestValueSetResourceProvider extends OclFhirTest {
-
-    public static final String VEIN_PROCEDURE = "Vein Procedure";
-    public static final String LUNG_PROCEDURE = "Lung Procedure";
-    public static final String NECK_PROCEDURE = "Neck Procedure";
-    public static final String VEIN_PROCEDURE_1 = "Vein Procedure1";
-    public static final String VEIN_PROCEDURE_2 = "Vein Procedure2";
-    public static final String VEIN_PROCEDURE_3 = "Vein Procedure3";
-    public static final String LUNG_PROCEDURE_1 = "Lung Procedure1";
-    public static final String NECK_PROCEDURE_1 = "Neck Procedure1";
-
-    Source source1;
-    Source source2;
-    Source source3;
-    ConceptsSource cs11;
-    ConceptsSource cs21;
-    ConceptsSource cs22;
-    ConceptsSource cs23;
-    ConceptsSource cs24;
-    ConceptsSource cs31;
-    ConceptsSource cs32;
-    ConceptsSource cs33;
-    ConceptsSource cs34;
 
     @Before
     public void setUpBefore() {
@@ -189,7 +166,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
 
     @Test(expected = UnprocessableEntityException.class)
     public void testExpand_missing_url() {
-        ValueSetResourceProvider provider = provider();
+        ValueSetResourceProvider provider = valueSetProvider();
         provider.valueSetExpand(null, null, new IntegerType(0), new IntegerType(10),
                 null, null, null, null, null, null, null, newString(OWNER_VAL));
     }
@@ -251,7 +228,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
     public ValueSet runExpand(List<CollectionsReference> references, List<ConceptsSource> list1, List<ConceptsSource> list2,
                               List<ConceptsSource> list3, Integer offset, Integer count, String systemVersion) {
         // set up
-        ValueSetResourceProvider provider = provider();
+        ValueSetResourceProvider provider = valueSetProvider();
         Collection collection = collection(references);
         when(sourceRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
                 .thenReturn(source2).thenReturn(source1);
@@ -283,7 +260,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
     public Parameters validateCode(String url, String version, String system, String systemVersion, String code,
                                        String display, String language, Coding coding, String owner) {
         // set up
-        ValueSetResourceProvider provider = provider();
+        ValueSetResourceProvider provider = valueSetProvider();
         Concept concept1 = concept1();
         Concept concept2 = concept2();
 
@@ -339,49 +316,4 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         }
         return output;
     }
-
-    private ConceptsSource conceptsSource(Concept concept, Source source) {
-        ConceptsSource cs = new ConceptsSource();
-        cs.setConcept(concept);
-        cs.setSource(source);
-        return cs;
-    }
-
-    private Concept concept1() {
-        return newConcept(1L, "123", AD, newName(ALLERGIC_DISORDER, "", EN, false),
-                newName(TRASTORNO_ALERGICO, "", ES, false));
-    }
-
-    private Concept concept2() {
-        return newConcept(2L,"123", TM, newName(TUMOR_DISORDER, "", EN, false),
-                newName(TUMOR_TRASTORNO, "", ES, false));
-    }
-
-    private Concept concept3() {
-        return newConcept(3L, "123", VEIN_PROCEDURE, newName(VEIN_PROCEDURE_1, "", EN, true),
-                newName(VEIN_PROCEDURE_2, "", ES, false),
-                newName(VEIN_PROCEDURE_3, "", "fr", false));
-    }
-
-    private Concept concept4() {
-        return newConcept(4L, "123", LUNG_PROCEDURE, newName(LUNG_PROCEDURE_1, "", EN, true));
-    }
-
-    private Concept concept5() {
-        return newConcept(5L, "123", NECK_PROCEDURE, newName(NECK_PROCEDURE_1, "", EN, true));
-    }
-
-    private Concept newConcept(Long id, String version, String code, ConceptsName... names) {
-        Concept concept = concept(id, code);
-        concept.setVersion(version);
-        for (ConceptsName name: names) {
-            concept.getConceptsNames().add(name);
-        }
-        return concept;
-    }
-
-    private List<Concept> concepts(Concept... concept) {
-        return new ArrayList<>(Arrays.asList(concept));
-    }
-
 }

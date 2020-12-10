@@ -1,12 +1,15 @@
 package org.openconceptlab.fhir.base;
 
+import ca.uhn.fhir.rest.api.server.RequestDetails;
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.*;
 import org.junit.Assert;
 import org.mockito.Mock;
+import org.openconceptlab.fhir.converter.CodeSystemConverter;
 import org.openconceptlab.fhir.converter.ValueSetConverter;
 import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.model.Organization;
+import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
 import org.openconceptlab.fhir.repository.CollectionRepository;
 import org.openconceptlab.fhir.repository.ConceptRepository;
@@ -15,6 +18,7 @@ import org.openconceptlab.fhir.repository.SourceRepository;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.mockito.Mockito.spy;
@@ -45,6 +49,28 @@ public class OclFhirTest {
     public static final String EN = "en";
     public static final String OWNER_VAL = "org:OCL";
 
+    public static final String VEIN_PROCEDURE = "Vein Procedure";
+    public static final String LUNG_PROCEDURE = "Lung Procedure";
+    public static final String NECK_PROCEDURE = "Neck Procedure";
+    public static final String VEIN_PROCEDURE_1 = "Vein Procedure1";
+    public static final String VEIN_PROCEDURE_2 = "Vein Procedure2";
+    public static final String VEIN_PROCEDURE_3 = "Vein Procedure3";
+    public static final String LUNG_PROCEDURE_1 = "Lung Procedure1";
+    public static final String NECK_PROCEDURE_1 = "Neck Procedure1";
+
+    protected Source source1;
+    protected Source source2;
+    protected Source source3;
+    protected ConceptsSource cs11;
+    protected ConceptsSource cs21;
+    protected ConceptsSource cs22;
+    protected ConceptsSource cs23;
+    protected ConceptsSource cs24;
+    protected ConceptsSource cs31;
+    protected ConceptsSource cs32;
+    protected ConceptsSource cs33;
+    protected ConceptsSource cs34;
+
     @Mock
     protected SourceRepository sourceRepository;
 
@@ -56,6 +82,12 @@ public class OclFhirTest {
 
     @Mock
     protected ConceptsSourceRepository conceptsSourceRepository;
+
+    @Mock
+    protected UserProfile oclUser;
+
+    @Mock
+    protected RequestDetails requestDetails;
 
     public void assertTrue(Parameters parameters) {
         Assert.assertTrue(parameters.getParameter("result") != null
@@ -95,10 +127,17 @@ public class OclFhirTest {
         return StringUtils.isNotBlank(value);
     }
 
-    public ValueSetResourceProvider provider() {
+    public ValueSetResourceProvider valueSetProvider() {
         OclFhirUtil oclFhirUtil = new OclFhirUtil(sourceRepository, conceptRepository, conceptsSourceRepository);
         ValueSetConverter converter = new ValueSetConverter(oclFhirUtil, conceptsSourceRepository, conceptRepository, sourceRepository);
         ValueSetResourceProvider provider = spy(new ValueSetResourceProvider(collectionRepository, converter, oclFhirUtil));
+        return provider;
+    }
+
+    public CodeSystemResourceProvider codeSystemProvider() {
+        OclFhirUtil oclFhirUtil = new OclFhirUtil(sourceRepository, conceptRepository, conceptsSourceRepository);
+        CodeSystemConverter converter = new CodeSystemConverter(sourceRepository, conceptRepository, oclFhirUtil, oclUser, conceptsSourceRepository);
+        CodeSystemResourceProvider provider = new CodeSystemResourceProvider(sourceRepository, converter, oclFhirUtil);
         return provider;
     }
 
@@ -200,6 +239,50 @@ public class OclFhirTest {
         text.setLocale(locale);
         text.setLocalePreferred(preferred);
         return text;
+    }
+
+    protected ConceptsSource conceptsSource(Concept concept, Source source) {
+        ConceptsSource cs = new ConceptsSource();
+        cs.setConcept(concept);
+        cs.setSource(source);
+        return cs;
+    }
+
+    protected Concept concept1() {
+        return newConcept(1L, "123", AD, newName(ALLERGIC_DISORDER, "", EN, false),
+                newName(TRASTORNO_ALERGICO, "", ES, false));
+    }
+
+    protected Concept concept2() {
+        return newConcept(2L,"123", TM, newName(TUMOR_DISORDER, "", EN, false),
+                newName(TUMOR_TRASTORNO, "", ES, false));
+    }
+
+    protected Concept concept3() {
+        return newConcept(3L, "123", VEIN_PROCEDURE, newName(VEIN_PROCEDURE_1, "", EN, true),
+                newName(VEIN_PROCEDURE_2, "", ES, false),
+                newName(VEIN_PROCEDURE_3, "", "fr", false));
+    }
+
+    protected Concept concept4() {
+        return newConcept(4L, "123", LUNG_PROCEDURE, newName(LUNG_PROCEDURE_1, "", EN, true));
+    }
+
+    protected Concept concept5() {
+        return newConcept(5L, "123", NECK_PROCEDURE, newName(NECK_PROCEDURE_1, "", EN, true));
+    }
+
+    protected Concept newConcept(Long id, String version, String code, ConceptsName... names) {
+        Concept concept = concept(id, code);
+        concept.setVersion(version);
+        for (ConceptsName name: names) {
+            concept.getConceptsNames().add(name);
+        }
+        return concept;
+    }
+
+    protected List<Concept> concepts(Concept... concept) {
+        return new ArrayList<>(Arrays.asList(concept));
     }
 
 }
