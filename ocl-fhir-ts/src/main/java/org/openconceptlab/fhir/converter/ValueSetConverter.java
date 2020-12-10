@@ -278,7 +278,7 @@ public class ValueSetConverter {
         // display
         List<LocalizedText> lts = names.stream().filter(c -> c.getLocalizedText() != null).map(ConceptsName::getLocalizedText)
                 .collect(Collectors.toList());
-        referenceComponent.setDisplay(oclFhirUtil.getDefinition(lts, dictDefaultLocale));
+        referenceComponent.setDisplay(oclFhirUtil.getDisplayForLanguage(lts, dictDefaultLocale).orElse(""));
         // designation
         if (includeConceptDesignation)
             addConceptReferenceDesignation(lts, referenceComponent);
@@ -550,23 +550,7 @@ public class ValueSetConverter {
         return ar[2];
     }
 
-    private Source getSource(String [] ar) {
-        String ownerType = ar[1].contains(ORG) ? ORG : USER;
-        String owner = ar[2];
-        String sourceId = getSourceId(ar);
-        String sourceVersion = getSourceVersion(ar);
-        return oclFhirUtil.getSourceVersion(sourceId, sourceVersion, publicAccess, ownerType, owner);
-    }
-
-    private String getSystemUrl(String parentUri) {
-        String url = baseUrl.split("fhir")[0];
-        String[] source = formatExpression(parentUri).split("/");
-        if (source.length >= 6 && isValid(source[5]))
-            parentUri = String.join("/", source[0], source[1], source[2], source[3], source[4],
-                    VERSION, source[5]);
-        return url.substring(0, url.length() - 1) + parentUri.replace("sources","CodeSystem");
-    }
-
+    /*
     private void addExtras(ValueSet valueSet, String extras) {
         JsonObject obj = parseExtras(extras);
         // identifier
@@ -621,4 +605,5 @@ public class ValueSetConverter {
         }
         valueSet.setCompose(compose);
     }
+    */
 }

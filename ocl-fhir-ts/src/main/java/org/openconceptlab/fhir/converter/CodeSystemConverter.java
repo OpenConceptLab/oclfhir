@@ -112,13 +112,15 @@ public class CodeSystemConverter {
 			codeSystem.setCopyright(source.getCopyright());
 		// content_type
 		if (isValid(source.getContentType())) {
-			Optional<String> content = Stream.of(CodeSystem.CodeSystemContentMode.values()).map(Enum::toString).filter(m -> source.getContentType().equals(m))
+			Optional<String> content = Stream.of(CodeSystem.CodeSystemContentMode.values()).map(Enum::toString).filter(m -> source.getContentType().equalsIgnoreCase(m))
 					.findAny();
 			if (content.isPresent()) {
-				codeSystem.setContent(CodeSystem.CodeSystemContentMode.fromCode(content.get()));
+				codeSystem.setContent(CodeSystem.CodeSystemContentMode.fromCode(content.get().toLowerCase()));
 			} else {
 				codeSystem.setContent(CodeSystem.CodeSystemContentMode.NULL);
 			}
+		} else {
+			codeSystem.setContent(CodeSystem.CodeSystemContentMode.NULL);
 		}
 		// revision date
 		if (source.getRevisionDate() != null)
@@ -162,7 +164,8 @@ public class CodeSystemConverter {
 					.filter(c -> c.getLocalizedText() != null)
 					.map(ConceptsName::getLocalizedText)
 					.collect(Collectors.toList());
-			definitionComponent.setDisplay(oclFhirUtil.getDefinition(names, source.getDefaultLocale()));
+			Optional<String> display = oclFhirUtil.getDisplayForLanguage(names, source.getDefaultLocale());
+			definitionComponent.setDisplay(display.orElse(EMPTY));
 
 			// definition
 			List<LocalizedText> definitions = concept.getConceptsDescriptions().stream()
@@ -170,7 +173,8 @@ public class CodeSystemConverter {
 					.filter(c -> isValid(c.getLocalizedText().getType()) && "definition".equalsIgnoreCase(c.getLocalizedText().getType()))
 					.map(ConceptsDescription::getLocalizedText)
 					.collect(Collectors.toList());
-			definitionComponent.setDefinition(oclFhirUtil.getDefinition(definitions, source.getDefaultLocale()));
+			Optional<String> definition = oclFhirUtil.getDisplayForLanguage(definitions, source.getDefaultLocale());
+			definitionComponent.setDefinition(definition.orElse(EMPTY));
 
 			// designation
 			addConceptDesignation(concept, definitionComponent);
@@ -325,18 +329,11 @@ public class CodeSystemConverter {
 		return component;
 	}
 
-	private void addParameter(String name, String value, Parameters parameters) {
-		addParameter(name, new StringType(value), parameters);
-	}
-
-	private void addParameter(String name, Type value, Parameters parameters) {
-		parameters.addParameter().setName(name).setValue(value);
-	}
-
 	/**
 	 * TODO: Update when ready to implement POST
 	 * @param codeSystem
 	 */
+	/*
 	public void validateCodeSystem(CodeSystem codeSystem) {
 		Optional<Identifier> id = codeSystem.getIdentifier().stream().filter(i -> i.getType().hasCoding("http://hl7.org/fhir/v2/0203", "ACSN"))
 				.filter(i -> "http://fhir.openconceptlab.org".equals(i.getSystem()))
@@ -364,10 +361,6 @@ public class CodeSystemConverter {
 		toSource(codeSystem);
 	}
 
-	/**
-	 * TODO: Update when ready to implement POST
-	 * @param codeSystem
-	 */
     public void toSource(final CodeSystem codeSystem){
 		Source source = new Source();
 		source.setMnemonic(codeSystem.getId());
@@ -404,11 +397,5 @@ public class CodeSystemConverter {
 		codeSystem.setName(null);
 		codeSystem.setLanguage(null);
 	}
+	*/
 }
-
-
-
-
-
-
-

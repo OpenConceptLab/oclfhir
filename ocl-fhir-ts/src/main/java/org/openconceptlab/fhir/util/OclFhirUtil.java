@@ -276,6 +276,8 @@ public class OclFhirUtil {
     }
 
     public static Optional<Identifier> getIdentifier(String value) {
+        if (!isValid(value))
+            return Optional.empty();
         Identifier identifier = new Identifier();
         identifier.setSystem("http://fhir.openconceptlab.org");
         identifier.setValue(value.replace("sources", "CodeSystem").replace("collections", "ValueSet"));
@@ -314,16 +316,16 @@ public class OclFhirUtil {
 
             // match with dict default locale
             Stream<LocalizedText> dlMatch = definitions.stream().filter(d -> defaultLocale.equals(d.getLocale()));
-            Optional<LocalizedText> dlPreferred = getPreferred(dlMatch);
+            Optional<LocalizedText> dlPreferred = getPreferred(definitions.stream().filter(d -> defaultLocale.equals(d.getLocale())));
             if (dlPreferred.isPresent()) return dlPreferred.get().getName();
-            Optional<LocalizedText> dlNonPreferred = getNonPreferred(dlMatch);
+            Optional<LocalizedText> dlNonPreferred = getNonPreferred(definitions.stream().filter(d -> defaultLocale.equals(d.getLocale())));
             if (dlNonPreferred.isPresent()) return dlNonPreferred.get().getName();
 
             // match with dict supported locales
             Stream<LocalizedText> slMatch = definitions.stream().filter(d -> defaultLocale.contains(d.getLocale()));
-            Optional<LocalizedText> slPreferred = getPreferred(slMatch);
+            Optional<LocalizedText> slPreferred = getPreferred(definitions.stream().filter(d -> defaultLocale.contains(d.getLocale())));
             if (slPreferred.isPresent()) return slPreferred.get().getName();
-            Optional<LocalizedText> slNonPreferred = getNonPreferred(slMatch);
+            Optional<LocalizedText> slNonPreferred = getNonPreferred(definitions.stream().filter(d -> defaultLocale.contains(d.getLocale())));
             if (slNonPreferred.isPresent()) return slNonPreferred.get().getName();
 
             // Any locale preferred

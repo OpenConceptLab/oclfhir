@@ -190,7 +190,8 @@ public class CodeSystemResourceProvider implements IResourceProvider {
         List<Source> sources = new ArrayList<>();
         if (isVersionAll(version)) {
             // get all versions
-            sources.addAll(sourceRepository.findByCanonicalUrlAndPublicAccessIn(url.getValue(), access));
+            sources.addAll(sourceRepository.findByCanonicalUrlAndPublicAccessIn(url.getValue(), access).stream()
+                    .sorted(Comparator.comparing(Source::getVersion).reversed()).collect(Collectors.toList()));
         } else {
             final Source source;
             if (!isValid(version)) {
@@ -208,6 +209,8 @@ public class CodeSystemResourceProvider implements IResourceProvider {
     }
 
     private List<Source> getSourceByOwner(StringType owner, List<String> access) {
+        if (!isValid(owner))
+            return new ArrayList<>();
         List<Source> sources = new ArrayList<>();
         String ownerType = getOwnerType(owner.getValue());
         String value = getOwner(owner.getValue());
