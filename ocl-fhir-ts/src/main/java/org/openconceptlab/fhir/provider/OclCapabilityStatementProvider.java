@@ -3,7 +3,6 @@ package org.openconceptlab.fhir.provider;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import org.hl7.fhir.r4.hapi.rest.server.ServerCapabilityStatementProvider;
 import org.hl7.fhir.r4.model.*;
-import org.hl7.fhir.r4.model.codesystems.SearchParamType;
 import org.springframework.stereotype.Component;
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 
@@ -31,7 +30,7 @@ public class OclCapabilityStatementProvider extends ServerCapabilityStatementPro
     @Override
     public CapabilityStatement getServerConformance(HttpServletRequest theRequest, RequestDetails theRequestDetails) {
         CapabilityStatement capabilityStatement = new CapabilityStatement();
-        CapabilityStatement generated =  super.getServerConformance(theRequest, theRequestDetails);
+        CapabilityStatement generated = getSuperServerConformance(theRequest, theRequestDetails);
         capabilityStatement.setStatus(Enumerations.PublicationStatus.ACTIVE);
         capabilityStatement.setPublisher(OPEN_CONCEPT_LAB);
         capabilityStatement.setDate(new Date());
@@ -72,6 +71,10 @@ public class OclCapabilityStatementProvider extends ServerCapabilityStatementPro
         restComponents.add(codeSystemRestComponent);
         restComponents.add(valueSetRestComponent);
         return capabilityStatement;
+    }
+
+    protected CapabilityStatement getSuperServerConformance(HttpServletRequest theRequest, RequestDetails theRequestDetails) {
+        return super.getServerConformance(theRequest, theRequestDetails);
     }
 
     private CapabilityStatement.CapabilityStatementRestResourceOperationComponent operationComponent(String name, String definition, String note) {
