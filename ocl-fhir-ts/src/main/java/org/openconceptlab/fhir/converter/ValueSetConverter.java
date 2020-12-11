@@ -1,9 +1,6 @@
 package org.openconceptlab.fhir.converter;
 
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.model.*;
@@ -16,16 +13,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
-import javax.swing.text.html.Option;
-
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
-import static org.openconceptlab.fhir.util.OclFhirConstants.PURPOSE;
 import static org.openconceptlab.fhir.util.OclFhirUtil.*;
 import static org.openconceptlab.fhir.util.OclFhirUtil.getOwner;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * The ValueSerConverter.
@@ -207,6 +200,9 @@ public class ValueSetConverter {
                 .map(m -> m.split("\\|"))
                 .filter(m -> m.length == 4)
                 .map(m -> oclFhirUtil.getSourceVersion(m[2], m[3], publicAccess, m[0], m[1]))
+                .map(Optional::ofNullable)
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .sorted(Comparator.comparing(Source::getCanonicalUrl).thenComparing(Source::getCreatedAt).reversed())
                 .collect(Collectors.toList());
     }

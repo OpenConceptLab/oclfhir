@@ -10,10 +10,8 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.aspectj.apache.bcel.classfile.Code;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
-import org.openconceptlab.fhir.converter.CodeSystemConverter;
 import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.repository.ConceptRepository;
 import org.openconceptlab.fhir.repository.ConceptsSourceRepository;
@@ -310,31 +308,6 @@ public class OclFhirUtil {
         }
     }
 
-    public String getDefinition(List<LocalizedText> definitions, String defaultLocale) {
-        if (definitions == null || definitions.isEmpty()) return "";
-        if (definitions.size() > 1) {
-
-            // match with dict default locale
-            Stream<LocalizedText> dlMatch = definitions.stream().filter(d -> defaultLocale.equals(d.getLocale()));
-            Optional<LocalizedText> dlPreferred = getPreferred(definitions.stream().filter(d -> defaultLocale.equals(d.getLocale())));
-            if (dlPreferred.isPresent()) return dlPreferred.get().getName();
-            Optional<LocalizedText> dlNonPreferred = getNonPreferred(definitions.stream().filter(d -> defaultLocale.equals(d.getLocale())));
-            if (dlNonPreferred.isPresent()) return dlNonPreferred.get().getName();
-
-            // match with dict supported locales
-            Stream<LocalizedText> slMatch = definitions.stream().filter(d -> defaultLocale.contains(d.getLocale()));
-            Optional<LocalizedText> slPreferred = getPreferred(definitions.stream().filter(d -> defaultLocale.contains(d.getLocale())));
-            if (slPreferred.isPresent()) return slPreferred.get().getName();
-            Optional<LocalizedText> slNonPreferred = getNonPreferred(definitions.stream().filter(d -> defaultLocale.contains(d.getLocale())));
-            if (slNonPreferred.isPresent()) return slNonPreferred.get().getName();
-
-            // Any locale preferred
-            Optional<LocalizedText> anyPreferred = getPreferred(definitions.stream());
-            if (anyPreferred.isPresent()) return anyPreferred.get().getName();
-        }
-        return definitions.get(0).getName();
-    }
-
     private Optional<LocalizedText> getPreferred(Stream<LocalizedText> texts) {
         return texts.filter(LocalizedText::getLocalePreferred).findFirst();
     }
@@ -393,10 +366,6 @@ public class OclFhirUtil {
 
     public static ResponseEntity<String> badRequest() {
         return ResponseEntity.badRequest().body("{\"exception\":\"Could not process the request.\"}");
-    }
-
-    public static ResponseEntity<String> notFound(int status, String body) {
-        return ResponseEntity.status(status).body(body);
     }
 
     public static StringType newStringType(UriType type) {

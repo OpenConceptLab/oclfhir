@@ -2,23 +2,46 @@ package org.openconceptlab.fhir.provider;
 
 import static org.mockito.Mockito.*;
 
+import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import com.google.common.collect.Sets;
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.*;
 import static org.junit.Assert.*;
+
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.MockitoAnnotations;
 import org.mockito.stubbing.OngoingStubbing;
 import org.openconceptlab.fhir.base.OclFhirTest;
 import org.openconceptlab.fhir.model.*;
+import org.springframework.beans.factory.annotation.Value;
 
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 
 public class TestValueSetResourceProvider extends OclFhirTest {
+
+    Collection collection1;
+    Collection collection2;
+
+    public static final String URL_COLLECTION_1 = "http://openconceptlab.org/collection1";
+    public static final String COLLECTION_1 = "collection1";
+    public static final String COLLECTION_1_NAME = "collection1 name";
+    public static final String COLLECTION_1_FULL_NAME = "collection1 full name";
+    public static final String COLLECTION_1_COPYRIGHT_TEXT = "collection1 copyright text";
+    public static final String TEST = "TEST";
+
+    public static final String URL_COLLECTION_2 = "http://openconceptlab.org/collection2";
+    public static final String COLLECTION_2 = "collection2";
+    public static final String COLLECTION_2_NAME = "collection2 name";
+    public static final String COLLECTION_2_FULL_NAME = "collection2 full name";
+    public static final String COLLECTION_2_COPYRIGHT_TEXT = "collection2 copyright text";
 
     @Before
     public void setUpBefore() {
@@ -26,15 +49,372 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         source1 = source(123L, "v1.0", concept1(), concept2(), concept3());
         source2 = source(234L, "v2.0", concept1(), concept2(), concept3(), concept4());
         source3 = source(345L, "v3.0", concept1(), concept2(), concept3(), concept4());
-        cs11 = conceptsSource(concept1(), source1);
-        cs21 = conceptsSource(concept1(), source2);
-        cs22 = conceptsSource(concept2(), source2);
-        cs23 = conceptsSource(concept3(), source2);
-        cs24 = conceptsSource(concept4(), source2);
-        cs31 = conceptsSource(concept1(), source3);
-        cs32 = conceptsSource(concept2(), source3);
-        cs33 = conceptsSource(concept3(), source3);
-        cs34 = conceptsSource(concept4(), source3);
+        populateSource1(source1);
+        populateSource2(source2);
+
+        collection1 = new Collection();
+        populateCollection1(collection1);
+        collection2 = new Collection();
+        populateCollection2(collection2);
+    }
+
+    @After
+    public void after() {
+        source1 = null;
+        source2 = null;
+        source3 = null;
+        collection1 = null;
+        collection2 = null;
+        cs11 = null;
+        cs21 = null;
+        cs22 = null;
+        cs23 = null;
+        cs24 = null;
+        cs31 = null;
+        cs32 = null;
+        cs33 = null;
+        cs34 = null;
+    }
+
+    private void populateCollection2(Collection collection2) {
+        collection2.setMnemonic(COLLECTION_2);
+        collection2.setUri(URL_COLLECTION_2);
+        collection2.setCanonicalUrl(URL_COLLECTION_2);
+        collection2.setName(COLLECTION_2_NAME);
+        collection2.setFullName(COLLECTION_2_FULL_NAME);
+        collection2.setDescription(COLLECTION_2_NAME);
+        collection2.setIsActive(false);
+        collection2.setPublisher(TEST);
+        collection2.setContact("[{\"name\": \"Jon Doe 2\", \"telecom\": [{\"use\": \"work\", \"rank\": 1, \"value\": \"jondoe2@gmail.com\", \"period\": {\"end\": \"2022-10-29T10:26:15-04:00\", \"start\": \"2021-10-29T10:26:15-04:00\"}, \"system\": \"email\"}]}]");
+        collection2.setJurisdiction("[{\"coding\": [{\"code\": \"ETH\", \"system\": \"http://unstats.un.org/unsd/methods/m49/m49.htm\", \"display\": \"Ethiopia\"}]}]");
+        collection2.setPurpose(TEST);
+        collection2.setCopyright(COLLECTION_2_COPYRIGHT_TEXT);
+        collection2.setImmutable(true);
+        collection2.setRevisionDate(Date.from(LocalDate.of(2020, 12, 2).atStartOfDay(ZoneId.systemDefault()).toInstant()));
+    }
+
+    private void populateCollection1(Collection collection1) {
+        collection1.setMnemonic(COLLECTION_1);
+        collection1.setUri(URL_COLLECTION_1);
+        collection1.setCanonicalUrl(URL_COLLECTION_1);
+        collection1.setName(COLLECTION_1_NAME);
+        collection1.setFullName(COLLECTION_1_FULL_NAME);
+        collection1.setDescription(COLLECTION_1_NAME);
+        collection1.setIsActive(true);
+        collection1.setPublisher(TEST);
+        collection1.setContact("[{\"name\": \"Jon Doe 1\", \"telecom\": [{\"use\": \"work\", \"rank\": 1, \"value\": \"jondoe1@gmail.com\", \"period\": {\"end\": \"2025-10-29T10:26:15-04:00\", \"start\": \"2020-10-29T10:26:15-04:00\"}, \"system\": \"email\"}]}]");
+        collection1.setJurisdiction("[{\"coding\": [{\"code\": \"USA\", \"system\": \"http://unstats.un.org/unsd/methods/m49/m49.htm\", \"display\": \"United States of America\"}]}]");
+        collection1.setPurpose(TEST);
+        collection1.setCopyright(COLLECTION_1_COPYRIGHT_TEXT);
+        collection1.setImmutable(false);
+        collection1.setRevisionDate(Date.from(LocalDate.of(2020, 12, 1).atStartOfDay(ZoneId.systemDefault()).toInstant()));
+        List<CollectionsReference> references = newReferences(
+                "/orgs/OCL/sources/source1/v1.0/concepts/"+AD+"/123/",
+                "/orgs/OCL/sources/source2/v2.0/concepts/"+TUMOR_DISORDER+"/123/"
+        );
+        collection1.setCollectionsReferences(references);
+    }
+
+    @Test
+    public void testSearchValueSet_return_1() {
+        collection1.setIsLatestVersion(true);
+        collection2.setIsLatestVersion(false);
+        when(collectionRepository.findByPublicAccessIn(anyList())).thenReturn(Arrays.asList(collection1, collection2));
+        ValueSetResourceProvider provider = valueSetProvider();
+        Bundle bundle = provider.searchValueSets(requestDetails);
+        assertEquals(1, bundle.getTotal());
+        ValueSet valueSet = (ValueSet) bundle.getEntryFirstRep().getResource();
+        assertEquals(0, valueSet.getCompose().getInclude().size());
+        assertBaseValueSet(valueSet, URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
+                "USA", TEST, COLLECTION_1_COPYRIGHT_TEXT);
+    }
+
+    @Test
+    public void testSearchValueSet_return_2() {
+        collection1.setIsLatestVersion(true);
+        collection2.setIsLatestVersion(true);
+        when(collectionRepository.findByPublicAccessIn(anyList())).thenReturn(Arrays.asList(collection1, collection2));
+        ValueSetResourceProvider provider = valueSetProvider();
+        Bundle bundle = provider.searchValueSets(requestDetails);
+        assertEquals(2, bundle.getTotal());
+        ValueSet valueSet1 = (ValueSet) bundle.getEntry().get(0).getResource();
+        assertEquals(0, valueSet1.getCompose().getInclude().size());
+        assertBaseValueSet(valueSet1, URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
+                "USA", TEST, COLLECTION_1_COPYRIGHT_TEXT);
+        ValueSet valueSet2 = (ValueSet) bundle.getEntry().get(1).getResource();
+        assertEquals(0, valueSet2.getCompose().getInclude().size());
+        assertBaseValueSet(valueSet2, URL_COLLECTION_2, COLLECTION_2_NAME, COLLECTION_2_FULL_NAME, "Jon Doe 2", "jondoe2@gmail.com",
+                "ETH", TEST, COLLECTION_2_COPYRIGHT_TEXT);
+    }
+
+    @Test
+    public void testSearchValueSet_return_empty() {
+        ValueSetResourceProvider provider = valueSetProvider();
+        Bundle bundle = provider.searchValueSets(requestDetails);
+        assertEquals(0, bundle.getTotal());
+    }
+
+    @Test
+    public void testSearchValueSet_head_return_empty() {
+        collection1.setIsLatestVersion(true);
+        collection2.setIsLatestVersion(true);
+        collection1.setVersion("HEAD");
+        collection2.setVersion("HEAD");
+        when(collectionRepository.findByPublicAccessIn(anyList())).thenReturn(Arrays.asList(collection1, collection2));
+        ValueSetResourceProvider provider = valueSetProvider();
+        Bundle bundle = provider.searchValueSets(requestDetails);
+        assertEquals(0, bundle.getTotal());
+    }
+
+    @Test
+    public void testSearchValueSetByUrl_version_empty_return_most_recent() {
+        when(collectionRepository.findFirstByCanonicalUrlAndReleasedAndPublicAccessInOrderByCreatedAtDesc(anyString(), anyBoolean(), anyList()))
+                .thenReturn(collection1);
+        when(sourceRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
+                .thenReturn(source1).thenReturn(source2);
+        when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList())).thenReturn(Collections.singletonList(cs22))
+        .thenReturn(Collections.singletonList(cs11));
+        ValueSetResourceProvider provider = valueSetProvider();
+        Bundle bundle = provider.searchValueSetByUrl(newString(URL_COLLECTION_1), null, null, requestDetails);
+        assertEquals(1, bundle.getTotal());
+        ValueSet valueSet = (ValueSet) bundle.getEntryFirstRep().getResource();
+        assertBaseValueSet(valueSet, URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
+                "USA", TEST, COLLECTION_1_COPYRIGHT_TEXT);
+        assertConceptComponent(0, valueSet.getCompose().getInclude().get(0), URL_SOURCE_2, V_2_0, TM, TUMOR_DISORDER);
+        assertConceptComponent(0, valueSet.getCompose().getInclude().get(1), URL_SOURCE_1, V_1_0, AD, ALLERGIC_DISORDER);
+    }
+
+    @Test
+    public void testSearchValueSetByUrl_version() {
+        when(collectionRepository.findFirstByCanonicalUrlAndVersionAndPublicAccessIn(anyString(), anyString(), anyList()))
+                .thenReturn(collection1);
+        when(sourceRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
+                .thenReturn(source1).thenReturn(source2);
+        when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList())).thenReturn(Collections.singletonList(cs22))
+                .thenReturn(Collections.singletonList(cs11));
+        ValueSetResourceProvider provider = valueSetProvider();
+        Bundle bundle = provider.searchValueSetByUrl(newString(URL_COLLECTION_1), newString(V_1_0), null, requestDetails);
+        assertEquals(1, bundle.getTotal());
+        ValueSet valueSet = (ValueSet) bundle.getEntryFirstRep().getResource();
+        assertBaseValueSet(valueSet, URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
+                "USA", TEST, COLLECTION_1_COPYRIGHT_TEXT);
+        assertConceptComponent(0, valueSet.getCompose().getInclude().get(0), URL_SOURCE_2, V_2_0, TM, TUMOR_DISORDER);
+        assertConceptComponent(0, valueSet.getCompose().getInclude().get(1), URL_SOURCE_1, V_1_0, AD, ALLERGIC_DISORDER);
+    }
+
+    @Test
+    public void testSearchValueSetByUrl_version_all() {
+        collection1.setVersion(V_1_0);
+        Collection collection1V2 = new Collection();
+        populateCollection1(collection1V2);
+        collection1V2.setVersion("v1.1");
+        when(collectionRepository.findByCanonicalUrlAndPublicAccessIn(anyString(), anyList()))
+                .thenReturn(Arrays.asList(collection1, collection1V2));
+        when(sourceRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
+                .thenReturn(source1).thenReturn(source2);
+        when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList())).thenReturn(Collections.singletonList(cs22))
+                .thenReturn(Collections.singletonList(cs11));
+        ValueSetResourceProvider provider = valueSetProvider();
+        Bundle bundle = provider.searchValueSetByUrl(newString(URL_COLLECTION_1), newString("*"), null, requestDetails);
+        assertEquals(2, bundle.getTotal());
+        ValueSet valueSet1 = (ValueSet) bundle.getEntry().get(0).getResource();
+        ValueSet valueSet2 = (ValueSet) bundle.getEntry().get(1).getResource();
+        assertEquals(V_1_0, valueSet1.getVersion());
+        assertEquals("v1.1", valueSet2.getVersion());
+    }
+
+    @Test
+    public void testSearchValueSetByUrl_version_head() {
+        when(collectionRepository.findFirstByCanonicalUrlAndVersionAndPublicAccessIn(anyString(), anyString(), anyList()))
+                .thenReturn(collection1);
+        when(sourceRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
+                .thenReturn(source1).thenReturn(source2);
+        when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList())).thenReturn(Collections.singletonList(cs22))
+                .thenReturn(Collections.singletonList(cs11));
+        collection1.setVersion("HEAD");
+        ValueSetResourceProvider provider = valueSetProvider();
+        Bundle bundle = provider.searchValueSetByUrl(newString(URL_COLLECTION_1), newString(V_1_0), null, requestDetails);
+        assertEquals(0, bundle.getTotal());
+    }
+
+    @Test(expected = ResourceNotFoundException.class)
+    public void testSearchValueSetByUrl_not_found() {
+        ValueSetResourceProvider provider = valueSetProvider();
+        provider.searchValueSetByUrl(newString(URL_COLLECTION_1), null, null, requestDetails);
+    }
+
+    @Test
+    public void testSearchValueSetByOwner() {
+        collection1.setIsLatestVersion(true);
+        when(collectionRepository.findByOrganizationMnemonicAndPublicAccessIn(anyString(), anyList()))
+                .thenReturn(Collections.singletonList(collection1));
+        ValueSetResourceProvider provider = valueSetProvider();
+        Bundle bundle = provider.searchValueSetByOwner(newString("org:OCL"), requestDetails);
+        assertEquals(1, bundle.getTotal());
+        assertBaseValueSet((ValueSet) bundle.getEntryFirstRep().getResource(), URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
+                "USA", TEST, COLLECTION_1_COPYRIGHT_TEXT);
+        assertEquals(0, ((ValueSet) bundle.getEntryFirstRep().getResource()).getCompose().getInclude().size());
+    }
+
+    @Test
+    public void testSearchValueSetByOwner_user() {
+        collection1.setIsLatestVersion(true);
+        when(collectionRepository.findByUserIdUsernameAndPublicAccessIn(anyString(), anyList()))
+                .thenReturn(Collections.singletonList(collection1));
+        ValueSetResourceProvider provider = valueSetProvider();
+        Bundle bundle = provider.searchValueSetByOwner(newString("user:test"), requestDetails);
+        assertEquals(1, bundle.getTotal());
+        assertBaseValueSet((ValueSet) bundle.getEntryFirstRep().getResource(), URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
+                "USA", TEST, COLLECTION_1_COPYRIGHT_TEXT);
+        assertEquals(0, ((ValueSet) bundle.getEntryFirstRep().getResource()).getCompose().getInclude().size());
+    }
+
+    @Test
+    public void testSearchValueSetByOwnerAndId_version_empty() {
+        when(collectionRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndOrganizationMnemonicOrderByCreatedAtDesc(anyString(), anyBoolean(), anyList(), anyString()))
+                .thenReturn(collection1);
+        when(sourceRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
+                .thenReturn(source1).thenReturn(source2);
+        when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList())).thenReturn(Collections.singletonList(cs22))
+                .thenReturn(Collections.singletonList(cs11));
+        ValueSetResourceProvider provider = valueSetProvider();
+        Bundle bundle = provider.searchValueSetByOwnerAndId(newString("org:OCL"), newString("123"), null, null, requestDetails);
+        assertEquals(1, bundle.getTotal());
+        ValueSet valueSet = (ValueSet) bundle.getEntryFirstRep().getResource();
+        assertBaseValueSet(valueSet, URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
+                "USA", TEST, COLLECTION_1_COPYRIGHT_TEXT);
+        assertConceptComponent(0, valueSet.getCompose().getInclude().get(0), URL_SOURCE_2, V_2_0, TM, TUMOR_DISORDER);
+        assertConceptComponent(0, valueSet.getCompose().getInclude().get(1), URL_SOURCE_1, V_1_0, AD, ALLERGIC_DISORDER);
+    }
+
+    @Test
+    public void testSearchValueSetByOwnerAndId_expression_owner_user() {
+        List<CollectionsReference> references = newReferences(
+                "/users/test/sources/source1/v1.0/concepts/"+AD+"/123/",
+                "/users/test/sources/source2/v2.0/concepts/"+TUMOR_DISORDER+"/123/"
+        );
+        collection1.setCollectionsReferences(references);
+        when(collectionRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(anyString(), anyBoolean(), anyList(), anyString()))
+                .thenReturn(collection1);
+        when(sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
+                .thenReturn(source1).thenReturn(source2);
+        when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList())).thenReturn(Collections.singletonList(cs22))
+                .thenReturn(Collections.singletonList(cs11));
+        ValueSetResourceProvider provider = valueSetProvider();
+        Bundle bundle = provider.searchValueSetByOwnerAndId(newString("user:test"), newString("123"), null, null, requestDetails);
+        assertEquals(1, bundle.getTotal());
+        ValueSet valueSet = (ValueSet) bundle.getEntryFirstRep().getResource();
+        assertBaseValueSet(valueSet, URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
+                "USA", TEST, COLLECTION_1_COPYRIGHT_TEXT);
+        assertEquals(2, ((ValueSet) bundle.getEntryFirstRep().getResource()).getCompose().getInclude().size());
+        assertConceptComponent(0, valueSet.getCompose().getInclude().get(0), URL_SOURCE_2, V_2_0, TM, TUMOR_DISORDER);
+        assertConceptComponent(0, valueSet.getCompose().getInclude().get(1), URL_SOURCE_1, V_1_0, AD, ALLERGIC_DISORDER);
+    }
+
+    @Test
+    public void testSearchValueSetByOwnerAndId_expression_source_version_not_found() {
+        List<CollectionsReference> references = newReferences(
+                "/users/test/sources/source1/v1111.0/concepts/"+AD+"/123/",
+                "/users/test/sources/source2/v2222.0/concepts/"+TUMOR_DISORDER+"/123/"
+        );
+        collection1.setCollectionsReferences(references);
+        when(collectionRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(anyString(), anyBoolean(), anyList(), anyString()))
+                .thenReturn(collection1);
+        when(sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
+                .thenReturn(source1).thenReturn(source2);
+        when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList())).thenReturn(Collections.singletonList(cs22))
+                .thenReturn(Collections.singletonList(cs11));
+        ValueSetResourceProvider provider = valueSetProvider();
+        Bundle bundle = provider.searchValueSetByOwnerAndId(newString("user:test"), newString("123"), null, null, requestDetails);
+        assertEquals(1, bundle.getTotal());
+        ValueSet valueSet = (ValueSet) bundle.getEntryFirstRep().getResource();
+        assertBaseValueSet(valueSet, URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
+                "USA", TEST, COLLECTION_1_COPYRIGHT_TEXT);
+        assertEquals(0, ((ValueSet) bundle.getEntryFirstRep().getResource()).getCompose().getInclude().size());
+    }
+
+    @Test
+    public void testSearchValueSetByOwnerAndId_expression_source_not_found() {
+        List<CollectionsReference> references = newReferences(
+                "/users/test/sources/source111/v1.0/concepts/"+AD+"/123/",
+                "/users/test/sources/source222/v2.0/concepts/"+TUMOR_DISORDER+"/123/"
+        );
+        collection1.setCollectionsReferences(references);
+        when(collectionRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(anyString(), anyBoolean(), anyList(), anyString()))
+                .thenReturn(collection1);
+        when(sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
+                .thenReturn(source1).thenReturn(source2);
+        when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList())).thenReturn(Collections.singletonList(cs22))
+                .thenReturn(Collections.singletonList(cs11));
+        ValueSetResourceProvider provider = valueSetProvider();
+        Bundle bundle = provider.searchValueSetByOwnerAndId(newString("user:test"), newString("123"), null, null, requestDetails);
+        assertEquals(1, bundle.getTotal());
+        ValueSet valueSet = (ValueSet) bundle.getEntryFirstRep().getResource();
+        assertBaseValueSet(valueSet, URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
+                "USA", TEST, COLLECTION_1_COPYRIGHT_TEXT);
+        assertEquals(0, ((ValueSet) bundle.getEntryFirstRep().getResource()).getCompose().getInclude().size());
+    }
+
+    @Test
+    public void testSearchValueSetByOwnerAndId_expression_owner_not_found() {
+        List<CollectionsReference> references = newReferences(
+                "/users/OCL/sources/source111/v1.0/concepts/"+AD+"/123/",
+                "/users/OCL/sources/source222/v2.0/concepts/"+TUMOR_DISORDER+"/123/"
+        );
+        collection1.setCollectionsReferences(references);
+        when(collectionRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(anyString(), anyBoolean(), anyList(), anyString()))
+                .thenReturn(collection1);
+        when(sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
+                .thenReturn(source1).thenReturn(source2);
+        when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList())).thenReturn(Collections.singletonList(cs22))
+                .thenReturn(Collections.singletonList(cs11));
+        ValueSetResourceProvider provider = valueSetProvider();
+        Bundle bundle = provider.searchValueSetByOwnerAndId(newString("user:test"), newString("123"), null, null, requestDetails);
+        assertEquals(1, bundle.getTotal());
+        ValueSet valueSet = (ValueSet) bundle.getEntryFirstRep().getResource();
+        assertBaseValueSet(valueSet, URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
+                "USA", TEST, COLLECTION_1_COPYRIGHT_TEXT);
+        assertEquals(0, ((ValueSet) bundle.getEntryFirstRep().getResource()).getCompose().getInclude().size());
+    }
+
+    @Test
+    public void testSearchValueSetByOwnerAndId_expression_concept_not_found() {
+        List<CollectionsReference> references = newReferences(
+                "/users/OCL/sources/source1/v1.0/concepts/"+AD+"/123/",
+                "/users/OCL/sources/source2/v2.0/concepts/"+TUMOR_DISORDER+"/123/"
+        );
+        collection1.setCollectionsReferences(references);
+        when(collectionRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(anyString(), anyBoolean(), anyList(), anyString()))
+                .thenReturn(collection1);
+        when(sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
+                .thenReturn(source1).thenReturn(source2);
+        ValueSetResourceProvider provider = valueSetProvider();
+        Bundle bundle = provider.searchValueSetByOwnerAndId(newString("user:test"), newString("123"), null, null, requestDetails);
+        assertEquals(1, bundle.getTotal());
+        ValueSet valueSet = (ValueSet) bundle.getEntryFirstRep().getResource();
+        assertBaseValueSet(valueSet, URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
+                "USA", TEST, COLLECTION_1_COPYRIGHT_TEXT);
+        assertEquals(0, ((ValueSet) bundle.getEntryFirstRep().getResource()).getCompose().getInclude().size());
+    }
+
+    private void assertConceptComponent(int index, ValueSet.ConceptSetComponent component, String systemUrl, String systemVersion, String code, String display) {
+        assertEquals(systemUrl, component.getSystem());
+        assertEquals(systemVersion, component.getVersion());
+        assertEquals(code, component.getConcept().get(index).getCode());
+        assertEquals(display, component.getConcept().get(index).getDisplay());
+    }
+
+    private void assertBaseValueSet(ValueSet valueSet, String url, String name, String fullName,
+                                    String contactName, String contactEmail, String jurisdictionCode, String purpose,
+                                    String copyright) {
+        assertEquals(url, valueSet.getUrl());
+        assertEquals(name, valueSet.getName());
+        assertEquals(fullName, valueSet.getTitle());
+        assertEquals(contactName, valueSet.getContactFirstRep().getName());
+        assertEquals(contactEmail, valueSet.getContactFirstRep().getTelecomFirstRep().getValue());
+        assertEquals(jurisdictionCode, valueSet.getJurisdictionFirstRep().getCodingFirstRep().getCode());
+        assertEquals(purpose, valueSet.getPurpose());
+        assertEquals(copyright, valueSet.getCopyright());
     }
 
     @Test(expected = UnprocessableEntityException.class)
@@ -113,6 +493,10 @@ public class TestValueSetResourceProvider extends OclFhirTest {
                 "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+VEIN_PROCEDURE+"/123/",
                 "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+LUNG_PROCEDURE+"/123/"
         );
+        source1.setCanonicalUrl(CS_URL);
+        source1.setMnemonic(CS);
+        source2.setCanonicalUrl(CS_URL);
+        source2.setMnemonic(CS);
         ValueSet vs = runExpand(references, Collections.singletonList(cs11), Arrays.asList(cs21, cs22, cs23, cs24), null, 0, 50, "");
         assertEquals(5, vs.getExpansion().getContains().size());
         assertContains(vs, 0, CS_URL, "v2.0", AD, ALLERGIC_DISORDER);
@@ -131,6 +515,10 @@ public class TestValueSetResourceProvider extends OclFhirTest {
                 "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+VEIN_PROCEDURE+"/123/",
                 "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+LUNG_PROCEDURE+"/123/"
         );
+        source1.setCanonicalUrl(CS_URL);
+        source1.setMnemonic(CS);
+        source2.setCanonicalUrl(CS_URL);
+        source2.setMnemonic(CS);
         ValueSet vs = runExpand(references, Collections.singletonList(cs11), Arrays.asList(cs24, cs22, cs23), null, 2, 50, "");
         assertEquals(3, vs.getExpansion().getContains().size());
         assertContains(vs, 0, CS_URL, "v2.0", LUNG_PROCEDURE, LUNG_PROCEDURE_1);

@@ -2,14 +2,17 @@ package org.openconceptlab.fhir.base;
 
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import org.apache.commons.lang3.StringUtils;
+import org.hl7.fhir.r4.hapi.rest.server.ServerCapabilityStatementProvider;
 import org.hl7.fhir.r4.model.*;
 import org.junit.Assert;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.openconceptlab.fhir.converter.CodeSystemConverter;
 import org.openconceptlab.fhir.converter.ValueSetConverter;
 import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.model.Organization;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
+import org.openconceptlab.fhir.provider.OclCapabilityStatementProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
 import org.openconceptlab.fhir.repository.CollectionRepository;
 import org.openconceptlab.fhir.repository.ConceptRepository;
@@ -17,8 +20,13 @@ import org.openconceptlab.fhir.repository.ConceptsSourceRepository;
 import org.openconceptlab.fhir.repository.SourceRepository;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 
+import javax.servlet.http.HttpServletRequest;
+import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 import static org.mockito.Mockito.spy;
@@ -58,18 +66,40 @@ public class OclFhirTest {
     public static final String LUNG_PROCEDURE_1 = "Lung Procedure1";
     public static final String NECK_PROCEDURE_1 = "Neck Procedure1";
 
+    public static final String URL_SOURCE_1 = "http://openconceptlab.org/source1";
+    public static final String SOURCE_1 = "source1";
+    public static final String URI_SOURCE_1 = "/orgs/OCL/sources/source1";
+    public static final String SOURCE_1_NAME = "source1 name";
+    public static final String SOURCE_1_FULL_NAME = "source1 full name";
+    public static final String SOURCE_1_DESCRIPTION = "source1 description";
+    public static final String SOURCE_1_COPYRIGHT_TEXT = "source1 copyright text";
+    public static final String TEST_SOURCE = "Test Source";
+    public static final String EXAMPLE = "example";
+
+    public static final String URL_SOURCE_2 = "http://openconceptlab.org/source2";
+    public static final String SOURCE_2 = "source2";
+    public static final String URI_SOURCE_2 = "/orgs/OCL/sources/source2";
+    public static final String SOURCE_2_NAME = "source2 name";
+    public static final String SOURCE_2_FULL_NAME = "source2 full name";
+    public static final String SOURCE_2_DESCRIPTION = "source2 description";
+    public static final String SOURCE_2_COPYRIGHT_TEXT = "source2 copyright text";
+    public static final String TEST = "TEST";
+    public static final String V_1_0 = "v1.0";
+    public static final String V_2_0 = "v2.0";
+
     protected Source source1;
     protected Source source2;
     protected Source source3;
-    protected ConceptsSource cs11;
-    protected ConceptsSource cs21;
-    protected ConceptsSource cs22;
-    protected ConceptsSource cs23;
-    protected ConceptsSource cs24;
-    protected ConceptsSource cs31;
-    protected ConceptsSource cs32;
-    protected ConceptsSource cs33;
-    protected ConceptsSource cs34;
+
+    protected ConceptsSource cs11 = conceptsSource(concept1(), source1);
+    protected ConceptsSource cs21 = conceptsSource(concept1(), source2);
+    protected ConceptsSource cs22 = conceptsSource(concept2(), source2);
+    protected ConceptsSource cs23 = conceptsSource(concept3(), source2);
+    protected ConceptsSource cs24 = conceptsSource(concept4(), source2);
+    protected ConceptsSource cs31 = conceptsSource(concept1(), source3);
+    protected ConceptsSource cs32 = conceptsSource(concept2(), source3);
+    protected ConceptsSource cs33 = conceptsSource(concept3(), source3);
+    protected ConceptsSource cs34 = conceptsSource(concept4(), source3);
 
     @Mock
     protected SourceRepository sourceRepository;
@@ -88,6 +118,12 @@ public class OclFhirTest {
 
     @Mock
     protected RequestDetails requestDetails;
+
+    @Mock
+    protected HttpServletRequest servletRequest;
+
+    @Spy
+    protected OclCapabilityStatementProvider capabilityStatementProvider;
 
     public void assertTrue(Parameters parameters) {
         Assert.assertTrue(parameters.getParameter("result") != null
@@ -283,6 +319,44 @@ public class OclFhirTest {
 
     protected List<Concept> concepts(Concept... concept) {
         return new ArrayList<>(Arrays.asList(concept));
+    }
+
+    protected void populateSource1(Source source1) {
+        source1.setCanonicalUrl(URL_SOURCE_1);
+        source1.setMnemonic(SOURCE_1);
+        source1.setUri(URI_SOURCE_1);
+        source1.setName(SOURCE_1_NAME);
+        source1.setFullName(SOURCE_1_FULL_NAME);
+        source1.setIsActive(true);
+        source1.setDescription(SOURCE_1_DESCRIPTION);
+        source1.setContact("[{\"name\": \"Jon Doe 1\", \"telecom\": [{\"use\": \"work\", \"rank\": 1, \"value\": \"jondoe1@gmail.com\", \"period\": {\"end\": \"2025-10-29T10:26:15-04:00\", \"start\": \"2020-10-29T10:26:15-04:00\"}, \"system\": \"email\"}]}]");
+        source1.setJurisdiction("[{\"coding\": [{\"code\": \"USA\", \"system\": \"http://unstats.un.org/unsd/methods/m49/m49.htm\", \"display\": \"United States of America\"}]}]");
+        source1.setPublisher(TEST);
+        source1.setPurpose(TEST_SOURCE);
+        source1.setCopyright(SOURCE_1_COPYRIGHT_TEXT);
+        source1.setContentType(EXAMPLE);
+        Date date1 = Date.from(LocalDate.of(2020, 12, 1).atStartOfDay(ZoneId.systemDefault()).toInstant());
+        source1.setRevisionDate(date1);
+        source1.setCreatedAt(new Timestamp(new Date().getTime()));
+    }
+
+    protected void populateSource2(Source source2) {
+        source2.setCanonicalUrl(URL_SOURCE_2);
+        source2.setMnemonic(SOURCE_2);
+        source2.setUri(URI_SOURCE_2);
+        source2.setName(SOURCE_2_NAME);
+        source2.setFullName(SOURCE_2_FULL_NAME);
+        source2.setIsActive(true);
+        source2.setDescription(SOURCE_2_DESCRIPTION);
+        source2.setContact("[{\"name\": \"Jon Doe 2\", \"telecom\": [{\"use\": \"work\", \"rank\": 1, \"value\": \"jondoe2@gmail.com\", \"period\": {\"end\": \"2022-10-29T10:26:15-04:00\", \"start\": \"2021-10-29T10:26:15-04:00\"}, \"system\": \"email\"}]}]");
+        source2.setJurisdiction("[{\"coding\": [{\"code\": \"ETH\", \"system\": \"http://unstats.un.org/unsd/methods/m49/m49.htm\", \"display\": \"Ethiopia\"}]}]");
+        source2.setPublisher("TEST");
+        source2.setPurpose(TEST_SOURCE);
+        source2.setCopyright(SOURCE_2_COPYRIGHT_TEXT);
+        source2.setContentType(EXAMPLE);
+        Date date2 = Date.from(LocalDate.of(2020, 12, 2).atStartOfDay(ZoneId.systemDefault()).toInstant());
+        source2.setRevisionDate(date2);
+        source1.setCreatedAt(new Timestamp(new Date().getTime()));
     }
 
 }
