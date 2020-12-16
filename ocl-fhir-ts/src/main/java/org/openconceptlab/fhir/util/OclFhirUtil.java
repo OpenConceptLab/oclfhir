@@ -420,12 +420,14 @@ public class OclFhirUtil {
 
         if (resource instanceof CodeSystem) {
             CodeSystem cs = (CodeSystem) getFhirContext().newJsonParser().parseResource(gson.toJson(object));
-            ((CodeSystem) resource).setIdentifier(cs.getIdentifier());
+            if (!cs.getIdentifier().isEmpty())
+                ((CodeSystem) resource).setIdentifier(cs.getIdentifier());
             resource.setContact(cs.getContact());
             resource.setJurisdiction(cs.getJurisdiction());
         } else if (resource instanceof ValueSet) {
             ValueSet vs = (ValueSet) getFhirContext().newJsonParser().parseResource(gson.toJson(object));
-            ((ValueSet) resource).setIdentifier(vs.getIdentifier());
+            if (!vs.getIdentifier().isEmpty())
+                ((ValueSet) resource).setIdentifier(vs.getIdentifier());
             resource.setContact(vs.getContact());
             resource.setJurisdiction(vs.getJurisdiction());
         }

@@ -101,7 +101,7 @@ public class CodeSystemConverter {
 			codeSystem.setPublisher(source.getPublisher());
 		// override default identifier with database value
 		// identifier, contact, jurisdiction
-		addJsonFields(codeSystem, source.getIdentifier(), source.getContact(), source.getJurisdiction());
+		addJsonFields(codeSystem, isValid(source.getIdentifier()) && !"{}".equals(source.getIdentifier()) ? source.getIdentifier() : "", source.getContact(), source.getJurisdiction());
 		// purpose
 		if (isValid(source.getPurpose()))
 			codeSystem.setPurpose(source.getPurpose());

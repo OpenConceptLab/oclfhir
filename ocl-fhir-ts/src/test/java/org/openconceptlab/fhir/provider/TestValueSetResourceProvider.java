@@ -117,9 +117,8 @@ public class TestValueSetResourceProvider extends OclFhirTest {
 
     @Test
     public void testSearchValueSet_return_1() {
-        collection1.setIsLatestVersion(true);
-        collection2.setIsLatestVersion(false);
-        when(collectionRepository.findByPublicAccessIn(anyList())).thenReturn(Arrays.asList(collection1, collection2));
+        collection1.setReleased(true);
+        when(collectionRepository.findAllMostRecentReleased(anyList())).thenReturn(Collections.singletonList(collection1));
         ValueSetResourceProvider provider = valueSetProvider();
         Bundle bundle = provider.searchValueSets(requestDetails);
         assertEquals(1, bundle.getTotal());
@@ -131,9 +130,9 @@ public class TestValueSetResourceProvider extends OclFhirTest {
 
     @Test
     public void testSearchValueSet_return_2() {
-        collection1.setIsLatestVersion(true);
-        collection2.setIsLatestVersion(true);
-        when(collectionRepository.findByPublicAccessIn(anyList())).thenReturn(Arrays.asList(collection1, collection2));
+        collection1.setReleased(true);
+        collection2.setReleased(true);
+        when(collectionRepository.findAllMostRecentReleased(anyList())).thenReturn(Arrays.asList(collection1, collection2));
         ValueSetResourceProvider provider = valueSetProvider();
         Bundle bundle = provider.searchValueSets(requestDetails);
         assertEquals(2, bundle.getTotal());
@@ -245,7 +244,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
 
     @Test
     public void testSearchValueSetByOwner() {
-        collection1.setIsLatestVersion(true);
+        collection1.setReleased(true);
         when(collectionRepository.findByOrganizationMnemonicAndPublicAccessIn(anyString(), anyList()))
                 .thenReturn(Collections.singletonList(collection1));
         ValueSetResourceProvider provider = valueSetProvider();
@@ -258,7 +257,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
 
     @Test
     public void testSearchValueSetByOwner_user() {
-        collection1.setIsLatestVersion(true);
+        collection1.setReleased(true);
         when(collectionRepository.findByUserIdUsernameAndPublicAccessIn(anyString(), anyList()))
                 .thenReturn(Collections.singletonList(collection1));
         ValueSetResourceProvider provider = valueSetProvider();

@@ -5,10 +5,13 @@ import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.converter.ValueSetConverter;
 import org.openconceptlab.fhir.model.Collection;
+import org.openconceptlab.fhir.model.Source;
 import org.openconceptlab.fhir.repository.CollectionRepository;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
@@ -17,6 +20,7 @@ import org.springframework.stereotype.Component;
 
 import javax.transaction.Transactional;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -188,8 +192,7 @@ public class ValueSetResourceProvider implements IResourceProvider {
     }
 
     private List<Collection> getCollections(List<String> access) {
-        return collectionRepository.findByPublicAccessIn(access).parallelStream().filter(Collection::getIsLatestVersion)
-                .collect(Collectors.toList());
+        return collectionRepository.findAllMostRecentReleased(access);
     }
 
     private List<Collection> getCollectionByUrl(StringType url, StringType version, List<String> access) {
@@ -238,7 +241,13 @@ public class ValueSetResourceProvider implements IResourceProvider {
         } else {
             collections.addAll(collectionRepository.findByUserIdUsernameAndPublicAccessIn(value, access));
         }
-        return collections.parallelStream().filter(Collection::getIsLatestVersion).collect(Collectors.toList());
+        Multimap<String, Collection> map = ArrayListMultimap.create();
+        collections.forEach(s -> map.put(s.getMnemonic(), s));
+        List<Collection> filtered = new ArrayList<>();
+        map.asMap().forEach((k,v) -> {
+            v.stream().filter(s -> (s.getReleased() != null && s.getReleased())).max(Comparator.comparing(Collection::getCreatedAt)).stream().findFirst().ifPresent(filtered::add);
+        });
+        return filtered;
     }
 
     private List<Collection> getCollectionByOwnerAndId(StringType id, StringType owner, StringType version, List<String> access) {

@@ -85,7 +85,8 @@ public class ValueSetConverter {
             valueSet.setPublisher(collection.getPublisher());
         // override default identifier with database value
         // identifier, contact, jurisdiction
-        addJsonFields(valueSet, collection.getIdentifier(), collection.getContact(), collection.getJurisdiction());
+        addJsonFields(valueSet, isValid(collection.getIdentifier()) && !"{}".equals(collection.getIdentifier())
+                ? collection.getIdentifier() : "", collection.getContact(), collection.getJurisdiction());
         // purpose
         if (isValid(collection.getPurpose()))
             valueSet.setPurpose(collection.getPurpose());

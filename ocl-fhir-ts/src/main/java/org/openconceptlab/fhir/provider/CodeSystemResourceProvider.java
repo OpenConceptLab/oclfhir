@@ -5,6 +5,8 @@ import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.Multimap;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.converter.CodeSystemConverter;
@@ -181,8 +183,7 @@ public class CodeSystemResourceProvider implements IResourceProvider {
     }
 
     private List<Source> getSources(List<String> access) {
-        return sourceRepository.findByPublicAccessIn(access).parallelStream().filter(Source::getIsLatestVersion)
-                .collect(Collectors.toList());
+        return sourceRepository.findAllMostRecentReleased(access);
     }
 
     private List<Source> getSourceByUrl(StringType url, StringType version, List<String> access) {
@@ -218,7 +219,13 @@ public class CodeSystemResourceProvider implements IResourceProvider {
         } else {
             sources.addAll(sourceRepository.findByUserIdUsernameAndPublicAccessIn(value, access));
         }
-        return sources.parallelStream().filter(Source::getIsLatestVersion).collect(Collectors.toList());
+        Multimap<String, Source> map = ArrayListMultimap.create();
+        sources.forEach(s -> map.put(s.getMnemonic(), s));
+        List<Source> filtered = new ArrayList<>();
+        map.asMap().forEach((k,v) -> {
+            v.stream().filter(s -> (s.getReleased() != null && s.getReleased())).max(Comparator.comparing(Source::getCreatedAt)).stream().findFirst().ifPresent(filtered::add);
+        });
+        return filtered;
     }
 
     private List<Source> getSourceByOwnerAndIdAndVersion(StringType id, StringType owner, StringType version, List<String> access) {

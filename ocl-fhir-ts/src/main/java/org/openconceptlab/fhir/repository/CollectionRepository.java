@@ -1,6 +1,9 @@
 package org.openconceptlab.fhir.repository;
 
 import org.openconceptlab.fhir.model.Collection;
+import org.openconceptlab.fhir.model.Source;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -44,5 +47,14 @@ public interface CollectionRepository extends BaseOclRepository<Collection>{
                                                                                                       String orgId, List<String> publicAccess);
 
     Collection findFirstByMnemonicAndReleasedAndUserIdUsernameAndPublicAccessInOrderByCreatedAtDesc(String collectionId, boolean released, String username, List<String> publicAccess);
+
+    @Query(value =
+            "select * from collections s1 \n" +
+                    "inner join (select s2.mnemonic as mnemonic ,max(s2.created_at) as created_at from collections s2 where s2.released = true group by s2.mnemonic) s3\n" +
+                    "on s3.mnemonic = s1.mnemonic and s3.created_at = s1.created_at \n" +
+                    " where s1.public_access in :publicAccess " +
+                    "order by s1.mnemonic ",
+            nativeQuery = true)
+    List<Collection> findAllMostRecentReleased(@Param("publicAccess") List<String> publicAccess);
 
 }

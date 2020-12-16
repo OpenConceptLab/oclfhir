@@ -67,10 +67,10 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
 
     @Test
     public void testSearchCodeSystem_1_return_1() {
-        source1.setIsLatestVersion(true);
-        source2.setIsLatestVersion(false);
-        source3.setIsLatestVersion(false);
-        when(sourceRepository.findByPublicAccessIn(anyList())).thenReturn(Arrays.asList(source1, source2, source3));
+        source1.setReleased(true);
+        source2.setReleased(false);
+        source3.setReleased(false);
+        when(sourceRepository.findAllMostRecentReleased(anyList())).thenReturn(Arrays.asList(source1));
         when(conceptRepository.findConceptCountInSource(anyLong())).thenReturn(1);
         CodeSystemResourceProvider provider = codeSystemProvider();
         Bundle bundle = provider.searchCodeSystems(requestDetails);
@@ -82,10 +82,10 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
 
     @Test
     public void testSearchCodeSystem_2_return_2() {
-        source1.setIsLatestVersion(true);
-        source2.setIsLatestVersion(true);
-        source3.setIsLatestVersion(false);
-        when(sourceRepository.findByPublicAccessIn(anyList())).thenReturn(Arrays.asList(source1, source2, source3));
+        source1.setReleased(true);
+        source2.setReleased(true);
+        source3.setReleased(false);
+        when(sourceRepository.findAllMostRecentReleased(anyList())).thenReturn(Arrays.asList(source1, source2));
         when(conceptRepository.findConceptCountInSource(anyLong())).thenReturn(1);
         CodeSystemResourceProvider provider = codeSystemProvider();
         Bundle bundle = provider.searchCodeSystems(requestDetails);
@@ -102,7 +102,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
     public void testSearchCodeSystem_contentType_empty() {
         source1.setIsLatestVersion(true);
         source1.setContentType("");
-        when(sourceRepository.findByPublicAccessIn(anyList())).thenReturn(Arrays.asList(source1));
+        when(sourceRepository.findAllMostRecentReleased(anyList())).thenReturn(Arrays.asList(source1));
         when(conceptRepository.findConceptCountInSource(anyLong())).thenReturn(1);
         CodeSystemResourceProvider provider = codeSystemProvider();
         Bundle bundle = provider.searchCodeSystems(requestDetails);
@@ -116,7 +116,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
     public void testSearchCodeSystem_contentType_external() {
         source1.setIsLatestVersion(true);
         source1.setContentType("TEST");
-        when(sourceRepository.findByPublicAccessIn(anyList())).thenReturn(Collections.singletonList(source1));
+        when(sourceRepository.findAllMostRecentReleased(anyList())).thenReturn(Collections.singletonList(source1));
         when(conceptRepository.findConceptCountInSource(anyLong())).thenReturn(1);
         CodeSystemResourceProvider provider = codeSystemProvider();
         Bundle bundle = provider.searchCodeSystems(requestDetails);
@@ -130,7 +130,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
     public void testSearchCodeSystem_contentType_null() {
         source1.setIsLatestVersion(true);
         source1.setContentType(null);
-        when(sourceRepository.findByPublicAccessIn(anyList())).thenReturn(Collections.singletonList(source1));
+        when(sourceRepository.findAllMostRecentReleased(anyList())).thenReturn(Collections.singletonList(source1));
         when(conceptRepository.findConceptCountInSource(anyLong())).thenReturn(1);
         CodeSystemResourceProvider provider = codeSystemProvider();
         Bundle bundle = provider.searchCodeSystems(requestDetails);
@@ -237,8 +237,8 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
 
     @Test
     public void testSearchCodeSystemByOwner() {
-        source1.setIsLatestVersion(true);
-        source2.setIsLatestVersion(true);
+        source1.setReleased(true);
+        source2.setReleased(true);
         when(sourceRepository.findByOrganizationMnemonicAndPublicAccessIn(anyString(), anyList())).thenReturn(Arrays.asList(source1, source2));
         CodeSystemResourceProvider provider = codeSystemProvider();
         Bundle bundle = provider.searchCodeSystemByOwner(newString("org:OCL"), requestDetails);
@@ -253,8 +253,8 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
 
     @Test
     public void testSearchCodeSystemByOwner_user() {
-        source1.setIsLatestVersion(true);
-        source2.setIsLatestVersion(true);
+        source1.setReleased(true);
+        source2.setReleased(true);
         when(sourceRepository.findByUserIdUsernameAndPublicAccessIn(anyString(), anyList())).thenReturn(Arrays.asList(source1, source2));
         CodeSystemResourceProvider provider = codeSystemProvider();
         Bundle bundle = provider.searchCodeSystemByOwner(newString("user:test"), requestDetails);

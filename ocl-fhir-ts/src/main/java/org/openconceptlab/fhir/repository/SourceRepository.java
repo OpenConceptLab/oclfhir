@@ -54,4 +54,13 @@ public interface SourceRepository extends BaseOclRepository<Source> {
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(value = "update sources set mnemonic = :id where id = :id", nativeQuery = true)
     void updateMnemonic(@Param("id") Long id);
+
+    @Query(value =
+            "select * from sources s1 \n" +
+                    "inner join (select s2.mnemonic as mnemonic ,max(s2.created_at) as created_at from sources s2 where s2.released = true group by s2.mnemonic) s3\n" +
+                    "on s3.mnemonic = s1.mnemonic and s3.created_at = s1.created_at \n" +
+                    " where s1.public_access in :publicAccess " +
+                    "order by s1.mnemonic ",
+            nativeQuery = true)
+    List<Source> findAllMostRecentReleased(@Param("publicAccess") List<String> publicAccess);
 }
