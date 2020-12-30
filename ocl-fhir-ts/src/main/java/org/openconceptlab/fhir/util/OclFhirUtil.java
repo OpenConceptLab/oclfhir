@@ -3,8 +3,7 @@ package org.openconceptlab.fhir.util;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
-import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
-import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import ca.uhn.fhir.rest.server.exceptions.*;
 import com.google.gson.*;
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -13,9 +12,7 @@ import org.apache.commons.logging.LogFactory;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.model.*;
-import org.openconceptlab.fhir.repository.ConceptRepository;
-import org.openconceptlab.fhir.repository.ConceptsSourceRepository;
-import org.openconceptlab.fhir.repository.SourceRepository;
+import org.openconceptlab.fhir.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
@@ -57,12 +54,9 @@ public class OclFhirUtil {
     }
 
     private String serverBase = "";
-    IParser parser = context.newJsonParser();
+    public static IParser parser = context.newJsonParser();
     public static JsonParser jsonParser = new JsonParser();
     public static Gson gson = new Gson();
-    public static final List<String> allowedFilterOperators = Arrays.asList(CodeSystem.FilterOperator.ISA.toCode(),
-            CodeSystem.FilterOperator.ISNOTA.toCode(), CodeSystem.FilterOperator.IN.toCode(),
-            CodeSystem.FilterOperator.NOTIN.toCode());
 
     @PostConstruct
     private void init() {
@@ -77,7 +71,7 @@ public class OclFhirUtil {
         Bundle bundle = new Bundle();
         bundle.setType(Bundle.BundleType.SEARCHSET);
         bundle.setTotal(resource.size());
-        resource.stream().forEach(r -> {
+        resource.forEach(r -> {
             Bundle.BundleEntryComponent component = new Bundle.BundleEntryComponent();
             component.setResource(r);
             //component.setFullUrl(getCompleteUrl(fhirBase, requestPath, r.getId()));
@@ -217,46 +211,6 @@ public class OclFhirUtil {
         return type != null && !type.isEmpty();
     }
 
-    public static JsonObject parseExtras(String extras) {
-        return jsonParser.parse(extras).getAsJsonObject();
-    }
-
-    public static List<Identifier> getIdentifiers(JsonArray jsonArray) {
-        List<Identifier> identifiers = new ArrayList<>();
-        if (jsonArray != null && jsonArray.isJsonArray()) {
-            for(JsonElement je : jsonArray) {
-                JsonObject identifier = je.getAsJsonObject();
-                if(identifier.get(SYSTEM) != null && identifier.get(VALUE) != null) {
-                    Identifier i = new Identifier();
-                    i.setSystem(identifier.get(SYSTEM).getAsString());
-                    i.setValue(identifier.get(VALUE).getAsString());
-                    JsonElement use = identifier.get(USE);
-                    if(use != null && Identifier.IdentifierUse.fromCode(use.getAsString()) != null)
-                        i.setUse(Identifier.IdentifierUse.fromCode(use.getAsString()));
-                    identifiers.add(i);
-                }
-            }
-        }
-        return identifiers;
-    }
-
-    public static boolean isValidElement(JsonElement element) {
-        return element != null && element.getAsString() != null;
-    }
-
-    public static void validatePublisher(String publisher) {
-        if (!isValidPublisher(publisher)) {
-            throw new InvalidRequestException("", getError(OperationOutcome.IssueType.INVALID,
-                    String.format("Invalid publisher '%s' provided. Correct format is 'user:<username>' or 'org:<organizationId>'", publisher)));
-        }
-    }
-
-    public static boolean isValidPublisher(final String publisher) {
-        return isValid(publisher)
-                && publisher.matches(PUBLISHER_REGEX)
-                && publisher.split(SEP).length >= 2;
-    }
-
     public static String getOwnerType(String owner) {
         return owner.split(SEP)[0];
     }
@@ -277,10 +231,10 @@ public class OclFhirUtil {
         if (!isValid(value))
             return Optional.empty();
         Identifier identifier = new Identifier();
-        identifier.setSystem("http://fhir.openconceptlab.org");
-        identifier.setValue(value.replace("sources", "CodeSystem").replace("collections", "ValueSet"));
+        identifier.setSystem(OCL_SYSTEM);
+        identifier.setValue(value.replace("sources", CODESYSTEM).replace("collections", VALUESET));
         identifier.getType().setText("Accession ID");
-        identifier.getType().getCodingFirstRep().setSystem("http://hl7.org/fhir/v2/0203").setCode("ACSN").setDisplay("Accession ID");
+        identifier.getType().getCodingFirstRep().setSystem(ACSN_SYSTEM).setCode(ACSN).setDisplay("Accession ID");
         return isValid(value) ? Optional.of(identifier) : Optional.empty();
     }
 
@@ -298,13 +252,15 @@ public class OclFhirUtil {
         });
     }
 
-    public static void addStatus(MetadataResource resource, boolean active, boolean retired, boolean released) {
-        if(active || released) {
-            resource.setStatus(Enumerations.PublicationStatus.ACTIVE);
-        } else if(retired) {
+    public static void addStatus(MetadataResource resource, boolean retired, boolean released) {
+        if (retired) {
             resource.setStatus(Enumerations.PublicationStatus.RETIRED);
+            return;
+        }
+        if (released) {
+            resource.setStatus(Enumerations.PublicationStatus.ACTIVE);
         } else {
-            resource.setStatus(Enumerations.PublicationStatus.UNKNOWN);
+            resource.setStatus(Enumerations.PublicationStatus.DRAFT);
         }
     }
 
@@ -366,6 +322,10 @@ public class OclFhirUtil {
 
     public static ResponseEntity<String> badRequest() {
         return ResponseEntity.badRequest().body("{\"exception\":\"Could not process the request.\"}");
+    }
+
+    public static ResponseEntity<String> badRequest(String msg) {
+        return ResponseEntity.badRequest().body("{\"exception\":\"" + msg + "\"}");
     }
 
     public static StringType newStringType(UriType type) {
@@ -439,7 +399,7 @@ public class OclFhirUtil {
                 JsonArray array = jsonArray(value);
                 object.add(property, array);
             } catch (Exception e) {
-                log.warn(String.format("Error parsing {}.{} ", resourceType, property) + e.getMessage(), e);
+                log.warn(String.format("Error parsing %s.%s ", resourceType, property) + e.getMessage(), e);
             }
         }
     }
@@ -454,4 +414,38 @@ public class OclFhirUtil {
         }
         return ar;
     }
+
+    public static String formatExpression(String expression) {
+        String uri = expression.trim();
+        if (!uri.startsWith(FW_SLASH)) uri = FW_SLASH + uri;
+        if (!uri.endsWith(FW_SLASH)) uri = uri + FW_SLASH;
+        return uri;
+    }
+
+    public static String getAccessionIdentifier(CodeSystem codeSystem) {
+        if (codeSystem != null) {
+            Optional<Identifier> hasIdentifier = hasAccessionIdentifier(codeSystem.getIdentifier());
+            if (hasIdentifier.isPresent())
+                return hasIdentifier.get().getValue().trim();
+        }
+        return EMPTY;
+    }
+
+    public static Optional<Identifier> hasAccessionIdentifier(List<Identifier> identifiers) {
+        for (Identifier identifier : identifiers) {
+            Optional<Coding> coding = identifier.getType().getCoding().stream()
+                    .filter(t -> ACSN_SYSTEM.equals(t.getSystem()))
+                    .filter(t -> ACSN.equals(t.getCode()))
+                    .findAny();
+            if (coding.isPresent()) {
+                if (isValid(identifier.getSystem())
+                        && OCL_SYSTEM.equals(identifier.getSystem())
+                        && isValid(identifier.getValue())) {
+                    return Optional.of(identifier);
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
 }

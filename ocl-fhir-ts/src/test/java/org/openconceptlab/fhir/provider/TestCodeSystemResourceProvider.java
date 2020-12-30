@@ -1,34 +1,46 @@
 package org.openconceptlab.fhir.provider;
 
+import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import ca.uhn.fhir.rest.server.exceptions.ResourceVersionConflictException;
 import com.openpojo.reflection.impl.PojoClassFactory;
 import com.openpojo.validation.Validator;
 import com.openpojo.validation.ValidatorBuilder;
 import com.openpojo.validation.test.impl.GetterTester;
 import com.openpojo.validation.test.impl.SetterTester;
-import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.CodeSystem;
-import org.hl7.fhir.r4.model.Coding;
-import org.hl7.fhir.r4.model.Parameters;
+import org.aspectj.apache.bcel.classfile.Code;
+import org.hl7.fhir.r4.model.*;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.MockitoAnnotations;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
+import org.mockito.verification.VerificationMode;
 import org.openconceptlab.fhir.base.OclFhirTest;
 import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.model.Collection;
+import org.openconceptlab.fhir.model.Organization;
+import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 
 import static org.mockito.Mockito.*;
 import static org.junit.Assert.*;
+import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.*;
 
 public class TestCodeSystemResourceProvider extends OclFhirTest {
+
+    private static final String test_user = "testuser";
 
     @Before
     public void setUpBefore() {
@@ -539,6 +551,211 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         validateAccessors(UserProfilesGroup.class);
         validateAccessors(UserProfilesOrganization.class);
         validateAccessors(UserProfilesUserPermission.class);
+    }
+
+    @Test(expected = InvalidRequestException.class)
+    public void testCreateCodeSystem_null() {
+        CodeSystemResourceProvider provider = codeSystemProvider();
+        provider.createCodeSystem(null, requestDetails);
+    }
+
+    @Test(expected = InvalidRequestException.class)
+    public void testCreateCodeSystem_accessionId_null() {
+        CodeSystemResourceProvider provider = codeSystemProvider();
+        CodeSystem codeSystem = codeSystem();
+        codeSystem.setIdentifier(null);
+        provider.createCodeSystem(codeSystem, requestDetails);
+    }
+
+    @Test(expected = InvalidRequestException.class)
+    public void testCreateCodeSystem_url_null() {
+        CodeSystemResourceProvider provider = codeSystemProvider();
+        CodeSystem codeSystem = codeSystem();
+        codeSystem.setUrl(null);
+        provider.createCodeSystem(codeSystem, requestDetails);
+    }
+
+    @Test(expected = InvalidRequestException.class)
+    public void testCreateCodeSystem_invalid_org() {
+        CodeSystemResourceProvider provider = codeSystemProvider();
+        CodeSystem codeSystem = codeSystem();
+        when(organizationRepository.findByMnemonic(anyString())).thenReturn(null);
+        provider.createCodeSystem(codeSystem, requestDetails);
+        verify(organizationRepository, times(1)).findByMnemonic(anyString());
+    }
+
+    @Test(expected = InvalidRequestException.class)
+    public void testCreateCodeSystem_invalid_user() {
+        CodeSystemResourceProvider provider = codeSystemProvider();
+        CodeSystem codeSystem = codeSystem();
+        codeSystem.getIdentifierFirstRep().setValue("/users/testuser/CodeSystem/testsource/2.0");
+        when(userRepository.findByUsername(anyString())).thenReturn(null);
+        provider.createCodeSystem(codeSystem, requestDetails);
+        verify(userRepository, times(1)).findByUsername(anyString());
+    }
+
+    @Test(expected = AuthenticationException.class)
+    public void testCreateCodeSystem_token_null() {
+        CodeSystemResourceProvider provider = codeSystemProvider();
+        CodeSystem codeSystem = codeSystem();
+        when(requestDetails.getHeader(anyString())).thenReturn(null);
+        when(organizationRepository.findByMnemonic(anyString())).thenReturn(newOrganization());
+        provider.createCodeSystem(codeSystem, requestDetails);
+        verify(requestDetails, times(1)).getHeader(anyString());
+        verify(organizationRepository, times(1)).findByMnemonic(anyString());
+    }
+
+    @Test(expected = AuthenticationException.class)
+    public void testCreateCodeSystem_invalid_token() {
+        CodeSystemResourceProvider provider = codeSystemProvider();
+        CodeSystem codeSystem = codeSystem();
+        when(requestDetails.getHeader(anyString())).thenReturn("Token  678423578911230985");
+        when(organizationRepository.findByMnemonic(anyString())).thenReturn(newOrganization());
+        when(authtokenRepository.findByKey(anyString())).thenReturn(null);
+        provider.createCodeSystem(codeSystem, requestDetails);
+        verify(requestDetails, times(1)).getHeader(anyString());
+        verify(organizationRepository, times(1)).findByMnemonic(anyString());
+        verify(authtokenRepository, times(1)).findByKey(anyString());
+    }
+
+    @Test(expected = AuthenticationException.class)
+    public void testCreateCodeSystem_user_not_org_member_invalid_user() {
+        CodeSystemResourceProvider provider = codeSystemProvider();
+        CodeSystem codeSystem = codeSystem();
+        when(requestDetails.getHeader(anyString())).thenReturn("Token  12345");
+        when(organizationRepository.findByMnemonic(anyString())).thenReturn(newOrganization());
+        when(authtokenRepository.findByKey(anyString())).thenReturn(newToken(test_user));
+        when(userProfilesOrganizationRepository.findByOrganizationMnemonic(anyString()))
+                .thenReturn(Collections.singletonList(newUserOrg("otheruser")));
+        provider.createCodeSystem(codeSystem, requestDetails);
+        verify(requestDetails, times(1)).getHeader(anyString());
+        verify(organizationRepository, times(1)).findByMnemonic(anyString());
+        verify(authtokenRepository, times(1)).findByKey(anyString());
+        verify(userProfilesOrganizationRepository, times(1)).findByOrganizationMnemonic(anyString());
+    }
+
+    @Test(expected = ResourceVersionConflictException.class)
+    public void testCreateCodeSystem_codesystem_id_exists() {
+        CodeSystemResourceProvider provider = codeSystemProvider();
+        CodeSystem codeSystem = codeSystem();
+        when(requestDetails.getHeader(anyString())).thenReturn("Token  12345");
+        when(organizationRepository.findByMnemonic(anyString())).thenReturn(newOrganization());
+        when(authtokenRepository.findByKey(anyString())).thenReturn(newToken(test_user));
+        when(userProfilesOrganizationRepository.findByOrganizationMnemonic(anyString()))
+                .thenReturn(Collections.singletonList(newUserOrg(test_user)));
+        when(sourceRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonic(anyString(), anyString(), anyString()))
+                .thenReturn(new Source());
+        provider.createCodeSystem(codeSystem, requestDetails);
+        verify(requestDetails, times(1)).getHeader(anyString());
+        verify(organizationRepository, times(1)).findByMnemonic(anyString());
+        verify(authtokenRepository, times(1)).findByKey(anyString());
+        verify(userProfilesOrganizationRepository, times(1)).findByOrganizationMnemonic(anyString());
+        verify(sourceRepository, times(1)).findFirstByMnemonicAndVersionAndOrganizationMnemonic(anyString(), anyString(), anyString());
+    }
+
+    @Test(expected = ResourceVersionConflictException.class)
+    public void testCreateCodeSystem_codesystem_url_exists() {
+        CodeSystemResourceProvider provider = codeSystemProvider();
+        CodeSystem codeSystem = codeSystem();
+        when(requestDetails.getHeader(anyString())).thenReturn("Token  12345");
+        when(organizationRepository.findByMnemonic(anyString())).thenReturn(newOrganization());
+        when(authtokenRepository.findByKey(anyString())).thenReturn(newToken(test_user));
+        when(userProfilesOrganizationRepository.findByOrganizationMnemonic(anyString()))
+                .thenReturn(Collections.singletonList(newUserOrg(test_user)));
+        when(sourceRepository.findFirstByCanonicalUrlAndVersionAndOrganizationMnemonic(anyString(), anyString(), anyString()))
+                .thenReturn(new Source());
+        provider.createCodeSystem(codeSystem, requestDetails);
+        verify(requestDetails, times(1)).getHeader(anyString());
+        verify(organizationRepository, times(1)).findByMnemonic(anyString());
+        verify(authtokenRepository, times(1)).findByKey(anyString());
+        verify(userProfilesOrganizationRepository, times(1)).findByOrganizationMnemonic(anyString());
+        verify(sourceRepository, times(1)).findFirstByCanonicalUrlAndVersionAndOrganizationMnemonic(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    public void testCreateCodeSystem() {
+        CodeSystemResourceProvider provider = codeSystemProvider();
+        CodeSystem codeSystem = codeSystem();
+        when(requestDetails.getHeader(anyString())).thenReturn("Token  12345");
+        when(organizationRepository.findByMnemonic(anyString())).thenReturn(newOrganization());
+        when(authtokenRepository.findByKey(anyString())).thenReturn(newToken(test_user));
+        when(userProfilesOrganizationRepository.findByOrganizationMnemonic(anyString()))
+                .thenReturn(Collections.singletonList(newUserOrg(test_user)));
+        doAnswer(new Answer() {
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+                Object[] args = invocation.getArguments();
+                ((Source)args[0]).setId(123L);
+                return args[0];
+            }
+        }).when(sourceRepository).saveAndFlush(any(Source.class));
+
+        when(insertConcept.executeAndReturnKeyHolder(anyMap())).thenReturn(newKey());
+        when(insertLocalizedText.executeAndReturnKeyHolder(anyMap())).thenReturn(newKey(), newKey());
+
+        doAnswer(new Answer() {
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+                return null;
+            }
+        }).when(jdbcTemplate).batchUpdate(anyString(), any(BatchPreparedStatementSetter.class));
+
+        provider.createCodeSystem(codeSystem, requestDetails);
+        verify(requestDetails, times(1)).getHeader(anyString());
+        verify(organizationRepository, times(1)).findByMnemonic(anyString());
+        verify(authtokenRepository, times(1)).findByKey(anyString());
+        verify(userProfilesOrganizationRepository, times(1)).findByOrganizationMnemonic(anyString());
+        verify(sourceRepository, times(1)).saveAndFlush(any(Source.class));
+        verify(insertConcept, times(1)).executeAndReturnKeyHolder(anyMap());
+        verify(insertLocalizedText, times(2)).executeAndReturnKeyHolder(anyMap());
+    }
+
+    private KeyHolder newKey() {
+        List<Map<String, Object>> list = new ArrayList<>();
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", 45);
+        list.add(map);
+        return new GeneratedKeyHolder(list);
+    }
+
+    private CodeSystem codeSystem() {
+        CodeSystem system = new CodeSystem();
+        system.setUrl(URL_SOURCE_1);
+        Identifier identifier = system.getIdentifierFirstRep();
+        identifier.getType().getCodingFirstRep().setSystem(ACSN_SYSTEM).setCode(ACSN);
+        identifier.setSystem(OCL_SYSTEM);
+        identifier.setValue("/orgs/OCL/CodeSystem/testsource/2.0");
+        system.setName("Test Code System");
+        system.setStatus(Enumerations.PublicationStatus.DRAFT);
+        system.setContent(CodeSystem.CodeSystemContentMode.EXAMPLE);
+        system.setCopyright("Test copy right");
+        system.setPurpose("Test purpose");
+        system.setPublisher("Test publisher");
+        system.setDescription("Test description");
+        system.setTitle("Test title");
+        system.setDate(date1);
+
+        system.getContactFirstRep().setName("Jon Doe").getTelecomFirstRep().setSystem(ContactPoint.ContactPointSystem.EMAIL)
+                .setValue("jondoe@gmail.com").setUse(ContactPoint.ContactPointUse.WORK).setRank(1);
+
+        system.getJurisdictionFirstRep().getCodingFirstRep().setSystem("http://unstats.un.org/unsd/methods/m49/m49.htm")
+                .setCode("USA").setDisplay("United States of America");
+
+        CodeSystem.ConceptDefinitionComponent component = system.getConceptFirstRep();
+        component.setCode("Concept1");
+        component.setDisplay("concept display");
+        component.setDefinition("concept definition");
+        Coding coding = new Coding();
+        coding.setCode("Synonym");
+        component.getDesignationFirstRep().setLanguage("en").setUse(coding).setValue("designation display");
+        CodeSystem.ConceptPropertyComponent c1 = new CodeSystem.ConceptPropertyComponent();
+        c1.setCode(CONCEPT_CLASS).setValue(newString("test_class"));
+        CodeSystem.ConceptPropertyComponent c2 = new CodeSystem.ConceptPropertyComponent();
+        c2.setCode(DATATYPE).setValue(newString("test_data_type"));
+        CodeSystem.ConceptPropertyComponent c3 = new CodeSystem.ConceptPropertyComponent();
+        c1.setCode(INACTIVE).setValue(new BooleanType(false));
+        component.getProperty().addAll(Arrays.asList(c1,c2,c3));
+        return system;
     }
 
     private void assertConcept(CodeSystem.ConceptDefinitionComponent c, String code, String display, String language1, String name1,

@@ -13,6 +13,8 @@ import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.openconceptlab.fhir.base.OclFhirTest;
+import org.openconceptlab.fhir.provider.OclCapabilityStatementProvider;
+
 import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 import static org.openconceptlab.fhir.provider.OclCapabilityStatementProvider.*;

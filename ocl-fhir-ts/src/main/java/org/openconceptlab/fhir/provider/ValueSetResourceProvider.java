@@ -3,15 +3,14 @@ package org.openconceptlab.fhir.provider;
 import ca.uhn.fhir.rest.annotation.*;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.IResourceProvider;
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
-import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.converter.ValueSetConverter;
 import org.openconceptlab.fhir.model.Collection;
-import org.openconceptlab.fhir.model.Source;
 import org.openconceptlab.fhir.repository.CollectionRepository;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
@@ -131,7 +130,7 @@ public class ValueSetResourceProvider implements IResourceProvider {
                                            @OperationParam(name = OWNER, type = StringType.class) StringType owner) {
 
         if (isValid(code) && coding != null)
-            throw new UnprocessableEntityException("Either code or coding should be provided, can not accept both.");
+            throw new InvalidRequestException("Either code or coding should be provided, can not accept both.");
         if (coding != null) {
             system = new UriType(coding.getSystem());
             code = new CodeType(coding.getCode());
@@ -328,27 +327,27 @@ public class ValueSetResourceProvider implements IResourceProvider {
 
     private void validate(UriType url, UriType system, CodeType code, Coding coding) {
         if (!isValid(url) || !isValid(system))
-            throw new UnprocessableEntityException("Both url and system must be provided.");
+            throw new InvalidRequestException("Both url and system must be provided.");
         if (!isValid(code) && coding == null)
-            throw new UnprocessableEntityException("Either of code or coding must be provided.");
+            throw new InvalidRequestException("Either of code or coding must be provided.");
         if (coding != null && (!isValid(coding.getSystem()) || !isValid(coding.getCode())))
-            throw new UnprocessableEntityException("Both system and code of coding must be provided.");
+            throw new InvalidRequestException("Both system and code of coding must be provided.");
     }
 
     private void validate(UriType url, IntegerType offset, IntegerType count) {
         if (!isValid(url))
-            throw new UnprocessableEntityException("Url parameter of $expand operation must be provided.");
+            throw new InvalidRequestException("Url parameter of $expand operation must be provided.");
         if (isValid(offset) && offset.getValue() < 0)
-            throw new UnprocessableEntityException("Offset parameter of $expand operation can not be negative.");
+            throw new InvalidRequestException("Offset parameter of $expand operation can not be negative.");
         if (isValid(count) && count.getValue() < 0)
-            throw new UnprocessableEntityException("Count parameter of $expand operation can not be negative.");
+            throw new InvalidRequestException("Count parameter of $expand operation can not be negative.");
     }
 
     private void validateSystemVersion(List<String> systemVersions) {
         systemVersions.stream().map(m -> m.split("\\|")[0]).collect(Collectors.groupingBy(String::toLowerCase, Collectors.counting()))
                 .forEach((k,v) -> {
                     if (v > 1) {
-                        throw new UnprocessableEntityException("ValueSet $expand parameter system-version can not contain duplicate system url. Duplicate system url="+k+" found.");
+                        throw new InvalidRequestException("ValueSet $expand parameter system-version can not contain duplicate system url. Duplicate system url="+k+" found.");
                     } });
     }
 }

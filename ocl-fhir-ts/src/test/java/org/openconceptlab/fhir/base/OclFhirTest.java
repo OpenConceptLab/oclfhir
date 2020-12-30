@@ -2,7 +2,6 @@ package org.openconceptlab.fhir.base;
 
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import org.apache.commons.lang3.StringUtils;
-import org.hl7.fhir.r4.hapi.rest.server.ServerCapabilityStatementProvider;
 import org.hl7.fhir.r4.model.*;
 import org.junit.Assert;
 import org.mockito.Mock;
@@ -10,24 +9,22 @@ import org.mockito.Spy;
 import org.openconceptlab.fhir.converter.CodeSystemConverter;
 import org.openconceptlab.fhir.converter.ValueSetConverter;
 import org.openconceptlab.fhir.model.*;
+import org.openconceptlab.fhir.model.Collection;
 import org.openconceptlab.fhir.model.Organization;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.OclCapabilityStatementProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
-import org.openconceptlab.fhir.repository.CollectionRepository;
-import org.openconceptlab.fhir.repository.ConceptRepository;
-import org.openconceptlab.fhir.repository.ConceptsSourceRepository;
-import org.openconceptlab.fhir.repository.SourceRepository;
+import org.openconceptlab.fhir.repository.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.sql.DataSource;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 import static org.mockito.Mockito.spy;
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
@@ -101,6 +98,9 @@ public class OclFhirTest {
     protected ConceptsSource cs33 = conceptsSource(concept3(), source3);
     protected ConceptsSource cs34 = conceptsSource(concept4(), source3);
 
+    protected Date date1 = Date.from(LocalDate.of(2020, 12, 1).atStartOfDay(ZoneId.systemDefault()).toInstant());
+    protected Date date2 = Date.from(LocalDate.of(2020, 12, 2).atStartOfDay(ZoneId.systemDefault()).toInstant());
+
     @Mock
     protected SourceRepository sourceRepository;
 
@@ -114,13 +114,46 @@ public class OclFhirTest {
     protected ConceptsSourceRepository conceptsSourceRepository;
 
     @Mock
+    protected AuthtokenRepository authtokenRepository;
+
+    @Mock
+    protected UserProfilesOrganizationRepository userProfilesOrganizationRepository;
+
+    @Mock
     protected UserProfile oclUser;
+
+    @Mock
+    protected OrganizationRepository organizationRepository;
+
+    @Mock
+    protected UserRepository userRepository;
 
     @Mock
     protected RequestDetails requestDetails;
 
     @Mock
     protected HttpServletRequest servletRequest;
+
+    @Mock
+    protected DataSource dataSource;
+
+    @Mock
+    protected SimpleJdbcInsert insertLocalizedText;
+
+    @Mock
+    protected SimpleJdbcInsert insertConceptName;
+
+    @Mock
+    protected SimpleJdbcInsert insertConceptDesc;
+
+    @Mock
+    protected SimpleJdbcInsert insertSource;
+
+    @Mock
+    protected SimpleJdbcInsert insertConcept;
+
+    @Mock
+    protected JdbcTemplate jdbcTemplate;
 
     @Spy
     protected OclCapabilityStatementProvider capabilityStatementProvider;
@@ -165,16 +198,38 @@ public class OclFhirTest {
 
     public ValueSetResourceProvider valueSetProvider() {
         OclFhirUtil oclFhirUtil = new OclFhirUtil(sourceRepository, conceptRepository, conceptsSourceRepository);
-        ValueSetConverter converter = new ValueSetConverter(oclFhirUtil, conceptsSourceRepository, conceptRepository, sourceRepository);
-        ValueSetResourceProvider provider = spy(new ValueSetResourceProvider(collectionRepository, converter, oclFhirUtil));
-        return provider;
+        ValueSetConverter converter = new ValueSetConverter(sourceRepository, conceptRepository, oclFhirUtil, oclUser, conceptsSourceRepository, dataSource,
+                authtokenRepository, userProfilesOrganizationRepository, organizationRepository, userRepository);
+        return spy(new ValueSetResourceProvider(collectionRepository, converter, oclFhirUtil));
+    }
+
+    class TestCodeSystemConverter extends CodeSystemConverter {
+
+        public TestCodeSystemConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil,
+                           UserProfile oclUser, ConceptsSourceRepository conceptsSourceRepository, DataSource dataSource,
+                           AuthtokenRepository authtokenRepository, UserProfilesOrganizationRepository userProfilesOrganizationRepository,
+                           OrganizationRepository organizationRepository, UserRepository userRepository) {
+            super(sourceRepository, conceptRepository, oclFhirUtil, oclUser, conceptsSourceRepository, dataSource, authtokenRepository,
+                    userProfilesOrganizationRepository, organizationRepository, userRepository);
+            this.jdbcTemplate = OclFhirTest.this.jdbcTemplate;
+            this.insertConcept = OclFhirTest.this.insertConcept;
+            this.insertLocalizedText = OclFhirTest.this.insertLocalizedText;
+        }
+
+        @Override
+        public void init() {
+            this.jdbcTemplate = OclFhirTest.this.jdbcTemplate;
+            this.insertConcept = OclFhirTest.this.insertConcept;
+            this.insertLocalizedText = OclFhirTest.this.insertLocalizedText;
+        }
     }
 
     public CodeSystemResourceProvider codeSystemProvider() {
         OclFhirUtil oclFhirUtil = new OclFhirUtil(sourceRepository, conceptRepository, conceptsSourceRepository);
-        CodeSystemConverter converter = new CodeSystemConverter(sourceRepository, conceptRepository, oclFhirUtil, oclUser, conceptsSourceRepository);
-        CodeSystemResourceProvider provider = new CodeSystemResourceProvider(sourceRepository, converter, oclFhirUtil);
-        return provider;
+        CodeSystemConverter converter = new TestCodeSystemConverter(sourceRepository, conceptRepository, oclFhirUtil,
+                oclUser, conceptsSourceRepository, dataSource, authtokenRepository, userProfilesOrganizationRepository,
+                organizationRepository, userRepository);
+        return new CodeSystemResourceProvider(sourceRepository, converter, oclFhirUtil);
     }
 
     public UriType newUrl(String url) {
@@ -224,7 +279,7 @@ public class OclFhirTest {
         Source source = new Source();
         source.setId(id);
         source.setCanonicalUrl(CS_URL);
-        source.setMnemonic("diagnosis-cs");
+        source.setMnemonic(CS);
         source.setVersion(version);
         for (Concept concept : concepts) {
             source.getConcepts().add(concept);
@@ -240,26 +295,6 @@ public class OclFhirTest {
         concept.setId(id);
         concept.setMnemonic(code);
         return concept;
-    }
-
-    public void setActive(Concept concept) {
-        concept.setIsActive(true);
-    }
-
-    public void setReleased(Source source) {
-        source.setReleased(true);
-    }
-
-    public void setRetired(Source source) {
-        source.setRetired(true);
-    }
-
-    public void setReleased(Collection collection) {
-        collection.setReleased(true);
-    }
-
-    public void setRetired(Collection collection) {
-        collection.setRetired(true);
     }
 
     public ConceptsName newName( String name, String type, String locale, Boolean preferred) {
@@ -329,13 +364,14 @@ public class OclFhirTest {
         source1.setFullName(SOURCE_1_FULL_NAME);
         source1.setIsActive(true);
         source1.setDescription(SOURCE_1_DESCRIPTION);
-        source1.setContact("[{\"name\": \"Jon Doe 1\", \"telecom\": [{\"use\": \"work\", \"rank\": 1, \"value\": \"jondoe1@gmail.com\", \"period\": {\"end\": \"2025-10-29T10:26:15-04:00\", \"start\": \"2020-10-29T10:26:15-04:00\"}, \"system\": \"email\"}]}]");
-        source1.setJurisdiction("[{\"coding\": [{\"code\": \"USA\", \"system\": \"http://unstats.un.org/unsd/methods/m49/m49.htm\", \"display\": \"United States of America\"}]}]");
+        source1.setContact("[{\"name\": \"Jon Doe 1\", \"telecom\": [{\"use\": \"work\", \"rank\": 1, \"value\": \"jondoe1@gmail.com\", " +
+                "\"period\": {\"end\": \"2025-10-29T10:26:15-04:00\", \"start\": \"2020-10-29T10:26:15-04:00\"}, \"system\": \"email\"}]}]");
+        source1.setJurisdiction("[{\"coding\": [{\"code\": \"USA\", \"system\": \"http://unstats.un.org/unsd/methods/m49/m49.htm\", " +
+                "\"display\": \"United States of America\"}]}]");
         source1.setPublisher(TEST);
         source1.setPurpose(TEST_SOURCE);
         source1.setCopyright(SOURCE_1_COPYRIGHT_TEXT);
         source1.setContentType(EXAMPLE);
-        Date date1 = Date.from(LocalDate.of(2020, 12, 1).atStartOfDay(ZoneId.systemDefault()).toInstant());
         source1.setRevisionDate(date1);
         source1.setCreatedAt(new Timestamp(new Date().getTime()));
     }
@@ -348,15 +384,48 @@ public class OclFhirTest {
         source2.setFullName(SOURCE_2_FULL_NAME);
         source2.setIsActive(true);
         source2.setDescription(SOURCE_2_DESCRIPTION);
-        source2.setContact("[{\"name\": \"Jon Doe 2\", \"telecom\": [{\"use\": \"work\", \"rank\": 1, \"value\": \"jondoe2@gmail.com\", \"period\": {\"end\": \"2022-10-29T10:26:15-04:00\", \"start\": \"2021-10-29T10:26:15-04:00\"}, \"system\": \"email\"}]}]");
-        source2.setJurisdiction("[{\"coding\": [{\"code\": \"ETH\", \"system\": \"http://unstats.un.org/unsd/methods/m49/m49.htm\", \"display\": \"Ethiopia\"}]}]");
+        source2.setContact("[{\"name\": \"Jon Doe 2\", \"telecom\": [{\"use\": \"work\", \"rank\": 1, \"value\": \"jondoe2@gmail.com\", " +
+                "\"period\": {\"end\": \"2022-10-29T10:26:15-04:00\", \"start\": \"2021-10-29T10:26:15-04:00\"}, \"system\": \"email\"}]}]");
+        source2.setJurisdiction("[{\"coding\": [{\"code\": \"ETH\", \"system\": \"http://unstats.un.org/unsd/methods/m49/m49.htm\", " +
+                "\"display\": \"Ethiopia\"}]}]");
         source2.setPublisher("TEST");
         source2.setPurpose(TEST_SOURCE);
         source2.setCopyright(SOURCE_2_COPYRIGHT_TEXT);
         source2.setContentType(EXAMPLE);
-        Date date2 = Date.from(LocalDate.of(2020, 12, 2).atStartOfDay(ZoneId.systemDefault()).toInstant());
         source2.setRevisionDate(date2);
         source1.setCreatedAt(new Timestamp(new Date().getTime()));
+    }
+
+    protected Organization newOrganization() {
+        Organization organization = new Organization();
+        organization.setMnemonic("OCL");
+        organization.setId(789L);
+        return organization;
+    }
+
+    protected UserProfile newUser(String username) {
+        UserProfile user = new UserProfile();
+        user.setUsername(username);
+        user.setId(567L);
+        AuthtokenToken token = new AuthtokenToken();
+        token.setUserProfile(user);
+        token.setKey("12345");
+        user.setAuthtokenTokens(Collections.singletonList(token));
+        return user;
+    }
+
+    protected AuthtokenToken newToken(String username) {
+        AuthtokenToken token = new AuthtokenToken();
+        token.setUserProfile(newUser(username));
+        token.setKey("12345");
+        return token;
+    }
+
+    protected UserProfilesOrganization newUserOrg(String username) {
+        UserProfilesOrganization userOrg = new UserProfilesOrganization();
+        userOrg.setUserProfile(newUser(username));
+        userOrg.setOrganization(newOrganization());
+        return userOrg;
     }
 
 }

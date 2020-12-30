@@ -9,4 +9,7 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public interface OrganizationRepository extends BaseOclRepository<Organization>{
+
+    Organization findByMnemonic(String mnemonic);
+
 }

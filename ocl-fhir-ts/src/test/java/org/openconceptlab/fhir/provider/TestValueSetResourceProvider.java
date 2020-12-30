@@ -2,8 +2,8 @@ package org.openconceptlab.fhir.provider;
 
 import static org.mockito.Mockito.*;
 
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
-import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import com.google.common.collect.Sets;
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.*;
@@ -16,6 +16,7 @@ import org.mockito.MockitoAnnotations;
 import org.mockito.stubbing.OngoingStubbing;
 import org.openconceptlab.fhir.base.OclFhirTest;
 import org.openconceptlab.fhir.model.*;
+import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.time.LocalDate;
@@ -416,22 +417,22 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         assertEquals(copyright, valueSet.getCopyright());
     }
 
-    @Test(expected = UnprocessableEntityException.class)
+    @Test(expected = InvalidRequestException.class)
     public void testValidateCode_url_null() {
         validateCode(null, V_11_1, CS_URL, V_21_1, AD, null, null, null, OWNER_VAL);
     }
 
-    @Test(expected = UnprocessableEntityException.class)
+    @Test(expected = InvalidRequestException.class)
     public void testValidateCode_code_null() {
         validateCode(VS_URL, V_11_1, CS_URL, V_21_1, null, null, null, null, OWNER_VAL);
     }
 
-    @Test(expected = UnprocessableEntityException.class)
+    @Test(expected = InvalidRequestException.class)
     public void testValidateCode_system_null() {
         validateCode(VS_URL, V_11_1, null, V_21_1, AD, null, null, null, OWNER_VAL);
     }
 
-    @Test(expected = UnprocessableEntityException.class)
+    @Test(expected = InvalidRequestException.class)
     public void testValidateCode_code_coding() {
         validateCode(VS_URL, V_11_1, CS_URL, null, AD, null, null,
                 new Coding("ABC", "ABC", "ABC"), OWNER_VAL);
@@ -539,7 +540,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         assertEquals(0, vs.getExpansion().getContains().size());
     }
 
-    @Test(expected = UnprocessableEntityException.class)
+    @Test(expected = InvalidRequestException.class)
     public void testExpand_count_negative() {
         List<CollectionsReference> references = newReferences(
                 "/orgs/OCL/sources/"+CS+"/v1.0/concepts/"+AD+"/123/",
@@ -551,14 +552,14 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         runExpand(references, Collections.singletonList(cs11), Collections.singletonList(cs21), null, 0, -2, "");
     }
 
-    @Test(expected = UnprocessableEntityException.class)
+    @Test(expected = InvalidRequestException.class)
     public void testExpand_missing_url() {
         ValueSetResourceProvider provider = valueSetProvider();
         provider.valueSetExpand(null, null, new IntegerType(0), new IntegerType(10),
                 null, null, null, null, null, null, null, newString(OWNER_VAL));
     }
 
-    @Test(expected = UnprocessableEntityException.class)
+    @Test(expected = InvalidRequestException.class)
     public void testExpand_unknown_systemversion() {
         // all match
         List<CollectionsReference> references = newReferences(

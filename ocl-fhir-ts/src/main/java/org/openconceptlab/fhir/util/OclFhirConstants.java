@@ -1,5 +1,8 @@
 package org.openconceptlab.fhir.util;
 
+import org.hl7.fhir.r4.model.CodeSystem;
+import org.hl7.fhir.r4.model.ValueSet;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -15,7 +18,7 @@ public final class OclFhirConstants {
 	public static final String SYSTEM = "system";
 	public static final String VERSION = "version";
 	public static final String USE = "use";
-	public static final String CONCEPT_CLASS = "conceptclass";
+	public static final String CONCEPTCLASS = "conceptclass";
 	public static final String DATATYPE = "datatype";
 	public static final String PURPOSE = "purpose";
 	public static final String COPYRIGHT = "copyright";
@@ -74,4 +77,41 @@ public final class OclFhirConstants {
 	public static final String INACTIVE = "inactive";
 	public static final String SYSTEM_HL7_CONCEPT_PROP = "http://hl7.org/fhir/concept-properties";
 	public static final String DESC_HL7_CONCEPT_PROP = "True if the concept is not considered active.";
+
+	public static final String ACSN_SYSTEM = "http://hl7.org/fhir/v2/0203";
+	public static final String ACSN = "ACSN";
+	public static final String OCL_SYSTEM = "http://fhir.openconceptlab.org";
+
+	public static final String CODESYSTEM = CodeSystem.class.getSimpleName();
+	public static final String VALUESET = ValueSet.class.getSimpleName();
+
+	public static final String EN_LOCALE = "en";
+	public static final String DEFINITION = "definition";
+	public static final String NA = "N/A";
+	public static final String EMPTY_JSON = "{}";
+	public static final String FW_SLASH = "/";
+	public static final String TYPE = "type";
+	public static final String LOCALE = "locale";
+	public static final String LOCALE_PREFERRED = "locale_preferred";
+	public static final String CREATED_AT = "created_at";
+	public static final String CONCEPT_ID = "concept_id";
+	public static final String LOCALIZEDTEXT_ID = "localizedtext_id";
+	public static final String PUBLIC_ACCESS = "public_access";
+	public static final String IS_ACTIVE = "is_active";
+	public static final String EXTRAS = "extras";
+	public static final String URI = "uri";
+	public static final String MNEMONIC = "mnemonic";
+	public static final String RELEASED = "released";
+	public static final String RETIRED = "retired";
+	public static final String IS_LATEST_VERSION = "is_latest_version";
+	public static final String FULL_NAME = "full_name";
+	public static final String DEFAULT_LOCALE = "default_locale";
+	public static final String CONCEPT_CLASS = "concept_class";
+	public static final String COMMENT = "comment";
+	public static final String CREATED_BY_ID = "created_by_id";
+	public static final String UPDATED_BY_ID = "updated_by_id";
+	public static final String PARENT_ID = "parent_id";
+	public static final String UPDATED_AT = "updated_at";
+
+	public static final String AUTHORIZATION = "Authorization";
 }

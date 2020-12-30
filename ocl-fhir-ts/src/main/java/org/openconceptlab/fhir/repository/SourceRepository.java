@@ -24,10 +24,14 @@ public interface SourceRepository extends BaseOclRepository<Source> {
     List<Source> findByOrganizationMnemonicAndPublicAccessIn(String org, List<String> publicAccess);
     List<Source> findByUserIdUsernameAndPublicAccessIn(String username, List<String> publicAccess);
     List<Source> findByCanonicalUrlAndPublicAccessIn(String canonicalUrl, List<String> publicAccess);
+    List<Source> findByCanonicalUrl(String canonicalUrl);
 
     // versioned
     Source findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(String sourceId, String version, String orgId, List<String> publicAccess);
     Source findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(String sourceId, String version, String username, List<String> publicAccess);
+    Source findFirstByMnemonicAndVersionAndOrganizationMnemonic(String sourceId, String version, String orgId);
+    Source findFirstByMnemonicAndVersionAndUserIdUsername(String sourceId, String version, String username);
+
     Source findFirstByCanonicalUrlAndVersionAndPublicAccessIn(String canonicalUrl, String version, List<String> publicAccess);
 
     Source findFirstByMnemonicAndReleasedAndPublicAccessInAndOrganizationMnemonicOrderByCreatedAtDesc(String sourceId, Boolean released, List<String> publicAccess,
@@ -44,6 +48,9 @@ public interface SourceRepository extends BaseOclRepository<Source> {
 
     Source findFirstByCanonicalUrlAndVersionAndOrganizationMnemonicAndPublicAccessIn(String canonicalUrl, String version, String orgId, List<String> publicAccess);
     Source findFirstByCanonicalUrlAndVersionAndUserIdUsernameAndPublicAccessIn(String canonicalUrl, String version, String username, List<String> publicAccess);
+
+    Source findFirstByCanonicalUrlAndVersionAndOrganizationMnemonic(String canonicalUrl, String version, String orgId);
+    Source findFirstByCanonicalUrlAndVersionAndUserIdUsername(String canonicalUrl, String version, String username);
 
     Source findFirstByMnemonicAndReleasedAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(String sourceId, boolean released,
                                                                                                           String orgId, List<String> publicAccess);

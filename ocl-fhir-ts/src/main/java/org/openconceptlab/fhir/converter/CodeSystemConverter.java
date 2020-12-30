@@ -1,52 +1,49 @@
 package org.openconceptlab.fhir.converter;
 
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
-import com.google.gson.*;
+import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.hl7.fhir.r4.model.*;
-import org.hl7.fhir.r4.model.CodeSystem.CodeSystemFilterComponent;
 import org.hl7.fhir.r4.model.CodeSystem.ConceptPropertyComponent;
-import org.hl7.fhir.r4.model.CodeSystem.FilterOperator;
+import org.hl7.fhir.r4.model.codesystems.PublicationStatus;
 import org.openconceptlab.fhir.model.*;
 
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 import static org.openconceptlab.fhir.util.OclFhirUtil.*;
 
-import org.openconceptlab.fhir.repository.ConceptRepository;
-import org.openconceptlab.fhir.repository.ConceptsSourceRepository;
-import org.openconceptlab.fhir.repository.SourceRepository;
+import org.openconceptlab.fhir.model.Organization;
+import org.openconceptlab.fhir.repository.*;
+import org.openconceptlab.fhir.util.OclFhirConstants;
 import org.openconceptlab.fhir.util.OclFhirUtil;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
+
+import javax.sql.DataSource;
 
 /**
  * The CodeSystemConverter.
  * @author harpatel1
  */
 @Component
-public class CodeSystemConverter {
+public class CodeSystemConverter extends BaseConverter {
 
-	JsonParser parser = new JsonParser();
-
-	SourceRepository sourceRepository;
-	ConceptRepository conceptRepository;
-	OclFhirUtil oclFhirUtil;
-	UserProfile oclUser;
-	ConceptsSourceRepository conceptsSourceRepository;
-
-	@Autowired
-	public CodeSystemConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil
-			, UserProfile oclUser, ConceptsSourceRepository conceptsSourceRepository) {
-		this.sourceRepository = sourceRepository;
-		this.conceptRepository = conceptRepository;
-		this.oclFhirUtil = oclFhirUtil;
-		this.oclUser = oclUser;
-		this.conceptsSourceRepository = conceptsSourceRepository;
+	public static final String DEFAULT_SOURCE_VERSION = "0.1";
+	private static final Log log = LogFactory.getLog(CodeSystemConverter.class);
+	public CodeSystemConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil,
+							   UserProfile oclUser, ConceptsSourceRepository conceptsSourceRepository, DataSource dataSource,
+							   AuthtokenRepository authtokenRepository, UserProfilesOrganizationRepository userProfilesOrganizationRepository,
+							   OrganizationRepository organizationRepository, UserRepository userRepository) {
+		super(sourceRepository, conceptRepository, oclFhirUtil, oclUser, conceptsSourceRepository, dataSource, authtokenRepository,
+				userProfilesOrganizationRepository, organizationRepository, userRepository);
 	}
 
 	public List<CodeSystem> convertToCodeSystem(List<Source> sources, boolean includeConcepts, int page) {
@@ -83,15 +80,14 @@ public class CodeSystemConverter {
             codeSystem.setTitle(source.getFullName());
         }
         // status
-        addStatus(codeSystem, source.getIsActive(), source.getRetired() != null ? source.getRetired() : false,
+        addStatus(codeSystem, source.getRetired() != null ? source.getRetired() : false,
 				source.getReleased() != null ? source.getReleased() : false);
 		// language
 		codeSystem.setLanguage(source.getDefaultLocale());
 
         // description
-        if(StringUtils.isNotBlank(source.getDescription())) {
+        if(StringUtils.isNotBlank(source.getDescription()))
             codeSystem.setDescription(source.getDescription());
-        }
         // count
 		codeSystem.setCount(conceptRepository.findConceptCountInSource(source.getId()));
         // property
@@ -101,7 +97,8 @@ public class CodeSystemConverter {
 			codeSystem.setPublisher(source.getPublisher());
 		// override default identifier with database value
 		// identifier, contact, jurisdiction
-		addJsonFields(codeSystem, isValid(source.getIdentifier()) && !"{}".equals(source.getIdentifier()) ? source.getIdentifier() : "", source.getContact(), source.getJurisdiction());
+		addJsonFields(codeSystem, isValid(source.getIdentifier()) && !EMPTY_JSON.equals(source.getIdentifier()) ? source.getIdentifier() : EMPTY,
+				source.getContact(), source.getJurisdiction());
 		// purpose
 		if (isValid(source.getPurpose()))
 			codeSystem.setPurpose(source.getPurpose());
@@ -128,12 +125,12 @@ public class CodeSystemConverter {
 
 	private void addProperty(final CodeSystem codeSystem) {
 		// concept class
-		codeSystem.getProperty().add(getPropertyComponent(CONCEPT_CLASS,
+		codeSystem.getProperty().add(getPropertyComponent(OclFhirConstants.CONCEPTCLASS,
 				SYSTEM_CC,
 				DESC_CC,
 				CodeSystem.PropertyType.STRING));
 		// data type
-		codeSystem.getProperty().add(getPropertyComponent(DATATYPE,
+		codeSystem.getProperty().add(getPropertyComponent(OclFhirConstants.DATATYPE,
 				SYSTEM_DT,
 				DESC_DT,
 				CodeSystem.PropertyType.STRING));
@@ -168,7 +165,7 @@ public class CodeSystemConverter {
 			// definition
 			List<LocalizedText> definitions = concept.getConceptsDescriptions().stream()
 					.filter(c -> c.getLocalizedText() != null)
-					.filter(c -> isValid(c.getLocalizedText().getType()) && "definition".equalsIgnoreCase(c.getLocalizedText().getType()))
+					.filter(c -> isValid(c.getLocalizedText().getType()) && DEFINITION.equalsIgnoreCase(c.getLocalizedText().getType()))
 					.map(ConceptsDescription::getLocalizedText)
 					.collect(Collectors.toList());
 			Optional<String> definition = oclFhirUtil.getDisplayForLanguage(definitions, source.getDefaultLocale());
@@ -178,9 +175,9 @@ public class CodeSystemConverter {
 			addConceptDesignation(concept, definitionComponent);
 
 			// property - concept_class, data_type, ,inactive
-			definitionComponent.getProperty().add(new ConceptPropertyComponent(new CodeType(CONCEPT_CLASS),
+			definitionComponent.getProperty().add(new ConceptPropertyComponent(new CodeType(OclFhirConstants.CONCEPTCLASS),
 					new StringType(concept.getConceptClass())));
-			definitionComponent.getProperty().add(new ConceptPropertyComponent(new CodeType(DATATYPE),
+			definitionComponent.getProperty().add(new ConceptPropertyComponent(new CodeType(OclFhirConstants.DATATYPE),
 					new StringType(concept.getDatatype())));
 			definitionComponent.getProperty().add(new ConceptPropertyComponent(new CodeType(INACTIVE),
 					new BooleanType(concept.getRetired())));
@@ -189,64 +186,13 @@ public class CodeSystemConverter {
 		}
 	}
 
-	private void addExtras(CodeSystem codeSystem, String extras) {
-    	if(StringUtils.isNotBlank(extras)) {
-    		JsonObject obj = parseExtras(extras);
-    		// filters
-    		JsonArray filters = obj.getAsJsonArray(FILTERS);
-    		if (filters != null && filters.isJsonArray()) {
-    			for(JsonElement je : filters) {
-    				JsonObject filter = je.getAsJsonObject();
-    				if(filter.get(CODE) != null) {
-    					String code = filter.get(CODE).getAsString();
-    					if(CONCEPT_CLASS.equals(code)) {
-    						addFilter(codeSystem, CONCEPT_CLASS, filter.get(DESC), filter.get(OPERATOR),
-    								filter.get(VALUE));
-    					} else if (DATATYPE.equals(code)) {
-    						addFilter(codeSystem, DATATYPE, filter.get(DESC), filter.get(OPERATOR),
-    								filter.get(VALUE));
-    					}
-    				}
-    			}
-    		}
-    		// identifier
-    		JsonArray identifiers = obj.getAsJsonArray(IDENTIFIERS);
-    		codeSystem.setIdentifier(getIdentifiers(identifiers));
-
-    		// purpose
-    		if(isValidElement(obj.get(PURPOSE)))
-    			codeSystem.setPurpose(obj.get(PURPOSE).getAsString());
-    		// copyright
-    		if(isValidElement(obj.get(COPYRIGHT)))
-    			codeSystem.setCopyright(obj.get(COPYRIGHT).getAsString());
-    	}
-    }
-    
-    private void addFilter(CodeSystem codeSystem, String code, JsonElement description, JsonElement operator, 
-    		JsonElement value) {
-    	if(StringUtils.isNotBlank(code)) {
-    		CodeSystemFilterComponent c = new CodeSystemFilterComponent();
-    		c.setCode(code);
-    		if (description != null && description.getAsString() != null)
-    			c.setDescription(description.getAsString());
-    		if (operator != null && operator.getAsString() != null) {
-    			if(allowedFilterOperators.contains(operator.getAsString())) {
-    				c.addOperator(FilterOperator.fromCode(operator.getAsString()));
-    			}
-    		}
-    		if (value != null && value.getAsString() != null)
-    			c.setValue(value.getAsString());
-    		codeSystem.getFilter().add(c);
-    	}
-    }
-
     public Parameters getLookupParameters(final Source source, final CodeType code, final CodeType displayLanguage) {
 		Optional<Concept> conceptOpt = oclFhirUtil.getSourceConcept(source, code.getCode(), EMPTY);
 		if (conceptOpt.isPresent()) {
 			Concept concept = conceptOpt.get();
 			Parameters parameters = new Parameters();
-			parameters.addParameter(getParameter(NAME, source.getName()));
-			parameters.addParameter(getParameter(VERSION, source.getVersion()));
+			parameters.addParameter(getParameter(OclFhirConstants.NAME, source.getName()));
+			parameters.addParameter(getParameter(OclFhirConstants.VERSION, source.getVersion()));
 			List<LocalizedText> names = oclFhirUtil.getNames(concept);
 			getDisplayForLookUp(names, isValid(displayLanguage) ? displayLanguage.getCode() : EMPTY, source.getDefaultLocale())
 					.ifPresent(display -> parameters.addParameter(getParameter(DISPLAY, display)));
@@ -327,73 +273,251 @@ public class CodeSystemConverter {
 		return component;
 	}
 
-	/**
-	 * TODO: Update when ready to implement POST
-	 * @param codeSystem
-	 */
-	/*
-	public void validateCodeSystem(CodeSystem codeSystem) {
-		Optional<Identifier> id = codeSystem.getIdentifier().stream().filter(i -> i.getType().hasCoding("http://hl7.org/fhir/v2/0203", "ACSN"))
-				.filter(i -> "http://fhir.openconceptlab.org".equals(i.getSystem()))
-				.filter(i -> isValid(i.getValue()))
-				.findFirst();
-		String url = codeSystem.getUrl();
-		if (!id.isPresent() && !isValid(url)) {
-			throw new UnprocessableEntityException("CodeSystem must have either Identifier or URL value.");
-		}
-		// check for unique id
-		if(id.isPresent()) {
-			if (!sourceRepository.findByMnemonicAndPublicAccessIn(id.get().getValue(), publicAccess).isEmpty()) {
-				throw new UnprocessableEntityException(String.format("The CodeSystem of Id '%s' already exists", id.get().getValue()));
+	public void createCodeSystem(CodeSystem codeSystem, String accessionId, String authToken) {
+		String org = EMPTY;
+		String username = EMPTY;
+		String codeSystemId = EMPTY;
+		String formattedId = formatExpression(accessionId);
+		String [] ar = formattedId.split(FW_SLASH);
+		if (ar.length >= 5) {
+			if (ORGS.equals(ar[1]) && isValid(ar[2])) {
+				org = ar[2];
+			} else if (USERS.equals(ar[1]) && isValid(ar[2])){
+				username = ar[2];
 			}
-			codeSystem.setId(id.get().getValue());
+			if (CODESYSTEM.equals(ar[3]) && isValid(ar[4])) {
+				codeSystemId = ar[4];
+				codeSystem.setId(codeSystemId);
+			}
+			if (ar.length >=6 && isValid(ar[5])) {
+				codeSystem.setVersion(ar[5]);
+			} else if (!isValid(codeSystem.getVersion())) {
+				codeSystem.setVersion(DEFAULT_SOURCE_VERSION);
+				formattedId = formattedId + DEFAULT_SOURCE_VERSION + FW_SLASH;
+			} else {
+				formattedId = formattedId + codeSystem.getVersion() + FW_SLASH;
+			}
 		}
-		// check for unique URL
-		if(isValid(url) && !sourceRepository.findByCanonicalUrlAndPublicAccessIn(url, publicAccess).isEmpty())
-			throw new UnprocessableEntityException(String.format("The CodeSystem of URL '%s' already exists", url));
 
-		// check publisher
-		validatePublisher(codeSystem.getPublisher());
+		if (org.isEmpty() && username.isEmpty())
+			throw new InvalidRequestException("Owner type and id is required.");
+		if (codeSystemId.isEmpty())
+			throw new InvalidRequestException("CodeSystem id is required.");
 
-		// meta.updatedAt = source.updated_at
-		toSource(codeSystem);
+		BaseOclEntity owner = validateOwner(org, username);
+		AuthtokenToken token = validateToken(authToken);
+		authenticate(token, username, org);
+		validateId(username, org, codeSystemId, codeSystem.getVersion(), CODESYSTEM);
+		validateCanonicalUrl(username, org, codeSystem.getUrl(), codeSystem.getVersion(), CODESYSTEM);
+
+		UserProfile user = token.getUserProfile();
+		// base source
+		Source source = toBaseSource(codeSystem, user, formattedId);
+		// add parent and access
+		addParent(source, owner);
+		// add identifier, contact and jurisdiction
+		addJsonStrings(codeSystem, source);
+		// version-less source uri
+		String value = source.getUri().substring(0, source.getUri().lastIndexOf(FW_SLASH));
+		String versionLessSourceUri = value.substring(0, value.lastIndexOf(FW_SLASH)) + FW_SLASH;
+		// add concepts
+		List<Concept> concepts = toConcepts(codeSystem.getConcept(), codeSystem.getLanguage());
+		concepts.forEach(c -> {
+			c.setParent(source);
+			c.setPublicAccess(source.getPublicAccess());
+			c.setVersion("1");
+			c.setIsLatestVersion(true);
+			c.setReleased(c.getIsActive());
+			c.setRetired(c.getIsActive());
+			c.setDefaultLocale(source.getDefaultLocale());
+			c.setCreatedBy(user);
+			c.setUpdatedBy(user);
+			c.setVersionedObject(c);
+			c.setUri(versionLessSourceUri + "concepts/" + c.getMnemonic() + FW_SLASH + c.getVersion() + FW_SLASH);
+			c.setExtras(EMPTY_JSON);
+		});
+
+		// save source
+		sourceRepository.saveAndFlush(source);
+		log.info("saved source - " + source.getMnemonic());
+
+		// save concepts
+		List<Integer> conceptIds = new CopyOnWriteArrayList<>();
+		// concept, concept names, concept descriptions, localized texts
+		List<List<Concept>> conceptBatches = ListUtils.partition(concepts, 1000);
+		int i = 1;
+		for (List<Concept> cb: conceptBatches) {
+			log.info("Saving " + cb.size() + " concepts, batch " + i + " of " + conceptBatches.size());
+			batchConcepts(cb, conceptIds);
+			i++;
+		}
+
+		// update concept version = concept id
+		List<List<Integer>> conceptIdBatches = ListUtils.partition(conceptIds, 1000);
+		conceptIdBatches.forEach(this::batchUpdateConceptVersion);
+
+		// save concepts sources
+		conceptIdBatches.forEach(b -> batchUpdateConceptSources(b, source.getId().intValue()));
+		log.info("saved " + conceptIds.size() + " concepts");
 	}
 
-    public void toSource(final CodeSystem codeSystem){
+	private List<Concept> toConcepts(List<CodeSystem.ConceptDefinitionComponent> components, String defaultLocale) {
+		List<Concept> concepts = new ArrayList<>();
+		for (CodeSystem.ConceptDefinitionComponent component : components) {
+			Concept concept = toConcept(component, defaultLocale);
+			if (concept != null) concepts.add(concept);
+		}
+		return concepts;
+	}
+
+	private Concept toConcept(CodeSystem.ConceptDefinitionComponent component, String defaultLocale) {
+		Concept concept = new Concept();
+		String code = component.getCode();
+		if (isValid(code)) {
+			// code
+			concept.setMnemonic(code);
+			// name
+			concept.setName(code);
+			// definition
+			addDefinition(concept, component.getDefinition(), defaultLocale);
+			// designation
+			List<CodeSystem.ConceptDefinitionDesignationComponent> designationComponents = component.getDesignation();
+			List<LocalizedText> names = toLocalizedText(designationComponents, defaultLocale);
+			if (!names.isEmpty()) {
+				addDesignation(concept, names);
+			}
+			// property
+			List<ConceptPropertyComponent> properties = component.getProperty();
+			// -- concept class
+			concept.setConceptClass(getStringProperty(properties, OclFhirConstants.CONCEPT_CLASS));
+			// -- data type
+			concept.setDatatype(getStringProperty(properties, OclFhirConstants.DATATYPE));
+			// -- inactive
+			concept.setIsActive(!getBooleanProperty(properties, INACTIVE));
+			return concept;
+		}
+		return null;
+	}
+
+	private void addDefinition(Concept concept, String definition, String defaultLocale) {
+		if (isValid(definition)) {
+			LocalizedText text = new LocalizedText();
+			text.setName(definition);
+			text.setType(DEFINITION);
+			text.setLocale(defaultLocale);
+			text.setLocalePreferred(true);
+
+			ConceptsDescription description = new ConceptsDescription();
+			description.setConcept(concept);
+			description.setLocalizedText(text);
+			concept.getConceptsDescriptions().add(description);
+		}
+	}
+
+	private void addDesignation(Concept concept, List<LocalizedText> names) {
+		List<ConceptsName> conceptsNames = names.stream().map(name -> {
+			ConceptsName conceptsName = new ConceptsName();
+			conceptsName.setConcept(concept);
+			conceptsName.setLocalizedText(name);
+			return conceptsName;
+		}).collect(Collectors.toList());
+		concept.setConceptsNames(conceptsNames);
+	}
+
+	private List<LocalizedText> toLocalizedText(List<CodeSystem.ConceptDefinitionDesignationComponent> components, String defaultLocale) {
+		List<LocalizedText> texts = new ArrayList<>();
+		for (CodeSystem.ConceptDefinitionDesignationComponent component : components) {
+			String locale = component.getLanguage();
+			String type = component.getUse().getCode();
+			String name = component.getValue();
+			if (locale != null && name != null) {
+				LocalizedText text = new LocalizedText();
+				text.setLocale(locale);
+				if (type != null)
+					text.setType(type);
+				text.setName(name);
+				text.setLocalePreferred(locale.equals(defaultLocale));
+				texts.add(text);
+			}
+		}
+		return texts;
+	}
+
+	private Source toBaseSource(final CodeSystem codeSystem, final UserProfile user, final String uri) {
 		Source source = new Source();
+		// mnemonic
 		source.setMnemonic(codeSystem.getId());
+		// canonical url
 		source.setCanonicalUrl(codeSystem.getUrl());
-		source.setCreatedBy(new UserProfile(oclUser.getId()));
-		source.setUpdatedBy(new UserProfile(oclUser.getId()));
-		source.setIsActive(PublicationStatus.ACTIVE.equals(codeSystem.getStatus()));
-		source.setRetired(PublicationStatus.RETIRED.equals(codeSystem.getStatus()));
-		if (isValid(codeSystem.getVersion())) source.setVersion(codeSystem.getVersion());
-		if (isValid(codeSystem.getName())) source.setName(codeSystem.getName());
-		if (isValid(codeSystem.getLanguage())) source.setDefaultLocale(codeSystem.getLanguage());
-		source.setActiveConcepts(codeSystem.getCount() == 0 ? codeSystem.getConcept().size() : codeSystem.getCount());
-		source.setExtras(getExtras(codeSystem));
-		if (isValid(source.getMnemonic())) {
-			sourceRepository.save(source);
-		} else {
-			source.setMnemonic("TEMP");
-			Source temp = sourceRepository.save(source);
-			sourceRepository.updateMnemonic(temp.getId());
+		// created by
+		source.setCreatedBy(user);
+		// updated by
+		source.setUpdatedBy(user);
+
+		// draft or unknown or empty
+		source.setIsActive(true);
+		source.setIsLatestVersion(true);
+		source.setRetired(false);
+		source.setReleased(false);
+		if (codeSystem.getStatus() != null) {
+			// active
+			if (PublicationStatus.ACTIVE.toCode().equals(codeSystem.getStatus().toCode())) {
+				source.setReleased(true);
+				// retired
+			} else if (PublicationStatus.RETIRED.toCode().equals(codeSystem.getStatus().toCode())) {
+				source.setRetired(true);
+				source.setReleased(false);
+				source.setIsActive(false);
+				source.setIsLatestVersion(false);
+			}
 		}
-    }
-
-    private String getExtras(final CodeSystem codeSystem) {
-    	CodeSystem system = codeSystem.copy();
-		nullifyBaseFields(system);
-		return toFhirString(system);
-    }
-
-    private void nullifyBaseFields(final CodeSystem codeSystem) {
-		codeSystem.setIdentifier(null);
-		codeSystem.setUrl(null);
-		codeSystem.setStatus(null);
-		codeSystem.setVersion(null);
-		codeSystem.setName(null);
-		codeSystem.setLanguage(null);
+		// version
+		source.setVersion(codeSystem.getVersion());
+		// default locale
+		source.setDefaultLocale(isValid(codeSystem.getLanguage()) ? codeSystem.getLanguage() : EN_LOCALE);
+		// uri
+		source.setUri(uri.replaceAll("(?i)"+ Pattern.quote(CODESYSTEM), "sources"));
+		// active concepts
+		source.setActiveConcepts(codeSystem.getConcept().size());
+		// active mappings
+		source.setActiveMappings(0);
+		// name
+		String name = isValid(codeSystem.getName()) ? codeSystem.getName() : codeSystem.getId();
+		source.setName(name);
+		// content type
+		if (codeSystem.getContent() != null)
+			source.setContentType(codeSystem.getContent().toCode());
+		// copyright
+		if (isValid(codeSystem.getCopyright()))
+			source.setCopyright(codeSystem.getCopyright());
+		// description
+		if (isValid(codeSystem.getDescription()))
+			source.setDescription(codeSystem.getDescription());
+		// title
+		if (isValid(codeSystem.getTitle()))
+			source.setFullName(codeSystem.getTitle());
+		// publisher
+		if (isValid(codeSystem.getPublisher()))
+			source.setPublisher(codeSystem.getPublisher());
+		// purpose
+		if (isValid(codeSystem.getPurpose()))
+			source.setPurpose(codeSystem.getPurpose());
+		// revision date
+		if (codeSystem.getDate() != null)
+			source.setRevisionDate(codeSystem.getDate());
+		// extras
+		source.setExtras(EMPTY_JSON);
+		return source;
 	}
-	*/
+
+	private void addParent(final Source source, final BaseOclEntity owner) {
+		if (owner instanceof Organization) {
+			Organization organization = (Organization) owner;
+			source.setOrganization(organization);
+			source.setPublicAccess(organization.getPublicAccess());
+		} else if (owner instanceof UserProfile){
+			source.setUserId((UserProfile) owner);
+		}
+	}
 }
+

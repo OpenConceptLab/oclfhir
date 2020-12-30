@@ -1,6 +1,7 @@
 package org.openconceptlab.fhir.provider;
 
 import ca.uhn.fhir.rest.annotation.*;
+import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
@@ -43,6 +44,23 @@ public class CodeSystemResourceProvider implements IResourceProvider {
     @Override
     public Class<? extends IBaseResource> getResourceType() {
         return CodeSystem.class;
+    }
+
+    @Create
+    @Transactional
+    public MethodOutcome createCodeSystem(@ResourceParam CodeSystem codeSystem, RequestDetails requestDetails) {
+        if (codeSystem == null) {
+            throw new InvalidRequestException("The CodeSystem can not be empty");
+        }
+        String accessionId = getAccessionIdentifier(codeSystem);
+        if (!isValid(accessionId)) {
+            throw new InvalidRequestException("The CodeSystem.identifier is empty or identifier of type ACSN is empty.");
+        }
+        if (!isValid(codeSystem.getUrl())) {
+            throw new InvalidRequestException("The CodeSystem.url can not be empty. Please provide canonical url.");
+        }
+        codeSystemConverter.createCodeSystem(codeSystem, accessionId, requestDetails.getHeader(AUTHORIZATION));
+        return new MethodOutcome();
     }
 
     /**

@@ -21,6 +21,7 @@ public class UserProfilesOrganization extends BaseOclEntity implements Serializa
 	private Organization organization;
 
 	@ManyToOne
+	@JoinColumn(name = "userprofile_id")
 	private UserProfile userprofile;
 
 	public UserProfilesOrganization() {

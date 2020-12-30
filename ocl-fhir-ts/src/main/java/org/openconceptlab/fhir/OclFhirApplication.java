@@ -3,6 +3,7 @@ package org.openconceptlab.fhir;
 import org.openconceptlab.fhir.config.Config;
 import org.openconceptlab.fhir.controller.OclFhirController;
 import org.openconceptlab.fhir.converter.CodeSystemConverter;
+import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.openconceptlab.fhir.interceptor.OclFhirLoggingInterceptor;
 import org.openconceptlab.fhir.model.BaseOclEntity;
 import org.openconceptlab.fhir.model.UserProfile;
@@ -10,7 +11,6 @@ import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.repository.BaseOclRepository;
 import org.openconceptlab.fhir.repository.ConceptRepository;
 import org.openconceptlab.fhir.repository.UserRepository;
-import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -21,12 +21,9 @@ import org.springframework.boot.web.servlet.ServletComponentScan;
 import org.springframework.boot.web.servlet.support.SpringBootServletInitializer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.PropertySource;
-import org.springframework.context.annotation.PropertySources;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 
 import javax.annotation.PostConstruct;
-import java.util.List;
 
 @ServletComponentScan
 @SpringBootApplication(exclude = {ErrorMvcAutoConfiguration.class})
@@ -57,9 +54,9 @@ public class OclFhirApplication extends SpringBootServletInitializer {
 
     @PostConstruct
     public void init() {
-        List<UserProfile> users = userRepository.findByUsernameIs("ocladmin");
-        if (!users.isEmpty()) {
-            oclUser = users.get(0);
+        UserProfile user = userRepository.findByUsername("ocladmin");
+        if (user != null) {
+            oclUser = user;
         } else {
             throw new InternalError("Can not find ocladmin user.");
         }

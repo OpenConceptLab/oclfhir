@@ -75,7 +75,7 @@ public class Source extends BaseOclEntity implements Serializable {
 	private String externalId;
 
 	@Type(type = "jsonb")
-	@Column(columnDefinition = "jsonb")
+	@Column(name = "extras", columnDefinition = "jsonb")
 	private String extras;
 
 	@Column(name="full_name")
@@ -85,7 +85,7 @@ public class Source extends BaseOclEntity implements Serializable {
 	private String internalReferenceId = "0";
 
 	@Column(name="is_active")
-	private Boolean isActive;
+	private boolean isActive;
 
 	@Column(name="is_latest_version")
 	private Boolean isLatestVersion = true;
@@ -322,11 +322,11 @@ public class Source extends BaseOclEntity implements Serializable {
 		this.internalReferenceId = internalReferenceId;
 	}
 
-	public Boolean getIsActive() {
-		return this.isActive != null && this.isActive;
+	public boolean getIsActive() {
+		return this.isActive;
 	}
 
-	public void setIsActive(Boolean isActive) {
+	public void setIsActive(boolean isActive) {
 		this.isActive = isActive;
 	}
 

@@ -11,5 +11,7 @@ import java.util.List;
  */
 @Repository
 public interface UserRepository extends BaseOclRepository<UserProfile> {
-    List<UserProfile> findByUsernameIs(String username);
+
+    UserProfile findByUsername(String username);
+
 }

@@ -1,17 +1,17 @@
 package org.openconceptlab.fhir.converter;
 
-import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import com.google.gson.JsonParser;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.model.Collection;
-import org.openconceptlab.fhir.repository.ConceptRepository;
-import org.openconceptlab.fhir.repository.ConceptsSourceRepository;
-import org.openconceptlab.fhir.repository.SourceRepository;
+import org.openconceptlab.fhir.repository.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import javax.sql.DataSource;
 
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 import static org.openconceptlab.fhir.util.OclFhirUtil.*;
@@ -25,26 +25,18 @@ import java.util.stream.Collectors;
  * @author harpatel1
  */
 @Component
-public class ValueSetConverter {
-
-    JsonParser parser = new JsonParser();
-
-    OclFhirUtil oclFhirUtil;
-    ConceptsSourceRepository conceptsSourceRepository;
-    ConceptRepository conceptRepository;
-    SourceRepository sourceRepository;
-
-    @Autowired
-    public ValueSetConverter(OclFhirUtil oclFhirUtil, ConceptsSourceRepository conceptsSourceRepository,
-                             ConceptRepository conceptRepository, SourceRepository sourceRepository) {
-        this.oclFhirUtil = oclFhirUtil;
-        this.conceptsSourceRepository = conceptsSourceRepository;
-        this.conceptRepository = conceptRepository;
-        this.sourceRepository = sourceRepository;
-    }
+public class ValueSetConverter extends BaseConverter {
 
     @Value("${ocl.servlet.baseurl}")
     private String baseUrl;
+
+    public ValueSetConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil,
+                             UserProfile oclUser, ConceptsSourceRepository conceptsSourceRepository, DataSource dataSource,
+                             AuthtokenRepository authtokenRepository, UserProfilesOrganizationRepository userProfilesOrganizationRepository,
+                             OrganizationRepository organizationRepository, UserRepository userRepository) {
+        super(sourceRepository, conceptRepository, oclFhirUtil, oclUser, conceptsSourceRepository, dataSource, authtokenRepository,
+                userProfilesOrganizationRepository, organizationRepository, userRepository);
+    }
 
     public List<ValueSet> convertToValueSet(List<Collection> collections, Integer page) {
         List<ValueSet> valueSets = new ArrayList<>();
@@ -78,7 +70,7 @@ public class ValueSetConverter {
         if(isValid(collection.getDescription()))
             valueSet.setDescription(collection.getDescription());
         // set status
-        addStatus(valueSet, collection.getIsActive(), collection.getRetired() != null ? collection.getRetired() : false,
+        addStatus(valueSet, collection.getRetired() != null ? collection.getRetired() : false,
                 collection.getReleased());
         // publisher
         if (isValid(collection.getPublisher()))
@@ -112,13 +104,6 @@ public class ValueSetConverter {
                     .filter(c -> c.getMnemonic().equals(conceptId))
                     .max(Comparator.comparing(Concept::getId));
         }
-    }
-
-    private String formatExpression(String expression) {
-        String uri = expression;
-        if (!uri.startsWith("/")) uri = "/" + uri;
-        if (!uri.endsWith("/")) uri = uri + "/";
-        return uri;
     }
 
     private void addCompose(ValueSet valueSet, Collection collection, boolean includeConceptDesignation, Integer page) {
@@ -160,7 +145,7 @@ public class ValueSetConverter {
             if (ar.length == 2) {
                 Source source = sourceRepository.findFirstByCanonicalUrlAndVersionAndPublicAccessIn(ar[0], ar[1], publicAccess);
                 if (source == null)
-                    throw new UnprocessableEntityException("Code system of url=" + ar[0] + ", version=" + ar[1] + " does not exist.");
+                    throw new InvalidRequestException("Code system of url=" + ar[0] + ", version=" + ar[1] + " does not exist.");
                 sourcesProvided.add(source);
             }
         }
@@ -356,7 +341,7 @@ public class ValueSetConverter {
             valueSet = toBaseValueSet(collection);
         } else {
             valueSet = new ValueSet();
-            addStatus(valueSet, collection.getIsActive(), collection.getRetired() != null ? collection.getRetired() : false,
+            addStatus(valueSet, collection.getRetired() != null ? collection.getRetired() : false,
                     collection.getReleased());
         }
         CanonicalType canonicalReference = new CanonicalType(

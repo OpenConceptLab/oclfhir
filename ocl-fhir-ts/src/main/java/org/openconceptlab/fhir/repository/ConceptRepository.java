@@ -3,6 +3,7 @@ package org.openconceptlab.fhir.repository;
 import org.openconceptlab.fhir.model.Concept;
 import org.openconceptlab.fhir.model.LocalizedText;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -32,4 +33,8 @@ public interface ConceptRepository extends BaseOclRepository<Concept>{
             "where cs.source_id = :sourceId\n" +
             "group by c1.mnemonic) as val")
     int findConceptCountInSource(@Param("sourceId") Long sourceId);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query(value = "update concepts set version = :id where id = :id", nativeQuery = true)
+    void updateVersion(@Param("id") Long id);
 }
