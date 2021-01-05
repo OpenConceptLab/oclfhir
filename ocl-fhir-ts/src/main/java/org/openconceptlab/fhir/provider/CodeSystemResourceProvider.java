@@ -63,6 +63,21 @@ public class CodeSystemResourceProvider implements IResourceProvider {
         return new MethodOutcome();
     }
 
+    @Delete
+    @Transactional
+    public void deleteCodeSystem(@IdParam(optional = true) IdType idType,
+                                 @RequiredParam(name = ID) StringType id,
+                                 @RequiredParam(name = VERSION) StringType version,
+                                 @RequiredParam(name = OWNER) StringType owner,
+                                 RequestDetails requestDetails) {
+        codeSystemConverter.retireCodeSystem(
+                requestDetails.getHeader(ID),
+                requestDetails.getHeader(VERSION),
+                newStringType(requestDetails.getHeader(OWNER)),
+                requestDetails.getHeader(AUTHORIZATION)
+        );
+    }
+
     /**
      * Returns all public {@link CodeSystem}.
      *

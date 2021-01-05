@@ -6,6 +6,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import org.apache.commons.collections4.ListUtils;
@@ -519,5 +520,49 @@ public class CodeSystemConverter extends BaseConverter {
 			source.setUserId((UserProfile) owner);
 		}
 	}
+
+	public void retireCodeSystem(String id, String version, StringType owner, String authToken) {
+		// id, version and owner are all required
+		if (!isValid(id))
+			throw new InvalidRequestException("The id can not be empty. Please provide id.");
+		if (!isValid(version))
+			throw new InvalidRequestException("The version can not be empty. Please provide version.");
+		if (!isValid(owner))
+			throw new InvalidRequestException("The owner can not be empty.");
+
+		// validate ownerType and owner
+		if (!isValid(owner))
+			throw new InvalidRequestException("Invalid owner.");
+		String ownerType = getOwnerType(owner.getValue());
+		String value = getOwner(owner.getValue());
+		if (ORG.equals(ownerType)) {
+			validateOrg(value);
+		} else if (USER.equals(ownerType)){
+			validateUser(value);
+		} else {
+			throw new InvalidRequestException("Invalid owner type.");
+		}
+
+		// validate token and authenticate
+		AuthtokenToken token = validateToken(authToken);
+		authenticate(token, USER.equals(ownerType) ? value : null,
+				ORG.equals(ownerType) ? value : null);
+
+		// find source based on ownerType and owner
+		Source source;
+		if (ORG.equals(ownerType)) {
+			source = sourceRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonic(id, version, value);
+		} else {
+			source = sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsername(id, version, value);
+		}
+
+		if (source == null)
+			throw new ResourceNotFoundException(String.format("The CodeSystem of id %s and version %s does not exist.", id, version));
+
+		// retire source and update
+		source.setRetired(true);
+		sourceRepository.saveAndFlush(source);
+	}
+
 }
 

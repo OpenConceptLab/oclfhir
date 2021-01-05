@@ -77,19 +77,27 @@ public class BaseConverter {
 
     protected BaseOclEntity validateOwner(String org, String username) {
         if (isValid(org)) {
-            Organization organization = organizationRepository.findByMnemonic(org);
-            if (organization == null) {
-                throw new InvalidRequestException("The organization of id = " + org + " does not exist.");
-            } else {
-                return organization;
-            }
+            return validateOrg(org);
         } else {
-            UserProfile userProfile = userRepository.findByUsername(username);
-            if (userProfile == null) {
-                throw new InvalidRequestException("The user of username = " + username + " does not exist.");
-            } else {
-                return userProfile;
-            }
+            return validateUser(username);
+        }
+    }
+
+    protected BaseOclEntity validateOrg(String org) {
+        Organization organization = organizationRepository.findByMnemonic(org);
+        if (organization == null) {
+            throw new InvalidRequestException("The organization of id = " + org + " does not exist.");
+        } else {
+            return organization;
+        }
+    }
+
+    protected BaseOclEntity validateUser(String username) {
+        UserProfile userProfile = userRepository.findByUsername(username);
+        if (userProfile == null) {
+            throw new InvalidRequestException("The user of username = " + username + " does not exist.");
+        } else {
+            return userProfile;
         }
     }
 

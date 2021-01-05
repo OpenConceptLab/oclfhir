@@ -45,7 +45,7 @@ public class OclFhirOrgController extends BaseOclFhirController {
         } catch (BaseServerResponseException e) {
             return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBody());
         } catch (Exception e) {
-            return badRequest();
+            return badRequest(e.getMessage());
         }
     }
 
@@ -73,6 +73,14 @@ public class OclFhirOrgController extends BaseOclFhirController {
     @GetMapping(path = {"/{org}/CodeSystem"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> searchCodeSystemsByOrg(@PathVariable String org) {
         return handleSearchResource(CodeSystem.class, OWNER, formatOrg(org));
+    }
+
+    @DeleteMapping(path = {"/{org}/CodeSystem/{id}/version/{version}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> deleteCodeSystemByOrg(@PathVariable(name = ID) String id,
+                                                        @PathVariable(name = VERSION) String version,
+                                                        @PathVariable(name = ORG) String org,
+                                                        @RequestHeader(name = AUTHORIZATION) String auth) {
+        return handleDeleteResource(CodeSystem.class, id, version, formatOrg(org), auth);
     }
 
     @GetMapping(path = {"/{org}/CodeSystem/$lookup"}, produces = {MediaType.APPLICATION_JSON_VALUE})

@@ -75,6 +75,14 @@ public class OclFhirUserController extends BaseOclFhirController{
         return handleSearchResource(CodeSystem.class, OWNER, formatUser(user));
     }
 
+    @DeleteMapping(path = {"/{user}/CodeSystem/{id}/version/{version}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> deleteCodeSystemByUser(@PathVariable(name = ID) String id,
+                                                         @PathVariable(name = VERSION) String version,
+                                                         @PathVariable(name = USER) String user,
+                                                         @RequestHeader(name = AUTHORIZATION) String auth) {
+        return handleDeleteResource(CodeSystem.class, id, version, formatUser(user), auth);
+    }
+
     @GetMapping(path = {"/{user}/CodeSystem/$lookup"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> lookUpCodeSystemsByUser(@PathVariable String user,
                                                           @RequestParam(name = SYSTEM) String system,

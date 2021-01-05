@@ -42,7 +42,19 @@ public class BaseOclFhirController {
         } catch (BaseServerResponseException e) {
             return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBody());
         } catch (Exception e) {
-            return badRequest();
+            return badRequest(e.getMessage());
+        }
+    }
+
+    protected ResponseEntity<String> handleDeleteResource(final Class<? extends MetadataResource> resourceClass, final String id,
+                                                          final String version, final String owner, final String auth) {
+        try {
+            performDelete(resourceClass.getSimpleName(), id, version, owner, auth);
+            return ResponseEntity.noContent().build();
+        } catch (BaseServerResponseException e) {
+            return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBody());
+        } catch (Exception e) {
+            return badRequest(e.getMessage());
         }
     }
 
@@ -52,7 +64,7 @@ public class BaseOclFhirController {
         } catch (BaseServerResponseException e) {
             return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBody());
         } catch (Exception e) {
-            return badRequest();
+            return badRequest(e.getMessage());
         }
     }
 
@@ -85,6 +97,17 @@ public class BaseOclFhirController {
                 .create()
                 .resource(resource).withAdditionalHeader(AUTHORIZATION, auth)
                 .execute();
+    }
+
+    protected void performDelete(String type, String id, String version, String owner, String auth) {
+        oclFhirUtil.getClient()
+                .delete()
+                .resourceById(new IdType(type + FW_SLASH + "1"))
+                .withAdditionalHeader(ID, id)
+                .withAdditionalHeader(VERSION, version)
+                .withAdditionalHeader(OWNER, owner)
+                .withAdditionalHeader(AUTHORIZATION, auth)
+        .execute();
     }
 
     protected Parameters generateParameters(String code, String displayLanguage, String owner) {
