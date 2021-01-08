@@ -71,13 +71,6 @@ public class ValueSetResourceProvider implements IResourceProvider {
         return new MethodOutcome();
     }
 
-    @Delete
-    @Transactional
-    public void delete(@IdParam(optional = true) IdType idType) {
-        collectionRepository.deleteAll(collectionRepository
-                .findByCanonicalUrlAndPublicAccessIn("https://www.test.org/Test2", publicAccess));
-    }
-
     /**
      * Returns all public {@link ValueSet}.
      *
