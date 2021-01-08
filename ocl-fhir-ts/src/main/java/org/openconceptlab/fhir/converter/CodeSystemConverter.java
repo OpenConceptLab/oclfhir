@@ -6,7 +6,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import org.apache.commons.collections4.ListUtils;
@@ -37,14 +36,14 @@ import javax.sql.DataSource;
 @Component
 public class CodeSystemConverter extends BaseConverter {
 
-	public static final String DEFAULT_SOURCE_VERSION = "0.1";
+	public static final String DEFAULT_RES_VERSION = "0.1";
 	private static final Log log = LogFactory.getLog(CodeSystemConverter.class);
 	public CodeSystemConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil,
 							   UserProfile oclUser, ConceptsSourceRepository conceptsSourceRepository, DataSource dataSource,
 							   AuthtokenRepository authtokenRepository, UserProfilesOrganizationRepository userProfilesOrganizationRepository,
-							   OrganizationRepository organizationRepository, UserRepository userRepository) {
+							   OrganizationRepository organizationRepository, UserRepository userRepository, CollectionRepository collectionRepository) {
 		super(sourceRepository, conceptRepository, oclFhirUtil, oclUser, conceptsSourceRepository, dataSource, authtokenRepository,
-				userProfilesOrganizationRepository, organizationRepository, userRepository);
+				userProfilesOrganizationRepository, organizationRepository, userRepository, collectionRepository);
 	}
 
 	public List<CodeSystem> convertToCodeSystem(List<Source> sources, boolean includeConcepts, int page) {
@@ -81,8 +80,8 @@ public class CodeSystemConverter extends BaseConverter {
             codeSystem.setTitle(source.getFullName());
         }
         // status
-        addStatus(codeSystem, source.getRetired() != null ? source.getRetired() : false,
-				source.getReleased() != null ? source.getReleased() : false);
+        addStatus(codeSystem, source.getRetired() != null ? source.getRetired() : False,
+				source.getReleased() != null ? source.getReleased() : False);
 		// language
 		codeSystem.setLanguage(source.getDefaultLocale());
 
@@ -230,7 +229,7 @@ public class CodeSystemConverter extends BaseConverter {
 
 	public Parameters validateCode(final Source source, final String code, final StringType display, final CodeType displayLanguage) {
 		Parameters parameters = new Parameters();
-		BooleanType result = new BooleanType(false);
+		BooleanType result = new BooleanType(False);
 		parameters.addParameter().setName(RESULT).setValue(result);
 		Optional<Concept> conceptOpt = oclFhirUtil.getSourceConcept(source, code, EMPTY);
 		if (conceptOpt.isPresent()) {
@@ -242,10 +241,10 @@ public class CodeSystemConverter extends BaseConverter {
 				if (!match) {
 					parameters.addParameter().setName(MESSAGE).setValue(newStringType("Invalid display."));
 				} else {
-					result.setValue(true);
+					result.setValue(True);
 				}
 			} else {
-				result.setValue(true);
+				result.setValue(True);
 			}
 		}
 		return parameters;
@@ -275,47 +274,13 @@ public class CodeSystemConverter extends BaseConverter {
 	}
 
 	public void createCodeSystem(CodeSystem codeSystem, String accessionId, String authToken) {
-		String org = EMPTY;
-		String username = EMPTY;
-		String codeSystemId = EMPTY;
-		String formattedId = formatExpression(accessionId);
-		String [] ar = formattedId.split(FW_SLASH);
-		if (ar.length >= 5) {
-			if (ORGS.equals(ar[1]) && isValid(ar[2])) {
-				org = ar[2];
-			} else if (USERS.equals(ar[1]) && isValid(ar[2])){
-				username = ar[2];
-			}
-			if (CODESYSTEM.equals(ar[3]) && isValid(ar[4])) {
-				codeSystemId = ar[4];
-				codeSystem.setId(codeSystemId);
-			}
-			if (ar.length >=6 && isValid(ar[5])) {
-				codeSystem.setVersion(ar[5]);
-			} else if (!isValid(codeSystem.getVersion())) {
-				codeSystem.setVersion(DEFAULT_SOURCE_VERSION);
-				formattedId = formattedId + DEFAULT_SOURCE_VERSION + FW_SLASH;
-			} else {
-				formattedId = formattedId + codeSystem.getVersion() + FW_SLASH;
-			}
-		}
-
-		if (org.isEmpty() && username.isEmpty())
-			throw new InvalidRequestException("Owner type and id is required.");
-		if (codeSystemId.isEmpty())
-			throw new InvalidRequestException("CodeSystem id is required.");
-
-		BaseOclEntity owner = validateOwner(org, username);
-		AuthtokenToken token = validateToken(authToken);
-		authenticate(token, username, org);
-		validateId(username, org, codeSystemId, codeSystem.getVersion(), CODESYSTEM);
-		validateCanonicalUrl(username, org, codeSystem.getUrl(), codeSystem.getVersion(), CODESYSTEM);
-
-		UserProfile user = token.getUserProfile();
+		// validate and authenticate
+		OclEntity oclEntity = new OclEntity(codeSystem, accessionId, authToken);
+		UserProfile user = oclEntity.getUserProfile();
 		// base source
-		Source source = toBaseSource(codeSystem, user, formattedId);
+		Source source = toBaseSource(codeSystem, user, oclEntity.getAccessionId());
 		// add parent and access
-		addParent(source, owner);
+		addParent(source, oclEntity.getOwner());
 		// add identifier, contact and jurisdiction
 		addJsonStrings(codeSystem, source);
 		// version-less source uri
@@ -327,7 +292,7 @@ public class CodeSystemConverter extends BaseConverter {
 			c.setParent(source);
 			c.setPublicAccess(source.getPublicAccess());
 			c.setVersion("1");
-			c.setIsLatestVersion(true);
+			c.setIsLatestVersion(True);
 			c.setReleased(c.getIsActive());
 			c.setRetired(c.getIsActive());
 			c.setDefaultLocale(source.getDefaultLocale());
@@ -406,7 +371,7 @@ public class CodeSystemConverter extends BaseConverter {
 			text.setName(definition);
 			text.setType(DEFINITION);
 			text.setLocale(defaultLocale);
-			text.setLocalePreferred(true);
+			text.setLocalePreferred(True);
 
 			ConceptsDescription description = new ConceptsDescription();
 			description.setConcept(concept);
@@ -456,20 +421,20 @@ public class CodeSystemConverter extends BaseConverter {
 		source.setUpdatedBy(user);
 
 		// draft or unknown or empty
-		source.setIsActive(true);
-		source.setIsLatestVersion(true);
-		source.setRetired(false);
-		source.setReleased(false);
+		source.setIsActive(True);
+		source.setIsLatestVersion(True);
+		source.setRetired(False);
+		source.setReleased(False);
 		if (codeSystem.getStatus() != null) {
 			// active
 			if (PublicationStatus.ACTIVE.toCode().equals(codeSystem.getStatus().toCode())) {
-				source.setReleased(true);
+				source.setReleased(True);
 				// retired
 			} else if (PublicationStatus.RETIRED.toCode().equals(codeSystem.getStatus().toCode())) {
-				source.setRetired(true);
-				source.setReleased(false);
-				source.setIsActive(false);
-				source.setIsLatestVersion(false);
+				source.setRetired(True);
+				source.setReleased(False);
+				source.setIsActive(False);
+				source.setIsLatestVersion(False);
 			}
 		}
 		// version
@@ -560,7 +525,7 @@ public class CodeSystemConverter extends BaseConverter {
 			throw new ResourceNotFoundException(String.format("The CodeSystem of id %s and version %s does not exist.", id, version));
 
 		// retire source and update
-		source.setRetired(true);
+		source.setRetired(True);
 		sourceRepository.saveAndFlush(source);
 	}
 

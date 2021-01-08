@@ -92,7 +92,7 @@ public class BaseOclFhirController {
                 .execute();
     }
 
-    protected void performCreate(CodeSystem resource, String auth) {
+    protected void performCreate(MetadataResource resource, String auth) {
         oclFhirUtil.getClient()
                 .create()
                 .resource(resource).withAdditionalHeader(AUTHORIZATION, auth)
@@ -183,9 +183,9 @@ public class BaseOclFhirController {
         return USER_ + user;
     }
 
-    protected ResponseEntity<String> validate(String user, CodeSystem system, Optional<Identifier> acsnOpt,
+    protected ResponseEntity<String> validate(String user, String resId, Optional<Identifier> acsnOpt,
                                               String ownerType, String ownerId) {
-        ResponseEntity<String> response1 = validateId(system.getId());
+        ResponseEntity<String> response1 = validateId(resId);
         if (response1 != null) return response1;
         return validateAccessionId(acsnOpt, ownerType, ownerId);
     }

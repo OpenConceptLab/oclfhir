@@ -1,6 +1,7 @@
 package org.openconceptlab.fhir.provider;
 
 import ca.uhn.fhir.rest.annotation.*;
+import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
@@ -51,6 +52,30 @@ public class ValueSetResourceProvider implements IResourceProvider {
     @Override
     public Class<? extends IBaseResource> getResourceType() {
         return ValueSet.class;
+    }
+
+    @Create
+    @Transactional
+    public MethodOutcome createValueSet(@ResourceParam ValueSet valueSet, RequestDetails requestDetails) {
+        if (valueSet == null) {
+            throw new InvalidRequestException("The ValueSet can not be empty");
+        }
+        String accessionId = getAccessionIdentifier(valueSet.getIdentifier());
+        if (!isValid(accessionId)) {
+            throw new InvalidRequestException("The ValueSet.identifier is empty or identifier of type ACSN is empty.");
+        }
+        if (!isValid(valueSet.getUrl())) {
+            throw new InvalidRequestException("The ValueSet.url can not be empty. Please provide canonical url.");
+        }
+        valueSetConverter.createValueSet(valueSet, accessionId, requestDetails.getHeader(AUTHORIZATION));
+        return new MethodOutcome();
+    }
+
+    @Delete
+    @Transactional
+    public void delete(@IdParam(optional = true) IdType idType) {
+        collectionRepository.deleteAll(collectionRepository
+                .findByCanonicalUrlAndPublicAccessIn("https://www.test.org/Test2", publicAccess));
     }
 
     /**

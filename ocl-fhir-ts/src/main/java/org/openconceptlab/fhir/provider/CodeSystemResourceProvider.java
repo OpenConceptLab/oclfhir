@@ -52,7 +52,7 @@ public class CodeSystemResourceProvider implements IResourceProvider {
         if (codeSystem == null) {
             throw new InvalidRequestException("The CodeSystem can not be empty");
         }
-        String accessionId = getAccessionIdentifier(codeSystem);
+        String accessionId = getAccessionIdentifier(codeSystem.getIdentifier());
         if (!isValid(accessionId)) {
             throw new InvalidRequestException("The CodeSystem.identifier is empty or identifier of type ACSN is empty.");
         }

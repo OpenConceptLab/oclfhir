@@ -114,4 +114,14 @@ public final class OclFhirConstants {
 	public static final String UPDATED_AT = "updated_at";
 
 	public static final String AUTHORIZATION = "Authorization";
+	public static final String VIEW = "View";
+	public static final String EDIT = "Edit";
+	public static final String NONE = "None";
+	public static final String CONCEPTS = "concepts";
+	public static final String COLLECTIONS = "collections";
+	public static final String SOURCES = "sources";
+	public static final String EXPRESSION = "expression";
+	public static final String LAST_RESOLVED_AT = "last_resolved_at";
+	public static final boolean True = true;
+	public static final boolean False = false;
 }

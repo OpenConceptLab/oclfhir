@@ -49,9 +49,6 @@ public class Collection extends BaseOclEntity implements Serializable {
 	@Column(name = "revision_date")
 	private Date revisionDate;
 
-	@Column(name="_background_process_ids")
-	private String backgroundProcessIds;
-
 	@Column(name="active_concepts")
 	private Integer activeConcepts;
 
@@ -59,13 +56,13 @@ public class Collection extends BaseOclEntity implements Serializable {
 	private Integer activeMappings;
 
 	@Column(name="collection_type")
-	private String collectionType;
+	private String collectionType = "N/A";
 
 	@Column(name="created_at")
-	private Timestamp createdAt;
+	private Timestamp createdAt = new Timestamp(System.currentTimeMillis());
 
 	@Column(name="custom_resources_linked_source")
-	private String customResourcesLinkedSource;
+	private String customResourcesLinkedSource = "N/A";
 
 	@Column(name="custom_validation_schema")
 	private String customValidationSchema;
@@ -96,7 +93,7 @@ public class Collection extends BaseOclEntity implements Serializable {
 	private Boolean isLatestVersion;
 
 	@Column(name="last_child_update")
-	private Timestamp lastChildUpdate;
+	private Timestamp lastChildUpdate = new Timestamp(System.currentTimeMillis());
 
 	@Column(name="last_concept_update")
 	private Timestamp lastConceptUpdate;
@@ -108,10 +105,10 @@ public class Collection extends BaseOclEntity implements Serializable {
 	private String mnemonic;
 
 	@Column
-	private String name;
+	private String name = "N/A";
 
 	@Column(name="preferred_source")
-	private String preferredSource;
+	private String preferredSource = "N/A";
 
 	@Column(name="public_access")
 	private String publicAccess;
@@ -120,7 +117,7 @@ public class Collection extends BaseOclEntity implements Serializable {
 	private Boolean released;
 
 	@Column(name="repository_type")
-	private String repositoryType;
+	private String repositoryType = "Collection";
 
 	@Column
 	private Boolean retired;
@@ -130,7 +127,7 @@ public class Collection extends BaseOclEntity implements Serializable {
 	private String supportedLocales;
 
 	@Column(name="updated_at")
-	private Timestamp updatedAt;
+	private Timestamp updatedAt = new Timestamp(System.currentTimeMillis());
 
 	@Column
 	private String uri;
@@ -159,13 +156,13 @@ public class Collection extends BaseOclEntity implements Serializable {
 	@JoinColumn(name="user_id")
 	private UserProfile userId;
 
-	@OneToMany(mappedBy="collection")
+	@OneToMany(mappedBy="collection", cascade = CascadeType.ALL)
 	private List<CollectionsConcept> collectionsConcepts;
 
-	@OneToMany(mappedBy="collection")
+	@OneToMany(mappedBy="collection", cascade = CascadeType.ALL)
 	private List<CollectionsMapping> collectionsMappings;
 
-	@OneToMany(mappedBy="collection")
+	@OneToMany(mappedBy="collection", cascade = CascadeType.ALL)
 	private List<CollectionsReference> collectionsreferences;
 
 	public Collection() {
@@ -241,14 +238,6 @@ public class Collection extends BaseOclEntity implements Serializable {
 
 	public void setRevisionDate(Date revisionDate) {
 		this.revisionDate = revisionDate;
-	}
-
-	public String getBackgroundProcessIds() {
-		return this.backgroundProcessIds;
-	}
-
-	public void setBackgroundProcessIds(String backgroundProcessIds) {
-		this.backgroundProcessIds = backgroundProcessIds;
 	}
 
 	public Integer getActiveConcepts() {

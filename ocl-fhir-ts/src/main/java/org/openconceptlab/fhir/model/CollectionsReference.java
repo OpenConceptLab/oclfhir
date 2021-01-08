@@ -17,7 +17,7 @@ public class CollectionsReference extends BaseOclEntity implements Serializable 
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Integer id;
 
-	@ManyToOne
+	@ManyToOne(cascade = CascadeType.ALL)
 	private CollectionReference collectionreference;
 
 	@ManyToOne

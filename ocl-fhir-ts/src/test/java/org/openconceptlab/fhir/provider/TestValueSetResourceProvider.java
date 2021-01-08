@@ -2,23 +2,28 @@ package org.openconceptlab.fhir.provider;
 
 import static org.mockito.Mockito.*;
 
+import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import ca.uhn.fhir.rest.server.exceptions.ResourceVersionConflictException;
 import com.google.common.collect.Sets;
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.*;
 import static org.junit.Assert.*;
+import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.MockitoAnnotations;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 import org.mockito.stubbing.OngoingStubbing;
 import org.openconceptlab.fhir.base.OclFhirTest;
 import org.openconceptlab.fhir.model.*;
-import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 
+import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.Arrays;
@@ -604,6 +609,196 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         ValueSet vs = runExpand(references, Collections.singletonList(cs11), Arrays.asList(cs21, cs22, cs23, cs24),
                 Arrays.asList(cs31, cs32, cs33, cs34), 0, 50, CS_URL + "|v3.0");
         assertEquals(0, vs.getExpansion().getContains().size());
+    }
+
+    @Test(expected = InvalidRequestException.class)
+    public void testCreateValueSet_null() {
+        ValueSetResourceProvider provider = valueSetProvider();
+        provider.createValueSet(null, requestDetails);
+    }
+
+    @Test(expected = InvalidRequestException.class)
+    public void testCreateValueSet_accessionId_null() {
+        ValueSetResourceProvider provider = valueSetProvider();
+        ValueSet valueSet = valueSet();
+        valueSet.setIdentifier(null);
+        provider.createValueSet(valueSet, requestDetails);
+    }
+
+    @Test(expected = InvalidRequestException.class)
+    public void testCreateValueSet_url_null() {
+        ValueSetResourceProvider provider = valueSetProvider();
+        ValueSet valueSet = valueSet();
+        valueSet.setUrl(null);
+        provider.createValueSet(valueSet, requestDetails);
+    }
+
+    @Test(expected = InvalidRequestException.class)
+    public void testCreateValueSet_invalid_org() {
+        ValueSetResourceProvider provider = valueSetProvider();
+        ValueSet valueSet = valueSet();
+        when(organizationRepository.findByMnemonic(anyString())).thenReturn(null);
+        provider.createValueSet(valueSet, requestDetails);
+        verify(organizationRepository, times(1)).findByMnemonic(anyString());
+    }
+
+    @Test(expected = InvalidRequestException.class)
+    public void testCreateValueSet_invalid_user() {
+        ValueSetResourceProvider provider = valueSetProvider();
+        ValueSet valueSet = valueSet();
+        valueSet.getIdentifierFirstRep().setValue("/users/testuser/ValueSet/testsource/2.0");
+        when(userRepository.findByUsername(anyString())).thenReturn(null);
+        provider.createValueSet(valueSet, requestDetails);
+        verify(userRepository, times(1)).findByUsername(anyString());
+    }
+
+    @Test(expected = AuthenticationException.class)
+    public void testCreateValueSet_token_null() {
+        ValueSetResourceProvider provider = valueSetProvider();
+        ValueSet valueSet = valueSet();
+        when(requestDetails.getHeader(anyString())).thenReturn(null);
+        when(organizationRepository.findByMnemonic(anyString())).thenReturn(newOrganization());
+        provider.createValueSet(valueSet, requestDetails);
+        verify(requestDetails, times(1)).getHeader(anyString());
+        verify(organizationRepository, times(1)).findByMnemonic(anyString());
+    }
+
+    @Test(expected = AuthenticationException.class)
+    public void testCreateValueSet_invalid_token() {
+        ValueSetResourceProvider provider = valueSetProvider();
+        ValueSet valueSet = valueSet();
+        when(requestDetails.getHeader(anyString())).thenReturn("Token  678423578911230985");
+        when(organizationRepository.findByMnemonic(anyString())).thenReturn(newOrganization());
+        when(authtokenRepository.findByKey(anyString())).thenReturn(null);
+        provider.createValueSet(valueSet, requestDetails);
+        verify(requestDetails, times(1)).getHeader(anyString());
+        verify(organizationRepository, times(1)).findByMnemonic(anyString());
+        verify(authtokenRepository, times(1)).findByKey(anyString());
+    }
+
+    @Test(expected = AuthenticationException.class)
+    public void testCreateValueSet_user_not_org_member_invalid_user() {
+        ValueSetResourceProvider provider = valueSetProvider();
+        ValueSet valueSet = valueSet();
+        when(requestDetails.getHeader(anyString())).thenReturn("Token  12345");
+        when(organizationRepository.findByMnemonic(anyString())).thenReturn(newOrganization());
+        when(authtokenRepository.findByKey(anyString())).thenReturn(newToken(test_user));
+        when(userProfilesOrganizationRepository.findByOrganizationMnemonic(anyString()))
+                .thenReturn(Collections.singletonList(newUserOrg("otheruser")));
+        provider.createValueSet(valueSet, requestDetails);
+        verify(requestDetails, times(1)).getHeader(anyString());
+        verify(organizationRepository, times(1)).findByMnemonic(anyString());
+        verify(authtokenRepository, times(1)).findByKey(anyString());
+        verify(userProfilesOrganizationRepository, times(1)).findByOrganizationMnemonic(anyString());
+    }
+
+    @Test(expected = ResourceVersionConflictException.class)
+    public void testCreateValueSet_valueset_id_exists() {
+        ValueSetResourceProvider provider = valueSetProvider();
+        ValueSet valueSet = valueSet();
+        when(requestDetails.getHeader(anyString())).thenReturn("Token  12345");
+        when(organizationRepository.findByMnemonic(anyString())).thenReturn(newOrganization());
+        when(authtokenRepository.findByKey(anyString())).thenReturn(newToken(test_user));
+        when(userProfilesOrganizationRepository.findByOrganizationMnemonic(anyString()))
+                .thenReturn(Collections.singletonList(newUserOrg(test_user)));
+        when(collectionRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonic(anyString(), anyString(), anyString()))
+                .thenReturn(new Collection());
+        provider.createValueSet(valueSet, requestDetails);
+        verify(requestDetails, times(1)).getHeader(anyString());
+        verify(organizationRepository, times(1)).findByMnemonic(anyString());
+        verify(authtokenRepository, times(1)).findByKey(anyString());
+        verify(userProfilesOrganizationRepository, times(1)).findByOrganizationMnemonic(anyString());
+        verify(collectionRepository, times(1)).findFirstByMnemonicAndVersionAndOrganizationMnemonic(anyString(), anyString(), anyString());
+    }
+
+    @Test(expected = ResourceVersionConflictException.class)
+    public void testCreateValueSet_valueset_url_exists() {
+        ValueSetResourceProvider provider = valueSetProvider();
+        ValueSet valueSet = valueSet();
+        when(requestDetails.getHeader(anyString())).thenReturn("Token  12345");
+        when(organizationRepository.findByMnemonic(anyString())).thenReturn(newOrganization());
+        when(authtokenRepository.findByKey(anyString())).thenReturn(newToken(test_user));
+        when(userProfilesOrganizationRepository.findByOrganizationMnemonic(anyString()))
+                .thenReturn(Collections.singletonList(newUserOrg(test_user)));
+        when(collectionRepository.findFirstByCanonicalUrlAndVersionAndOrganizationMnemonic(anyString(), anyString(), anyString()))
+                .thenReturn(new Collection());
+        provider.createValueSet(valueSet, requestDetails);
+        verify(requestDetails, times(1)).getHeader(anyString());
+        verify(organizationRepository, times(1)).findByMnemonic(anyString());
+        verify(authtokenRepository, times(1)).findByKey(anyString());
+        verify(userProfilesOrganizationRepository, times(1)).findByOrganizationMnemonic(anyString());
+        verify(collectionRepository, times(1)).findFirstByCanonicalUrlAndVersionAndOrganizationMnemonic(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    public void testCreateValueSet() throws SQLException {
+        ValueSetResourceProvider provider = valueSetProvider();
+        ValueSet valueSet = valueSet();
+        when(requestDetails.getHeader(anyString())).thenReturn("Token  12345");
+        when(organizationRepository.findByMnemonic(anyString())).thenReturn(newOrganization());
+        when(authtokenRepository.findByKey(anyString())).thenReturn(newToken(test_user));
+        when(userProfilesOrganizationRepository.findByOrganizationMnemonic(anyString()))
+                .thenReturn(Collections.singletonList(newUserOrg(test_user)));
+        doAnswer(new Answer() {
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+                Object[] args = invocation.getArguments();
+                ((Collection)args[0]).setId(123L);
+                return args[0];
+            }
+        }).when(collectionRepository).saveAndFlush(any(Collection.class));
+
+        when(insertCollectionReference.executeAndReturnKeyHolder(anyMap())).thenReturn(newKey());
+
+        doAnswer(new Answer() {
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+                return null;
+            }
+        }).when(jdbcTemplate).batchUpdate(anyString(), any(BatchPreparedStatementSetter.class));
+        populateSource1(source1);
+        source1.setOrganization(newOrganization());
+        when(sourceRepository.findFirstByCanonicalUrlAndReleasedAndPublicAccessInOrderByCreatedAtDesc(anyString(), anyBoolean(), anyList()))
+                .thenReturn(source1);
+
+        provider.createValueSet(valueSet, requestDetails);
+
+        verify(requestDetails, times(1)).getHeader(anyString());
+        verify(organizationRepository, times(1)).findByMnemonic(anyString());
+        verify(authtokenRepository, times(1)).findByKey(anyString());
+        verify(userProfilesOrganizationRepository, times(1)).findByOrganizationMnemonic(anyString());
+        verify(collectionRepository, times(1)).saveAndFlush(any(Collection.class));
+        verify(insertCollectionReference, times(1)).executeAndReturnKeyHolder(anyMap());
+    }
+
+    private ValueSet valueSet() {
+        ValueSet valueSet = new ValueSet();
+        valueSet.setUrl(URL_COLLECTION_1);
+        Identifier identifier = valueSet.getIdentifierFirstRep();
+        identifier.getType().getCodingFirstRep().setSystem(ACSN_SYSTEM).setCode(ACSN);
+        identifier.setSystem(OCL_SYSTEM);
+        identifier.setValue("/orgs/OCL/ValueSet/testsource/2.0");
+        valueSet.setName("Test Code System");
+        valueSet.setStatus(Enumerations.PublicationStatus.DRAFT);
+        valueSet.setCopyright("Test copy right");
+        valueSet.setPurpose("Test purpose");
+        valueSet.setPublisher("Test publisher");
+        valueSet.setDescription("Test description");
+        valueSet.setTitle("Test title");
+        valueSet.setDate(date1);
+
+        valueSet.getContactFirstRep().setName("Jon Doe").getTelecomFirstRep().setSystem(ContactPoint.ContactPointSystem.EMAIL)
+                .setValue("jondoe@gmail.com").setUse(ContactPoint.ContactPointUse.WORK).setRank(1);
+
+        valueSet.getJurisdictionFirstRep().getCodingFirstRep().setSystem("http://unstats.un.org/unsd/methods/m49/m49.htm")
+                .setCode("USA").setDisplay("United States of America");
+
+        ValueSet.ValueSetComposeComponent compose = valueSet.getCompose();
+        ValueSet.ConceptSetComponent conceptSetComponent = compose.getIncludeFirstRep();
+        conceptSetComponent.setSystem(URL_SOURCE_1);
+        ValueSet.ConceptReferenceComponent referenceComponent = conceptSetComponent.getConceptFirstRep();
+        referenceComponent.setCode("TEST");
+        return valueSet;
     }
 
     private void assertContains(ValueSet valueSet, int index, String system, String version, String code, String display) {

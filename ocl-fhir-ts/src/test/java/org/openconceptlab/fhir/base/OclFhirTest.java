@@ -17,10 +17,14 @@ import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
 import org.openconceptlab.fhir.repository.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
+import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.jdbc.support.KeyHolder;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.sql.DataSource;
+import java.sql.ResultSet;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -84,6 +88,12 @@ public class OclFhirTest {
     public static final String V_1_0 = "v1.0";
     public static final String V_2_0 = "v2.0";
 
+    public static final String URL_COLLECTION_1 = "http://openconceptlab.org/collection1";
+    public static final String URI_COLLECTION_1 = "/orgs/OCL/collections/collection1";
+    public static final String URL_COLLECTION_2 = "http://openconceptlab.org/collection2";
+    public static final String URI_COLLECTION_2 = "/orgs/OCL/collections/collection2";
+    public static final String test_user = "testuser";
+
     protected Source source1;
     protected Source source2;
     protected Source source3;
@@ -141,19 +151,19 @@ public class OclFhirTest {
     protected SimpleJdbcInsert insertLocalizedText;
 
     @Mock
-    protected SimpleJdbcInsert insertConceptName;
-
-    @Mock
-    protected SimpleJdbcInsert insertConceptDesc;
-
-    @Mock
-    protected SimpleJdbcInsert insertSource;
+    protected SimpleJdbcInsert insertCollectionReference;
 
     @Mock
     protected SimpleJdbcInsert insertConcept;
 
     @Mock
     protected JdbcTemplate jdbcTemplate;
+
+    @Mock
+    protected NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+
+    @Mock
+    protected ResultSet resultSet;
 
     @Spy
     protected OclCapabilityStatementProvider capabilityStatementProvider;
@@ -198,8 +208,8 @@ public class OclFhirTest {
 
     public ValueSetResourceProvider valueSetProvider() {
         OclFhirUtil oclFhirUtil = new OclFhirUtil(sourceRepository, conceptRepository, conceptsSourceRepository);
-        ValueSetConverter converter = new ValueSetConverter(sourceRepository, conceptRepository, oclFhirUtil, oclUser, conceptsSourceRepository, dataSource,
-                authtokenRepository, userProfilesOrganizationRepository, organizationRepository, userRepository);
+        ValueSetConverter converter = new TestValueSetConverter(sourceRepository, conceptRepository, oclFhirUtil, oclUser, conceptsSourceRepository, dataSource,
+                authtokenRepository, userProfilesOrganizationRepository, organizationRepository, userRepository, collectionRepository);
         return spy(new ValueSetResourceProvider(collectionRepository, converter, oclFhirUtil));
     }
 
@@ -210,7 +220,7 @@ public class OclFhirTest {
                            AuthtokenRepository authtokenRepository, UserProfilesOrganizationRepository userProfilesOrganizationRepository,
                            OrganizationRepository organizationRepository, UserRepository userRepository) {
             super(sourceRepository, conceptRepository, oclFhirUtil, oclUser, conceptsSourceRepository, dataSource, authtokenRepository,
-                    userProfilesOrganizationRepository, organizationRepository, userRepository);
+                    userProfilesOrganizationRepository, organizationRepository, userRepository, OclFhirTest.this.collectionRepository);
             this.jdbcTemplate = OclFhirTest.this.jdbcTemplate;
             this.insertConcept = OclFhirTest.this.insertConcept;
             this.insertLocalizedText = OclFhirTest.this.insertLocalizedText;
@@ -221,6 +231,32 @@ public class OclFhirTest {
             this.jdbcTemplate = OclFhirTest.this.jdbcTemplate;
             this.insertConcept = OclFhirTest.this.insertConcept;
             this.insertLocalizedText = OclFhirTest.this.insertLocalizedText;
+        }
+    }
+
+    class TestValueSetConverter extends ValueSetConverter {
+
+        public TestValueSetConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil,
+                                     UserProfile oclUser, ConceptsSourceRepository conceptsSourceRepository, DataSource dataSource,
+                                     AuthtokenRepository authtokenRepository, UserProfilesOrganizationRepository userProfilesOrganizationRepository,
+                                     OrganizationRepository organizationRepository, UserRepository userRepository, CollectionRepository collectionRepository) {
+            super(sourceRepository, conceptRepository, oclFhirUtil, oclUser, conceptsSourceRepository, dataSource, authtokenRepository,
+                    userProfilesOrganizationRepository, organizationRepository, userRepository, collectionRepository);
+            this.jdbcTemplate = OclFhirTest.this.jdbcTemplate;
+            this.insertCollectionReference = OclFhirTest.this.insertCollectionReference;
+            this.namedParameterJdbcTemplate = OclFhirTest.this.namedParameterJdbcTemplate;
+        }
+
+        @Override
+        public void initValueSetConverter() {
+            this.insertCollectionReference = OclFhirTest.this.insertCollectionReference;
+        }
+
+        @Override
+        protected Map<Long, String> getValidatedConceptIds(Long sourceId, List<String> conceptIds) {
+            Map<Long,String> map = new HashMap<>();
+            map.put(1L, "TEST");
+            return map;
         }
     }
 
@@ -426,6 +462,14 @@ public class OclFhirTest {
         userOrg.setUserProfile(newUser(username));
         userOrg.setOrganization(newOrganization());
         return userOrg;
+    }
+
+    protected KeyHolder newKey() {
+        List<Map<String, Object>> list = new ArrayList<>();
+        Map<String, Object> map = new HashMap<>();
+        map.put("id", 45);
+        list.add(map);
+        return new GeneratedKeyHolder(list);
     }
 
 }

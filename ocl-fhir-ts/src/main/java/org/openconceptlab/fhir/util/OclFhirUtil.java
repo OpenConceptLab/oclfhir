@@ -422,12 +422,10 @@ public class OclFhirUtil {
         return uri;
     }
 
-    public static String getAccessionIdentifier(CodeSystem codeSystem) {
-        if (codeSystem != null) {
-            Optional<Identifier> hasIdentifier = hasAccessionIdentifier(codeSystem.getIdentifier());
-            if (hasIdentifier.isPresent())
-                return hasIdentifier.get().getValue().trim();
-        }
+    public static String getAccessionIdentifier(List<Identifier> identifiers) {
+        Optional<Identifier> hasIdentifier = hasAccessionIdentifier(identifiers);
+        if (hasIdentifier.isPresent())
+            return hasIdentifier.get().getValue().trim();
         return EMPTY;
     }
 

@@ -40,8 +40,6 @@ import java.util.*;
 
 public class TestCodeSystemResourceProvider extends OclFhirTest {
 
-    private static final String test_user = "testuser";
-
     @Before
     public void setUpBefore() {
         MockitoAnnotations.initMocks(this);
@@ -708,14 +706,6 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         verify(sourceRepository, times(1)).saveAndFlush(any(Source.class));
         verify(insertConcept, times(1)).executeAndReturnKeyHolder(anyMap());
         verify(insertLocalizedText, times(2)).executeAndReturnKeyHolder(anyMap());
-    }
-
-    private KeyHolder newKey() {
-        List<Map<String, Object>> list = new ArrayList<>();
-        Map<String, Object> map = new HashMap<>();
-        map.put("id", 45);
-        list.add(map);
-        return new GeneratedKeyHolder(list);
     }
 
     private CodeSystem codeSystem() {

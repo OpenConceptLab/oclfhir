@@ -36,7 +36,7 @@ public class OclFhirOrgController extends BaseOclFhirController {
         try {
             CodeSystem system = (CodeSystem) parser.parseResource(codeSystem);
             Optional<Identifier> acsnOpt = hasAccessionIdentifier(system.getIdentifier());
-            ResponseEntity<String> response = validate(org, system, acsnOpt, ORGS, org);
+            ResponseEntity<String> response = validate(org, system.getId(), acsnOpt, ORGS, org);
             if (response != null) return response;
             if (acsnOpt.isEmpty()) addIdentifier(system.getIdentifier(), ORGS, org, CODESYSTEM, system.getId());
 
@@ -116,6 +116,26 @@ public class OclFhirOrgController extends BaseOclFhirController {
         Parameters params = (Parameters) getResource(parameters);
         params.addParameter().setName(OWNER).setValue(newStringType(formatOrg(org)));
         return handleFhirOperation(params, CodeSystem.class, VALIDATE_CODE);
+    }
+
+    @PostMapping(path = {"/{org}/ValueSet"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> createValueSetForOrg(@PathVariable(name = ORG) String org,
+                                                       @RequestBody String valueSet,
+                                                       @RequestHeader(name = AUTHORIZATION) String auth) {
+        try {
+            ValueSet set = (ValueSet) parser.parseResource(valueSet);
+            Optional<Identifier> acsnOpt = hasAccessionIdentifier(set.getIdentifier());
+            ResponseEntity<String> response = validate(org, set.getId(), acsnOpt, ORGS, org);
+            if (response != null) return response;
+            if (acsnOpt.isEmpty()) addIdentifier(set.getIdentifier(), ORGS, org, VALUESET, set.getId());
+
+            performCreate(set, auth);
+            return ResponseEntity.status(HttpStatus.CREATED).build();
+        } catch (BaseServerResponseException e) {
+            return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBody());
+        } catch (Exception e) {
+            return badRequest(e.getMessage());
+        }
     }
 
     @GetMapping(path = {"/{org}/ValueSet/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})

@@ -43,6 +43,11 @@ public interface CollectionRepository extends BaseOclRepository<Collection>{
     Collection findFirstByCanonicalUrlAndVersionAndOrganizationMnemonicAndPublicAccessIn(String canonicalUrl, String version, String orgId, List<String> publicAccess);
     Collection findFirstByCanonicalUrlAndVersionAndUserIdUsernameAndPublicAccessIn(String canonicalUrl, String version, String username, List<String> publicAccess);
 
+    Collection findFirstByCanonicalUrlAndVersionAndOrganizationMnemonic(String canonicalUrl, String version, String orgId);
+    Collection findFirstByCanonicalUrlAndVersionAndUserIdUsername(String canonicalUrl, String version, String username);
+    Collection findFirstByMnemonicAndVersionAndOrganizationMnemonic(String sourceId, String version, String orgId);
+    Collection findFirstByMnemonicAndVersionAndUserIdUsername(String sourceId, String version, String username);
+
     Collection findFirstByMnemonicAndReleasedAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(String collectionId, boolean released,
                                                                                                       String orgId, List<String> publicAccess);
 

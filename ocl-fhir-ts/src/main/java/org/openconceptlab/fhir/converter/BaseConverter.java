@@ -8,12 +8,16 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import org.hl7.fhir.r4.model.BooleanType;
 import org.hl7.fhir.r4.model.CodeSystem;
+import org.hl7.fhir.r4.model.MetadataResource;
+import org.hl7.fhir.r4.model.ValueSet;
 import org.openconceptlab.fhir.model.*;
+import org.openconceptlab.fhir.model.Collection;
 import org.openconceptlab.fhir.repository.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.stereotype.Component;
 
@@ -25,6 +29,7 @@ import java.sql.SQLException;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.openconceptlab.fhir.converter.CodeSystemConverter.DEFAULT_RES_VERSION;
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 import static org.openconceptlab.fhir.util.OclFhirUtil.*;
 import static org.openconceptlab.fhir.util.OclFhirUtil.gson;
@@ -45,6 +50,9 @@ public class BaseConverter {
     protected SimpleJdbcInsert insertConcept;
     protected DataSource dataSource;
     protected JdbcTemplate jdbcTemplate;
+    protected CollectionRepository collectionRepository;
+    protected SimpleJdbcInsert insertCollectionReference;
+    protected NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
     protected static final String insertConceptNamesSql = "insert into concepts_names (localizedtext_id,concept_id) values (?,?)";
     protected static final String insertConceptDescSql = "insert into concepts_descriptions (localizedtext_id,concept_id) values (?,?)";
@@ -55,7 +63,7 @@ public class BaseConverter {
     public BaseConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil,
                          UserProfile oclUser, ConceptsSourceRepository conceptsSourceRepository, DataSource dataSource,
                          AuthtokenRepository authtokenRepository, UserProfilesOrganizationRepository userProfilesOrganizationRepository,
-                         OrganizationRepository organizationRepository, UserRepository userRepository) {
+                         OrganizationRepository organizationRepository, UserRepository userRepository, CollectionRepository collectionRepository) {
         this.sourceRepository = sourceRepository;
         this.conceptRepository = conceptRepository;
         this.oclFhirUtil = oclFhirUtil;
@@ -66,11 +74,13 @@ public class BaseConverter {
         this.userProfilesOrganizationRepository = userProfilesOrganizationRepository;
         this.organizationRepository = organizationRepository;
         this.userRepository = userRepository;
+        this.collectionRepository = collectionRepository;
     }
 
     @PostConstruct
     public void init() {
         this.jdbcTemplate = new JdbcTemplate(dataSource);
+        this.namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(dataSource);
         insertLocalizedText = new SimpleJdbcInsert(jdbcTemplate).withTableName("localized_texts");
         insertConcept = new SimpleJdbcInsert(jdbcTemplate).withTableName("concepts");
     }
@@ -140,6 +150,12 @@ public class BaseConverter {
             if (userSource != null || orgSource != null) {
                 throw new ResourceVersionConflictException(String.format("The %s %s of version %s already exists.", resourceType, id, version));
             }
+        } else if (VALUESET.equals(resourceType)) {
+            Collection userCollection = collectionRepository.findFirstByMnemonicAndVersionAndUserIdUsername(id, version, username);
+            Collection orgCollection = collectionRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonic(id, version, org);
+            if (userCollection != null || orgCollection != null) {
+                throw new ResourceVersionConflictException(String.format("The %s %s of version %s already exists.", resourceType, id, version));
+            }
         } else {
             throw new InternalErrorException("Invalid resource type.");
         }
@@ -150,6 +166,12 @@ public class BaseConverter {
             Source userSource = sourceRepository.findFirstByCanonicalUrlAndVersionAndUserIdUsername(url, version, username);
             Source orgSource = sourceRepository.findFirstByCanonicalUrlAndVersionAndOrganizationMnemonic(url, version, org);
             if (userSource != null || orgSource != null) {
+                throw new ResourceVersionConflictException(String.format("The %s of canonical url %s and version %s already exists.", resourceType, url, version));
+            }
+        } else if (VALUESET.equals(resourceType)) {
+            Collection userCollection = collectionRepository.findFirstByCanonicalUrlAndVersionAndUserIdUsername(url, version, username);
+            Collection orgCollection = collectionRepository.findFirstByCanonicalUrlAndVersionAndOrganizationMnemonic(url, version, org);
+            if (userCollection != null || orgCollection != null) {
                 throw new ResourceVersionConflictException(String.format("The %s of canonical url %s and version %s already exists.", resourceType, url, version));
             }
         } else {
@@ -163,6 +185,14 @@ public class BaseConverter {
             source.setContact(convertToJsonString(getResContactString(codeSystem), CONTACT));
         if (!codeSystem.getJurisdiction().isEmpty())
             source.setJurisdiction(convertToJsonString(getResJurisdictionString(codeSystem), JURISDICTION));
+    }
+
+    protected void addJsonStrings(final ValueSet valueSet, final Collection collection) {
+        collection.setIdentifier(convertToJsonString(getResIdentifierString(valueSet), IDENTIFIER));
+        if (!valueSet.getContact().isEmpty())
+            collection.setContact(convertToJsonString(getResContactString(valueSet), CONTACT));
+        if (!valueSet.getJurisdiction().isEmpty())
+            collection.setJurisdiction(convertToJsonString(getResJurisdictionString(valueSet), JURISDICTION));
     }
 
     protected void batchUpdateConceptVersion(List<Integer> conceptIds) {
@@ -266,7 +296,7 @@ public class BaseConverter {
         return map;
     }
 
-    private Long insert(SimpleJdbcInsert insert, Map<String, Object> parameters) {
+    protected Long insert(SimpleJdbcInsert insert, Map<String, Object> parameters) {
         if (!insert.isCompiled())
             insert.usingGeneratedKeyColumns("id");
         Number n = insert.executeAndReturnKeyHolder(parameters).getKey();
@@ -286,6 +316,24 @@ public class BaseConverter {
     private String getResIdentifierString(final CodeSystem codeSystem) {
         CodeSystem system = new CodeSystem();
         system.setIdentifier(codeSystem.getIdentifier());
+        return getFhirContext().newJsonParser().encodeResourceToString(system);
+    }
+
+    private String getResJurisdictionString(final ValueSet valueSet) {
+        CodeSystem system = new CodeSystem();
+        system.setJurisdiction(valueSet.getJurisdiction());
+        return getFhirContext().newJsonParser().encodeResourceToString(system);
+    }
+
+    private String getResContactString(final ValueSet valueSet) {
+        CodeSystem system = new CodeSystem();
+        system.setContact(valueSet.getContact());
+        return getFhirContext().newJsonParser().encodeResourceToString(system);
+    }
+
+    private String getResIdentifierString(final ValueSet valueSet) {
+        CodeSystem system = new CodeSystem();
+        system.setIdentifier(valueSet.getIdentifier());
         return getFhirContext().newJsonParser().encodeResourceToString(system);
     }
 
@@ -325,5 +373,72 @@ public class BaseConverter {
         return false;
     }
 
+    protected class OclEntity {
+        private BaseOclEntity owner;
+        private UserProfile userProfile;
+        private String accessionId;
+
+        public OclEntity(MetadataResource resource, String accessionId, String authToken) {
+            // we'll support two type of accession id patterns as input
+            // 1. /users/testuser/<resource>/Test2/v20.0/
+            // 2. /users/testuser/<resource>/Test2/version/v20.0/
+            String org = EMPTY;
+            String username = EMPTY;
+            String resourceId = EMPTY;
+            String formattedId = formatExpression(accessionId);
+            String [] ar = formattedId.split(FW_SLASH);
+            if (ar.length >= 5) {
+                if (ORGS.equals(ar[1]) && isValid(ar[2])) {
+                    org = ar[2];
+                } else if (USERS.equals(ar[1]) && isValid(ar[2])){
+                    username = ar[2];
+                }
+                if (resource.getClass().getSimpleName().equals(ar[3]) && isValid(ar[4])) {
+                    resourceId = ar[4];
+                    resource.setId(resourceId);
+                }
+                if (ar.length >=6 && isValid(ar[5])) {
+                    if (VERSION.equals(ar[5])) {
+                        if (ar.length >=7 && isValid(ar[6]))
+                            resource.setVersion(ar[6]);
+                    } else {
+                        resource.setVersion(ar[5]);
+                    }
+                } else if (!isValid(resource.getVersion())) {
+                    resource.setVersion(DEFAULT_RES_VERSION);
+                    formattedId = formattedId + DEFAULT_RES_VERSION + FW_SLASH;
+                } else {
+                    formattedId = formattedId + resource.getVersion() + FW_SLASH;
+                }
+            }
+
+            if (org.isEmpty() && username.isEmpty())
+                throw new InvalidRequestException("Owner type and id is required.");
+            if (resourceId.isEmpty())
+                throw new InvalidRequestException("Resource id is required.");
+
+            BaseOclEntity owner = validateOwner(org, username);
+            AuthtokenToken token = validateToken(authToken);
+            authenticate(token, username, org);
+            validateId(username, org, resourceId, resource.getVersion(), resource.getClass().getSimpleName());
+            validateCanonicalUrl(username, org, resource.getUrl(), resource.getVersion(), resource.getClass().getSimpleName());
+
+            this.owner = owner;
+            this.userProfile = token.getUserProfile();
+            this.accessionId = formattedId;
+        }
+
+        public BaseOclEntity getOwner() {
+            return owner;
+        }
+
+        public UserProfile getUserProfile() {
+            return userProfile;
+        }
+
+        public String getAccessionId() {
+            return accessionId;
+        }
+    }
 }
 
