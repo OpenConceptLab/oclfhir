@@ -54,11 +54,11 @@ public interface CollectionRepository extends BaseOclRepository<Collection>{
     Collection findFirstByMnemonicAndReleasedAndUserIdUsernameAndPublicAccessInOrderByCreatedAtDesc(String collectionId, boolean released, String username, List<String> publicAccess);
 
     @Query(value =
-            "select * from collections s1 \n" +
-                    "inner join (select s2.mnemonic as mnemonic ,max(s2.created_at) as created_at from collections s2 where s2.released = true group by s2.mnemonic) s3\n" +
-                    "on s3.mnemonic = s1.mnemonic and s3.created_at = s1.created_at \n" +
+            "select * from collections s1 " +
+                    " inner join (select s2.mnemonic as mnemonic ,max(s2.created_at) as created_at from collections s2 where s2.released = true group by s2.mnemonic) s3 " +
+                    " on s3.mnemonic = s1.mnemonic and s3.created_at = s1.created_at " +
                     " where s1.public_access in :publicAccess " +
-                    "order by s1.mnemonic ",
+                    " order by s1.mnemonic ",
             nativeQuery = true)
     List<Collection> findAllMostRecentReleased(@Param("publicAccess") List<String> publicAccess);
 
