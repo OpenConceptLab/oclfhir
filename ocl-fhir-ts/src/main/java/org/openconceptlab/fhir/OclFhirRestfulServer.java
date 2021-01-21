@@ -10,6 +10,7 @@ import ca.uhn.fhir.rest.server.interceptor.ResponseHighlighterInterceptor;
 import org.openconceptlab.fhir.interceptor.OclFhirAuthorizationInterceptor;
 import org.openconceptlab.fhir.interceptor.OclFhirLoggingInterceptor;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
+import org.openconceptlab.fhir.provider.ConceptMapResourceProvider;
 import org.openconceptlab.fhir.provider.OclCapabilityStatementProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,7 @@ public class OclFhirRestfulServer extends RestfulServer {
 
 	private CodeSystemResourceProvider codeSystemResourceProvider;
 	private ValueSetResourceProvider valueSetResourceProvider;
+	private ConceptMapResourceProvider conceptMapResourceProvider;
 	private OclCapabilityStatementProvider oclCapabilityStatementProvider;
 	private OclFhirAuthorizationInterceptor oclFhirAuthorizationInterceptor;
 	private OclFhirLoggingInterceptor oclFhirLoggingInterceptor;
@@ -33,11 +35,13 @@ public class OclFhirRestfulServer extends RestfulServer {
 	@Autowired
 	public OclFhirRestfulServer(CodeSystemResourceProvider codeSystemResourceProvider,
 								ValueSetResourceProvider valueSetResourceProvider,
+								ConceptMapResourceProvider conceptMapResourceProvider,
 								OclCapabilityStatementProvider oclCapabilityStatementProvider,
 								OclFhirAuthorizationInterceptor oclFhirAuthorizationInterceptor,
 								OclFhirLoggingInterceptor oclFhirLoggingInterceptor) {
 		this.codeSystemResourceProvider = codeSystemResourceProvider;
 		this.valueSetResourceProvider = valueSetResourceProvider;
+		this.conceptMapResourceProvider = conceptMapResourceProvider;
 		this.oclCapabilityStatementProvider = oclCapabilityStatementProvider;
 		this.oclFhirAuthorizationInterceptor = oclFhirAuthorizationInterceptor;
 		this.oclFhirLoggingInterceptor = oclFhirLoggingInterceptor;
@@ -56,6 +60,7 @@ public class OclFhirRestfulServer extends RestfulServer {
 		// Register resource providers
 		registerProvider(codeSystemResourceProvider);
 		registerProvider(valueSetResourceProvider);
+		registerProvider(conceptMapResourceProvider);
 
 		// Register capability statement provider
 		setServerConformanceProvider(oclCapabilityStatementProvider);

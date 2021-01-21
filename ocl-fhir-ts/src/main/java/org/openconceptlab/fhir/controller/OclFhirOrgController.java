@@ -1,10 +1,7 @@
 package org.openconceptlab.fhir.controller;
 
 import ca.uhn.fhir.rest.server.exceptions.BaseServerResponseException;
-import org.hl7.fhir.r4.model.CodeSystem;
-import org.hl7.fhir.r4.model.Identifier;
-import org.hl7.fhir.r4.model.Parameters;
-import org.hl7.fhir.r4.model.ValueSet;
+import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
@@ -209,5 +206,32 @@ public class OclFhirOrgController extends BaseOclFhirController {
         params.addParameter().setName(OWNER).setValue(newStringType(formatOrg(org)));
         return handleFhirOperation(params, ValueSet.class, EXPAND);
     }
+
+    @GetMapping(path = {"/{org}/ConceptMap/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> getConceptMapByOrg(@PathVariable(name = ORG) String org,
+                                                     @PathVariable(name = ID) String id,
+                                                     @RequestParam(name = PAGE, required = false) String page) {
+        if (isValid(page))
+            return handleSearchResource(ConceptMap.class, OWNER, formatOrg(org), ID, id, PAGE, page);
+        return handleSearchResource(ConceptMap.class, OWNER, formatOrg(org), ID, id);
+    }
+
+    @GetMapping(path = {"/{org}/ConceptMap/{id}/version",
+            "/{org}/ConceptMap/{id}/version/{version}"},
+            produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> getConceptMapVersionsByOrg(@PathVariable(name = ORG) String org,
+                                                             @PathVariable(name = ID) String id,
+                                                             @PathVariable(name = VERSION) Optional<String> version,
+                                                             @RequestParam(name = PAGE, required = false) String page) {
+        if (isValid(page))
+            return handleSearchResource(ConceptMap.class, OWNER, formatOrg(org), ID, id, VERSION, version.orElse(ALL), PAGE, page);
+        return handleSearchResource(ConceptMap.class, OWNER, formatOrg(org), ID, id, VERSION, version.orElse(ALL));
+    }
+
+    @GetMapping(path = {"/{org}/ConceptMap"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> searchConceptMapsByOrg(@PathVariable String org) {
+        return handleSearchResource(ConceptMap.class, OWNER, formatOrg(org));
+    }
+
 }
 

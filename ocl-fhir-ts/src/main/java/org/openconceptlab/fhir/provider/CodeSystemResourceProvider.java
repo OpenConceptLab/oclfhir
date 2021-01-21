@@ -5,40 +5,33 @@ import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
-import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
-import com.google.common.collect.ArrayListMultimap;
-import com.google.common.collect.Multimap;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.converter.CodeSystemConverter;
+import org.openconceptlab.fhir.converter.ConceptMapConverter;
+import org.openconceptlab.fhir.converter.ValueSetConverter;
 import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.repository.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import static org.openconceptlab.fhir.util.OclFhirUtil.*;
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
-import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.stereotype.Component;
 
 import javax.transaction.Transactional;
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * The CodeSystemResourceProvider.
  * @author harpatel1
  */
 @Component
-public class CodeSystemResourceProvider implements IResourceProvider {
+public class CodeSystemResourceProvider extends BaseProvider implements IResourceProvider {
 
-    SourceRepository sourceRepository;
-    CodeSystemConverter codeSystemConverter;
-    OclFhirUtil oclFhirUtil;
-
-    @Autowired
-    public CodeSystemResourceProvider(SourceRepository sourceRepository, CodeSystemConverter codeSystemConverter, OclFhirUtil oclFhirUtil) {
-        this.sourceRepository = sourceRepository;
-        this.codeSystemConverter = codeSystemConverter;
-        this.oclFhirUtil = oclFhirUtil;
+    public CodeSystemResourceProvider(SourceRepository sourceRepository, CodeSystemConverter codeSystemConverter,
+                                      CollectionRepository collectionRepository, ValueSetConverter valueSetConverter,
+                                      ConceptMapConverter conceptMapConverter, OclFhirUtil oclFhirUtil) {
+        super(sourceRepository, codeSystemConverter, collectionRepository, valueSetConverter, conceptMapConverter, oclFhirUtil);
     }
 
     @Override
@@ -86,7 +79,7 @@ public class CodeSystemResourceProvider implements IResourceProvider {
     @Search()
     @Transactional
     public Bundle searchCodeSystems(RequestDetails details) {
-        List<Source> sources = filterHead(getSources(publicAccess));
+        List<Source> sources = filterSourceHead(getSources(publicAccess));
         List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false, 0);
         return OclFhirUtil.getBundle(codeSystems, details.getFhirServerBase(), details.getRequestPath());
     }
@@ -103,7 +96,7 @@ public class CodeSystemResourceProvider implements IResourceProvider {
                                         @OptionalParam(name = VERSION) StringType version,
                                         @OptionalParam(name = PAGE) StringType page,
                                         RequestDetails details) {
-        List<Source> sources = filterHead(getSourceByUrl(url, version, publicAccess));
+        List<Source> sources = filterSourceHead(getSourceByUrl(url, version, publicAccess));
         boolean includeConcepts = !isValid(version) || !isVersionAll(version);
         List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, includeConcepts,
                 getPage(page));
@@ -119,7 +112,7 @@ public class CodeSystemResourceProvider implements IResourceProvider {
     @Transactional
     public Bundle searchCodeSystemByOwner(@RequiredParam(name = OWNER) StringType owner,
                                           RequestDetails details) {
-        List<Source> sources = filterHead(getSourceByOwner(owner, publicAccess));
+        List<Source> sources = filterSourceHead(getSourceByOwner(owner, publicAccess));
         List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false, 0);
         return OclFhirUtil.getBundle(codeSystems, details.getFhirServerBase(), details.getRequestPath());
     }
@@ -139,7 +132,7 @@ public class CodeSystemResourceProvider implements IResourceProvider {
                                                @OptionalParam(name = VERSION) StringType version,
                                                @OptionalParam(name = PAGE) StringType page,
                                                RequestDetails details) {
-        List<Source> sources = filterHead(getSourceByOwnerAndIdAndVersion(id, owner, version, publicAccess));
+        List<Source> sources = filterSourceHead(getSourceByOwnerAndIdAndVersion(id, owner, version, publicAccess));
         boolean includeConcepts = !isVersionAll(version);
         List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, includeConcepts, getPage(page));
         return OclFhirUtil.getBundle(codeSystems, details.getFhirServerBase(), details.getRequestPath());
@@ -213,83 +206,6 @@ public class CodeSystemResourceProvider implements IResourceProvider {
         Source source = isValid(owner) ? oclFhirUtil.getSourceByOwnerAndUrl(owner, newStringType(url), version, publicAccess) :
                 getSourceByUrl(newStringType(url), version, publicAccess).get(0);
         return codeSystemConverter.validateCode(source, getCode(code), display, displayLanguage);
-    }
-
-    private List<Source> getSources(List<String> access) {
-        return sourceRepository.findAllMostRecentReleased(access);
-    }
-
-    private List<Source> getSourceByUrl(StringType url, StringType version, List<String> access) {
-        List<Source> sources = new ArrayList<>();
-        if (isVersionAll(version)) {
-            // get all versions
-            sources.addAll(sourceRepository.findByCanonicalUrlAndPublicAccessIn(url.getValue(), access).stream()
-                    .sorted(Comparator.comparing(Source::getVersion).reversed()).collect(Collectors.toList()));
-        } else {
-            final Source source;
-            if (!isValid(version)) {
-                // get most recent released version
-                source = oclFhirUtil.getMostRecentReleasedSourceByUrl(url, access);
-            } else {
-                // get a given version
-                source = sourceRepository.findFirstByCanonicalUrlAndVersionAndPublicAccessIn(url.getValue(), version.getValue(), access);
-            }
-            if (source != null) sources.add(source);
-        }
-        if (sources.isEmpty())
-            throw new ResourceNotFoundException(notFound(CodeSystem.class, url, version));
-        return sources;
-    }
-
-    private List<Source> getSourceByOwner(StringType owner, List<String> access) {
-        if (!isValid(owner))
-            return new ArrayList<>();
-        List<Source> sources = new ArrayList<>();
-        String ownerType = getOwnerType(owner.getValue());
-        String value = getOwner(owner.getValue());
-        if (ORG.equals(ownerType)) {
-            sources.addAll(sourceRepository.findByOrganizationMnemonicAndPublicAccessIn(value, access));
-        } else {
-            sources.addAll(sourceRepository.findByUserIdUsernameAndPublicAccessIn(value, access));
-        }
-        Multimap<String, Source> map = ArrayListMultimap.create();
-        sources.forEach(s -> map.put(s.getMnemonic(), s));
-        List<Source> filtered = new ArrayList<>();
-        map.asMap().forEach((k,v) -> {
-            v.stream().filter(s -> (s.getReleased() != null && s.getReleased())).max(Comparator.comparing(Source::getCreatedAt)).stream().findFirst().ifPresent(filtered::add);
-        });
-        return filtered;
-    }
-
-    private List<Source> getSourceByOwnerAndIdAndVersion(StringType id, StringType owner, StringType version, List<String> access) {
-        List<Source> sources = new ArrayList<>();
-        String ownerType = getOwnerType(owner.getValue());
-        String value = getOwner(owner.getValue());
-
-        if (isVersionAll(version)) {
-            // get all versions
-            if (ORG.equals(ownerType)) {
-                sources.addAll(sourceRepository.findByMnemonicAndOrganizationMnemonicAndPublicAccessIn(id.getValue(),
-                        value, access));
-            } else {
-                sources.addAll(sourceRepository.findByMnemonicAndUserIdUsernameAndPublicAccessIn(id.getValue(),
-                        value, access));
-            }
-        } else {
-            addSourceVersion(id, version, access, sources, ownerType, value);
-        }
-        if (sources.isEmpty())
-            throw new ResourceNotFoundException(notFound(CodeSystem.class, owner, id, version));
-        return sources;
-    }
-
-    private void addSourceVersion(StringType id, StringType version, List<String> access, List<Source> sources, String ownerType, String ownerId) {
-        final Source source = oclFhirUtil.getSourceVersion(id, version, access, ownerType, ownerId);
-        if (source != null) sources.add(source);
-    }
-
-    private List<Source> filterHead(List<Source> sources) {
-        return sources.stream().filter(s -> !HEAD.equals(s.getVersion())).collect(Collectors.toList());
     }
 
     private void validateOperation(CodeType code, UriType system, String operation) {

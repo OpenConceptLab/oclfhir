@@ -235,7 +235,7 @@ public class OclFhirUtil {
         identifier.setValue(value.replace("sources", CODESYSTEM).replace("collections", VALUESET));
         identifier.getType().setText("Accession ID");
         identifier.getType().getCodingFirstRep().setSystem(ACSN_SYSTEM).setCode(ACSN).setDisplay("Accession ID");
-        return isValid(value) ? Optional.of(identifier) : Optional.empty();
+        return Optional.of(identifier);
     }
 
     public static void addConceptDesignation(Concept concept, CodeSystem.ConceptDefinitionComponent definitionComponent) {

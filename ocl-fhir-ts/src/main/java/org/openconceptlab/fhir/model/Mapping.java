@@ -67,8 +67,14 @@ public class Mapping extends BaseOclEntity implements Serializable {
 	@Column(name="to_concept_code")
 	private String toConceptCode;
 
+	@Column(name="from_concept_code")
+	private String fromConceptCode;
+
 	@Column(name="to_concept_name")
 	private String toConceptName;
+
+	@Column(name="from_concept_name")
+	private String fromConceptName;
 
 	@Column(name="updated_at")
 	private Timestamp updatedAt;
@@ -79,18 +85,18 @@ public class Mapping extends BaseOclEntity implements Serializable {
 	@Column
 	private String version;
 
-	@OneToMany(mappedBy="mapping")
+	@OneToMany(mappedBy="mapping", fetch = FetchType.LAZY)
 	private List<CollectionsMapping> collectionsMappings;
 
-	@ManyToOne
+	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name="from_concept_id")
 	private Concept fromConcept;
 
-	@ManyToOne
+	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name="to_concept_id")
 	private Concept toConcept;
 
-	@ManyToOne
+	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name="versioned_object_id")
 	private Mapping versionedObject;
 
@@ -98,20 +104,36 @@ public class Mapping extends BaseOclEntity implements Serializable {
 	@JoinColumn(name="parent_id")
 	private Source parent;
 
-	@ManyToOne
+	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name="to_source_id")
 	private Source toSource;
 
-	@ManyToOne
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name="from_source_id")
+	private Source fromSource;
+
+	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name="created_by_id")
 	private UserProfile createdBy;
 
-	@ManyToOne
+	@ManyToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name="updated_by_id")
 	private UserProfile updatedBy;
 
-	@OneToMany(mappedBy="mapping", fetch = FetchType.LAZY)
-	private List<MappingsSource> mappingsSources;
+//	@OneToMany(mappedBy="mapping", fetch = FetchType.LAZY)
+//	private List<MappingsSource> mappingsSources;
+
+	@Column(name = "from_source_url")
+	private String fromSourceUrl;
+
+	@Column(name = "to_source_url")
+	private String toSourceUrl;
+
+	@Column(name = "from_source_version")
+	private String fromSourceVersion;
+
+	@Column(name = "to_source_version")
+	private String toSourceVersion;
 
 	public Mapping() {
 	}
@@ -336,24 +358,79 @@ public class Mapping extends BaseOclEntity implements Serializable {
 		this.updatedBy = userProfile2;
 	}
 
-	public List<MappingsSource> getMappingsSources() {
-		return this.mappingsSources;
+//	public List<MappingsSource> getMappingsSources() {
+//		return this.mappingsSources;
+//	}
+//
+//	public void setMappingsSources(List<MappingsSource> mappingsSources) {
+//		this.mappingsSources = mappingsSources;
+//	}
+
+//	public MappingsSource addMappingsSource(MappingsSource mappingsSource) {
+//		getMappingsSources().add(mappingsSource);
+//		mappingsSource.setMapping(this);
+//		return mappingsSource;
+//	}
+//
+//	public MappingsSource removeMappingsSource(MappingsSource mappingsSource) {
+//		getMappingsSources().remove(mappingsSource);
+//		mappingsSource.setMapping(null);
+//		return mappingsSource;
+//	}
+
+	public String getFromConceptCode() {
+		return fromConceptCode;
 	}
 
-	public void setMappingsSources(List<MappingsSource> mappingsSources) {
-		this.mappingsSources = mappingsSources;
+	public void setFromConceptCode(String fromConceptCode) {
+		this.fromConceptCode = fromConceptCode;
 	}
 
-	public MappingsSource addMappingsSource(MappingsSource mappingsSource) {
-		getMappingsSources().add(mappingsSource);
-		mappingsSource.setMapping(this);
-		return mappingsSource;
+	public String getFromConceptName() {
+		return fromConceptName;
 	}
 
-	public MappingsSource removeMappingsSource(MappingsSource mappingsSource) {
-		getMappingsSources().remove(mappingsSource);
-		mappingsSource.setMapping(null);
-		return mappingsSource;
+	public void setFromConceptName(String fromConceptName) {
+		this.fromConceptName = fromConceptName;
 	}
 
+	public String getFromSourceUrl() {
+		return fromSourceUrl;
+	}
+
+	public void setFromSourceUrl(String fromSourceUrl) {
+		this.fromSourceUrl = fromSourceUrl;
+	}
+
+	public String getToSourceUrl() {
+		return toSourceUrl;
+	}
+
+	public void setToSourceUrl(String toSourceUrl) {
+		this.toSourceUrl = toSourceUrl;
+	}
+
+	public Source getFromSource() {
+		return fromSource;
+	}
+
+	public void setFromSource(Source fromSource) {
+		this.fromSource = fromSource;
+	}
+
+	public String getFromSourceVersion() {
+		return fromSourceVersion;
+	}
+
+	public void setFromSourceVersion(String fromSourceVersion) {
+		this.fromSourceVersion = fromSourceVersion;
+	}
+
+	public String getToSourceVersion() {
+		return toSourceVersion;
+	}
+
+	public void setToSourceVersion(String toSourceVersion) {
+		this.toSourceVersion = toSourceVersion;
+	}
 }

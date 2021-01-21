@@ -10,12 +10,15 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
+import org.openconceptlab.fhir.converter.CodeSystemConverter;
+import org.openconceptlab.fhir.converter.ConceptMapConverter;
 import org.openconceptlab.fhir.converter.ValueSetConverter;
 import org.openconceptlab.fhir.model.Collection;
 import org.openconceptlab.fhir.repository.CollectionRepository;
+import org.openconceptlab.fhir.repository.SourceRepository;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
-import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.stereotype.Component;
 
 import javax.transaction.Transactional;
@@ -32,21 +35,12 @@ import static org.openconceptlab.fhir.util.OclFhirUtil.*;
  * @author harpatel1
  */
 @Component
-public class ValueSetResourceProvider implements IResourceProvider {
+public class ValueSetResourceProvider extends BaseProvider implements IResourceProvider {
 
-    CollectionRepository collectionRepository;
-	ValueSetConverter valueSetConverter;
-    OclFhirUtil oclFhirUtil;
-
-    @Autowired
-    public ValueSetResourceProvider(CollectionRepository collectionRepository, ValueSetConverter valueSetConverter, OclFhirUtil oclFhirUtil) {
-        this.collectionRepository = collectionRepository;
-        this.valueSetConverter = valueSetConverter;
-        this.oclFhirUtil = oclFhirUtil;
-    }
-
-    public ValueSetResourceProvider(){
-        super();
+    public ValueSetResourceProvider(SourceRepository sourceRepository, CodeSystemConverter codeSystemConverter,
+                                    CollectionRepository collectionRepository, ValueSetConverter valueSetConverter,
+                                    ConceptMapConverter conceptMapConverter, OclFhirUtil oclFhirUtil) {
+        super(sourceRepository, codeSystemConverter, collectionRepository, valueSetConverter, conceptMapConverter, oclFhirUtil);
     }
 
     @Override
@@ -79,7 +73,7 @@ public class ValueSetResourceProvider implements IResourceProvider {
     @Search
     @Transactional
     public Bundle searchValueSets(RequestDetails details) {
-        List<Collection> collections = filterHead(getCollections(publicAccess));
+        List<Collection> collections = filterCollectionHead(getCollections(publicAccess));
         List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, null);
         return OclFhirUtil.getBundle(valueSets, details.getFhirServerBase(), details.getRequestPath());
     }
@@ -96,7 +90,7 @@ public class ValueSetResourceProvider implements IResourceProvider {
                                       @OptionalParam(name = VERSION) StringType version,
                                       @OptionalParam(name = PAGE) StringType page,
                                       RequestDetails details) {
-        List<Collection> collections = filterHead(getCollectionByUrl(url, version, publicAccess));
+        List<Collection> collections = filterCollectionHead(getCollectionByUrl(url, version, publicAccess));
         List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, isVersionAll(version) ? null : getPage(page));
         return OclFhirUtil.getBundle(valueSets, details.getFhirServerBase(), details.getRequestPath());
     }
@@ -110,7 +104,7 @@ public class ValueSetResourceProvider implements IResourceProvider {
     @Transactional
     public Bundle searchValueSetByOwner(@RequiredParam(name = OWNER) StringType owner,
                                         RequestDetails details) {
-        List<Collection> collections = filterHead(getCollectionByOwner(owner, publicAccess));
+        List<Collection> collections = filterCollectionHead(getCollectionByOwner(owner, publicAccess));
         List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, null);
         return OclFhirUtil.getBundle(valueSets, details.getFhirServerBase(), details.getRequestPath());
     }
@@ -130,7 +124,7 @@ public class ValueSetResourceProvider implements IResourceProvider {
                                              @OptionalParam(name = VERSION) StringType version,
                                              @OptionalParam(name = PAGE) StringType page,
                                              RequestDetails details) {
-        List<Collection> collections = filterHead(getCollectionByOwnerAndId(id, owner, version, publicAccess));
+        List<Collection> collections = filterCollectionHead(getCollectionByOwnerAndId(id, owner, version, publicAccess));
         List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, isVersionAll(version) ? null : getPage(page));
         return OclFhirUtil.getBundle(valueSets, details.getFhirServerBase(), details.getRequestPath());
     }
@@ -337,10 +331,6 @@ public class ValueSetResourceProvider implements IResourceProvider {
         if (ORG.equals(ownerType))
             return collectionRepository.findFirstByCanonicalUrlAndVersionAndOrganizationMnemonicAndPublicAccessIn(url.getValue(), version.getValue(), owner, access);
         return collectionRepository.findFirstByCanonicalUrlAndVersionAndUserIdUsernameAndPublicAccessIn(url.getValue(), version.getValue(), owner, access);
-    }
-
-    private List<Collection> filterHead(List<Collection> collections) {
-        return collections.stream().filter(s -> !HEAD.equals(s.getVersion())).collect(Collectors.toList());
     }
 
     private void validate(UriType url, UriType system, CodeType code, Coding coding) {

@@ -210,7 +210,7 @@ public class OclFhirTest {
         OclFhirUtil oclFhirUtil = new OclFhirUtil(sourceRepository, conceptRepository, conceptsSourceRepository);
         ValueSetConverter converter = new TestValueSetConverter(sourceRepository, conceptRepository, oclFhirUtil, oclUser, conceptsSourceRepository, dataSource,
                 authtokenRepository, userProfilesOrganizationRepository, organizationRepository, userRepository, collectionRepository);
-        return spy(new ValueSetResourceProvider(collectionRepository, converter, oclFhirUtil));
+        return spy(new ValueSetResourceProvider(null, null, collectionRepository, converter, null, oclFhirUtil));
     }
 
     class TestCodeSystemConverter extends CodeSystemConverter {
@@ -220,7 +220,7 @@ public class OclFhirTest {
                            AuthtokenRepository authtokenRepository, UserProfilesOrganizationRepository userProfilesOrganizationRepository,
                            OrganizationRepository organizationRepository, UserRepository userRepository) {
             super(sourceRepository, conceptRepository, oclFhirUtil, oclUser, conceptsSourceRepository, dataSource, authtokenRepository,
-                    userProfilesOrganizationRepository, organizationRepository, userRepository, OclFhirTest.this.collectionRepository);
+                    userProfilesOrganizationRepository, organizationRepository, userRepository, OclFhirTest.this.collectionRepository, null);
             this.jdbcTemplate = OclFhirTest.this.jdbcTemplate;
             this.insertConcept = OclFhirTest.this.insertConcept;
             this.insertLocalizedText = OclFhirTest.this.insertLocalizedText;
@@ -241,7 +241,7 @@ public class OclFhirTest {
                                      AuthtokenRepository authtokenRepository, UserProfilesOrganizationRepository userProfilesOrganizationRepository,
                                      OrganizationRepository organizationRepository, UserRepository userRepository, CollectionRepository collectionRepository) {
             super(sourceRepository, conceptRepository, oclFhirUtil, oclUser, conceptsSourceRepository, dataSource, authtokenRepository,
-                    userProfilesOrganizationRepository, organizationRepository, userRepository, collectionRepository);
+                    userProfilesOrganizationRepository, organizationRepository, userRepository, collectionRepository, null);
             this.jdbcTemplate = OclFhirTest.this.jdbcTemplate;
             this.insertCollectionReference = OclFhirTest.this.insertCollectionReference;
             this.namedParameterJdbcTemplate = OclFhirTest.this.namedParameterJdbcTemplate;
@@ -265,7 +265,7 @@ public class OclFhirTest {
         CodeSystemConverter converter = new TestCodeSystemConverter(sourceRepository, conceptRepository, oclFhirUtil,
                 oclUser, conceptsSourceRepository, dataSource, authtokenRepository, userProfilesOrganizationRepository,
                 organizationRepository, userRepository);
-        return new CodeSystemResourceProvider(sourceRepository, converter, oclFhirUtil);
+        return new CodeSystemResourceProvider(sourceRepository, converter, null, null, null, oclFhirUtil);
     }
 
     public UriType newUrl(String url) {

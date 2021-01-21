@@ -1,10 +1,7 @@
 package org.openconceptlab.fhir.controller;
 
 import ca.uhn.fhir.rest.server.exceptions.BaseServerResponseException;
-import org.hl7.fhir.r4.model.CodeSystem;
-import org.hl7.fhir.r4.model.Identifier;
-import org.hl7.fhir.r4.model.Parameters;
-import org.hl7.fhir.r4.model.ValueSet;
+import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
@@ -210,4 +207,31 @@ public class OclFhirUserController extends BaseOclFhirController{
         return handleFhirOperation(params, ValueSet.class, EXPAND);
     }
 
+    @GetMapping(path = {"/{user}/ConceptMap/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> getConceptMapByUser(@PathVariable(name = USER) String user,
+                                                      @PathVariable(name = ID) String id,
+                                                      @RequestParam(name = PAGE, required = false) String page) {
+        if (isValid(page))
+            return handleSearchResource(ConceptMap.class, OWNER, formatUser(user), ID, id, PAGE, page);
+        return handleSearchResource(ConceptMap.class, OWNER, formatUser(user), ID, id);
+    }
+
+    @GetMapping(path = {"/{user}/ConceptMap/{id}/version",
+            "/{user}/ConceptMap/{id}/version/{version}"},
+            produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> getConceptMapVersionsByUser(@PathVariable(name = USER) String user,
+                                                              @PathVariable(name = ID) String id,
+                                                              @PathVariable(name = VERSION) Optional<String> version,
+                                                              @RequestParam(name = PAGE, required = false) String page) {
+        if (isValid(page))
+            return handleSearchResource(ConceptMap.class, OWNER, formatUser(user), ID, id, VERSION, version.orElse(ALL), PAGE, page);
+        return handleSearchResource(ConceptMap.class, OWNER, formatUser(user), ID, id, VERSION, version.orElse(ALL));
+    }
+
+    @GetMapping(path = {"/{user}/ConceptMap"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> searchConceptMapsByUser(@PathVariable String user) {
+        return handleSearchResource(ConceptMap.class, OWNER, formatUser(user));
+    }
+
 }
+

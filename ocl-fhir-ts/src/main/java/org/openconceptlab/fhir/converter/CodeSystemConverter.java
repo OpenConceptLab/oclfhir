@@ -41,9 +41,10 @@ public class CodeSystemConverter extends BaseConverter {
 	public CodeSystemConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil,
 							   UserProfile oclUser, ConceptsSourceRepository conceptsSourceRepository, DataSource dataSource,
 							   AuthtokenRepository authtokenRepository, UserProfilesOrganizationRepository userProfilesOrganizationRepository,
-							   OrganizationRepository organizationRepository, UserRepository userRepository, CollectionRepository collectionRepository) {
+							   OrganizationRepository organizationRepository, UserRepository userRepository, CollectionRepository collectionRepository,
+							   MappingRepository mappingRepository) {
 		super(sourceRepository, conceptRepository, oclFhirUtil, oclUser, conceptsSourceRepository, dataSource, authtokenRepository,
-				userProfilesOrganizationRepository, organizationRepository, userRepository, collectionRepository);
+				userProfilesOrganizationRepository, organizationRepository, userRepository, collectionRepository, mappingRepository);
 	}
 
 	public List<CodeSystem> convertToCodeSystem(List<Source> sources, boolean includeConcepts, int page) {

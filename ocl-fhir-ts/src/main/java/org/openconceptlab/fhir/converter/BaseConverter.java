@@ -53,6 +53,7 @@ public class BaseConverter {
     protected CollectionRepository collectionRepository;
     protected SimpleJdbcInsert insertCollectionReference;
     protected NamedParameterJdbcTemplate namedParameterJdbcTemplate;
+    protected MappingRepository mappingRepository;
 
     protected static final String insertConceptNamesSql = "insert into concepts_names (localizedtext_id,concept_id) values (?,?)";
     protected static final String insertConceptDescSql = "insert into concepts_descriptions (localizedtext_id,concept_id) values (?,?)";
@@ -63,7 +64,8 @@ public class BaseConverter {
     public BaseConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil,
                          UserProfile oclUser, ConceptsSourceRepository conceptsSourceRepository, DataSource dataSource,
                          AuthtokenRepository authtokenRepository, UserProfilesOrganizationRepository userProfilesOrganizationRepository,
-                         OrganizationRepository organizationRepository, UserRepository userRepository, CollectionRepository collectionRepository) {
+                         OrganizationRepository organizationRepository, UserRepository userRepository, CollectionRepository collectionRepository,
+                         MappingRepository mappingRepository) {
         this.sourceRepository = sourceRepository;
         this.conceptRepository = conceptRepository;
         this.oclFhirUtil = oclFhirUtil;
@@ -75,6 +77,7 @@ public class BaseConverter {
         this.organizationRepository = organizationRepository;
         this.userRepository = userRepository;
         this.collectionRepository = collectionRepository;
+        this.mappingRepository = mappingRepository;
     }
 
     @PostConstruct
