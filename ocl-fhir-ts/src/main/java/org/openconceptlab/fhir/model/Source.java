@@ -53,12 +53,6 @@ public class Source extends BaseOclEntity implements Serializable {
 	@Column(name = "revision_date")
 	private Date revisionDate;
 
-	@Column(name="active_concepts")
-	private Integer activeConcepts = 0;
-
-	@Column(name="active_mappings")
-	private Integer activeMappings = 0;
-
 	@Column(name="created_at")
 	private Timestamp createdAt = new Timestamp(System.currentTimeMillis());
 
@@ -89,15 +83,6 @@ public class Source extends BaseOclEntity implements Serializable {
 
 	@Column(name="is_latest_version")
 	private Boolean isLatestVersion = true;
-
-	@Column(name="last_child_update")
-	private Timestamp lastChildUpdate = new Timestamp(System.currentTimeMillis());
-
-	@Column(name="last_concept_update")
-	private Timestamp lastConceptUpdate;
-
-	@Column(name="last_mapping_update")
-	private Timestamp lastMappingUpdate;
 
 	@Column
 	private String mnemonic;
@@ -242,22 +227,6 @@ public class Source extends BaseOclEntity implements Serializable {
 		this.revisionDate = revisionDate;
 	}
 
-	public Integer getActiveConcepts() {
-		return this.activeConcepts;
-	}
-
-	public void setActiveConcepts(Integer activeConcepts) {
-		this.activeConcepts = activeConcepts;
-	}
-
-	public Integer getActiveMappings() {
-		return this.activeMappings;
-	}
-
-	public void setActiveMappings(Integer activeMappings) {
-		this.activeMappings = activeMappings;
-	}
-
 	public Timestamp getCreatedAt() {
 		return this.createdAt;
 	}
@@ -336,30 +305,6 @@ public class Source extends BaseOclEntity implements Serializable {
 
 	public void setIsLatestVersion(Boolean isLatestVersion) {
 		this.isLatestVersion = isLatestVersion;
-	}
-
-	public Timestamp getLastChildUpdate() {
-		return this.lastChildUpdate;
-	}
-
-	public void setLastChildUpdate(Timestamp lastChildUpdate) {
-		this.lastChildUpdate = lastChildUpdate;
-	}
-
-	public Timestamp getLastConceptUpdate() {
-		return this.lastConceptUpdate;
-	}
-
-	public void setLastConceptUpdate(Timestamp lastConceptUpdate) {
-		this.lastConceptUpdate = lastConceptUpdate;
-	}
-
-	public Timestamp getLastMappingUpdate() {
-		return this.lastMappingUpdate;
-	}
-
-	public void setLastMappingUpdate(Timestamp lastMappingUpdate) {
-		this.lastMappingUpdate = lastMappingUpdate;
 	}
 
 	public String getMnemonic() {

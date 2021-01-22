@@ -444,10 +444,6 @@ public class CodeSystemConverter extends BaseConverter {
 		source.setDefaultLocale(isValid(codeSystem.getLanguage()) ? codeSystem.getLanguage() : EN_LOCALE);
 		// uri
 		source.setUri(uri.replaceAll("(?i)"+ Pattern.quote(CODESYSTEM), "sources"));
-		// active concepts
-		source.setActiveConcepts(codeSystem.getConcept().size());
-		// active mappings
-		source.setActiveMappings(0);
 		// name
 		String name = isValid(codeSystem.getName()) ? codeSystem.getName() : codeSystem.getId();
 		source.setName(name);

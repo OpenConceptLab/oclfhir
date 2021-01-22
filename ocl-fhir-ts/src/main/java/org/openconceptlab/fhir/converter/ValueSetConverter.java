@@ -578,7 +578,6 @@ public class ValueSetConverter extends BaseConverter {
             expressions.addAll(toExpression(ownerType, owner, source.getMnemonic(), source.getVersion(), validated.values()));
         });
         // save collection
-        collection.setActiveConcepts(validatedConceptIds.size());
         collectionRepository.saveAndFlush(collection);
         // save collection reference
         List<Integer> referenceIds = expressions.stream().map(m -> insert(insertCollectionReference, toMap(m)))
@@ -691,10 +690,6 @@ public class ValueSetConverter extends BaseConverter {
         collection.setDefaultLocale(isValid(valueSet.getLanguage()) ? valueSet.getLanguage() : EN_LOCALE);
         // uri
         collection.setUri(uri.replaceAll("(?i)"+ Pattern.quote(VALUESET), COLLECTIONS));
-        // TODO - active concepts
-        collection.setActiveConcepts(0);
-        // active mappings
-        collection.setActiveMappings(0);
         // name
         String name = isValid(valueSet.getName()) ? valueSet.getName() : valueSet.getId();
         collection.setName(name);
