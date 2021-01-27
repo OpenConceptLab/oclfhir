@@ -217,73 +217,118 @@ public class ConceptMapConverter extends BaseConverter {
             return fromSystemUrl;
         }
 
-        public void setFromSystemUrl(String fromSystemUrl) {
-            this.fromSystemUrl = fromSystemUrl;
-        }
-
         public String getToSystemUrl() {
             return toSystemUrl;
-        }
-
-        public void setToSystemUrl(String toSystemUrl) {
-            this.toSystemUrl = toSystemUrl;
         }
 
         public String getFromCode() {
             return fromCode;
         }
 
-        public void setFromCode(String fromCode) {
-            this.fromCode = fromCode;
-        }
-
         public String getFromDisplay() {
             return fromDisplay;
-        }
-
-        public void setFromDisplay(String fromDisplay) {
-            this.fromDisplay = fromDisplay;
         }
 
         public String getToCode() {
             return toCode;
         }
 
-        public void setToCode(String toCode) {
-            this.toCode = toCode;
-        }
-
         public String getToDisplay() {
             return toDisplay;
-        }
-
-        public void setToDisplay(String toDisplay) {
-            this.toDisplay = toDisplay;
         }
 
         public String getEquivalence() {
             return equivalence;
         }
 
-        public void setEquivalence(String equivalence) {
-            this.equivalence = equivalence;
-        }
-
         public String getFromSystemVersion() {
             return fromSystemVersion;
-        }
-
-        public void setFromSystemVersion(String fromSystemVersion) {
-            this.fromSystemVersion = fromSystemVersion;
         }
 
         public String getToSystemVersion() {
             return toSystemVersion;
         }
+    }
 
-        public void setToSystemVersion(String toSystemVersion) {
-            this.toSystemVersion = toSystemVersion;
+    public Parameters translate(Source source, UriType sourceSystem, StringType sourceVersion, CodeType sourceCode,
+                                UriType targetSystem, List<String> access) {
+        Parameters parameters = new Parameters();
+        parameters.addParameter(RESULT, False);
+
+        String fromSourceUrl = sourceSystem.getValue();
+        // let's get local url if canonical url is given
+        String localFromSourceUri = null;
+        if (sourceSystem.getValue().startsWith("http")) {
+            Source fromSource = null;
+            if (!isValid(sourceVersion)) {
+                // get most recent released version
+                fromSource = oclFhirUtil.getMostRecentReleasedSourceByUrl(newStringType(sourceSystem.getValue()), access);
+            } else {
+                // get a given version
+                fromSource = sourceRepository.findFirstByCanonicalUrlAndVersionAndPublicAccessIn(sourceSystem.getValue(), sourceVersion.getValue(), access);
+            }
+            localFromSourceUri = fromSource != null ? toLocalUri(fromSource) : EMPTY;
+        } else if (formatExpression(sourceSystem.getValue()).matches(OWNER_REGEX)) {
+            localFromSourceUri = formatExpression(sourceSystem.getValue());
         }
+
+        String toSourceUrl = null;
+        String localToSourceUri = null;
+        if (isValid(targetSystem)) {
+            toSourceUrl = targetSystem.getValue();
+            if (targetSystem.getValue().startsWith("http")) {
+                Source toSource = oclFhirUtil.getMostRecentReleasedSourceByUrl(newStringType(targetSystem.getValue()), access);
+                localToSourceUri = toSource != null ? toLocalUri(toSource) : EMPTY;
+            } else if (formatExpression(targetSystem.getValue()).matches(OWNER_REGEX)) {
+                localToSourceUri = formatExpression(targetSystem.getValue());
+            }
+        }
+        final String finalToSourceUrl = toSourceUrl;
+        final String finalLocalToSourceUri = localToSourceUri;
+
+        // Dynamic search based on Local uri as well as canonical url
+        // Search in the ConceptMap (source.Id) repository
+        // Match on:
+        // 1. Local fromSource uri OR given fromSource canonical url
+        // 2. given concept code
+        // 3. Local toSource uri OR given toSource canonical url
+        // 4. fromSource version if given else any/empty version
+        List<Mapping> matches = mappingRepository.findMappingsForCode(source.getId(), localFromSourceUri, fromSourceUrl, getCode(sourceCode))
+                .stream()
+                .filter(f -> !isValid(sourceVersion) || sourceVersion.getValue().equals(f.getFromSourceVersion()))
+                .filter(f -> isValid(f.getToSourceUrl()))
+                .filter(f -> !isValid(targetSystem) || f.getToSourceUrl().equals(finalToSourceUrl) || f.getToSourceUrl().equals(finalLocalToSourceUri))
+                .collect(Collectors.toList());
+        if (!matches.isEmpty()) {
+            parameters.setParameter(RESULT, True);
+            parameters.setParameter(MESSAGE, "Matches found!");
+            matches.forEach(match -> {
+                parameters.addParameter().setName("match").setPart(getMatchParameter(
+                        match.getToSourceUrl(), match.getToSourceVersion(), match.getToConceptCode(), match.getToConceptName(), match.getMapType()
+                ));
+            });
+        }
+        return parameters;
+    }
+
+    private String toLocalUri(Source source) {
+        if (source == null) return EMPTY;
+        String ownerType = source.getOrganization() != null ? ORGS : USERS;
+        String owner = source.getOrganization() != null ? source.getOrganization().getMnemonic()
+                : source.getUserId().getUsername();
+        String sourceId = source.getMnemonic();
+        return FW_SLASH + ownerType + FW_SLASH + owner +FW_SLASH + SOURCES + FW_SLASH + sourceId + FW_SLASH;
+    }
+
+    private List<Parameters.ParametersParameterComponent> getMatchParameter(String toSystemUrl, String version, String toCode,
+                                                                            String toName, String type) {
+        List<Parameters.ParametersParameterComponent> componentList = new ArrayList<>();
+        if (isValid(type))
+            componentList.add(getParameter("equivalence", type));
+        Coding coding = new Coding();
+        coding.setSystem(toSystemUrl).setVersion(version).setCode(toCode).setDisplay(toName);
+        componentList.add(getParameter("concept", coding));
+        return componentList;
     }
 
 }

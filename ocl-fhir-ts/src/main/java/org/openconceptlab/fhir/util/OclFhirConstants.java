@@ -56,7 +56,7 @@ public final class OclFhirConstants {
 	public static final String CONTACT = "contact";
 	public static final String JURISDICTION = "jurisdiction";
 
-	public static final String PUBLISHER_REGEX = "^user:.*|^org:.*";
+	public static final String OWNER_REGEX = "^/users/.*|^/orgs/.*";
 	public static final String ORG_ = "org:";
 	public static final String USER_ = "user:";
 	public static final String ORG = "org";
@@ -124,4 +124,7 @@ public final class OclFhirConstants {
 	public static final String LAST_RESOLVED_AT = "last_resolved_at";
 	public static final boolean True = true;
 	public static final boolean False = false;
+	public static final String CONCEPT_MAP_VERSION = "conceptMapVersion";
+	public static final String TARGET_SYSTEM = "targetSystem";
+	public static final String TRANSLATE = "$translate";
 }

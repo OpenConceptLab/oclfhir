@@ -175,6 +175,22 @@ public class BaseOclFhirController {
         return parameters;
     }
 
+    protected Parameters conceptMapTranslateParameters(String url, String conceptMapVersion, String system,
+                                                       String version, String code, String targetSystem, String owner) {
+        Parameters parameters = new Parameters();
+        parameters.addParameter().setName(URL).setValue(newUri(url));
+        if (isValid(conceptMapVersion))
+            parameters.addParameter().setName(CONCEPT_MAP_VERSION).setValue(newStringType(conceptMapVersion));
+        parameters.addParameter().setName(SYSTEM).setValue(newUri(system));
+        if (isValid(version))
+            parameters.addParameter().setName(VERSION).setValue(newStringType(version));
+        parameters.addParameter().setName(CODE).setValue(new CodeType(code));
+        if (isValid(targetSystem))
+            parameters.addParameter().setName(TARGET_SYSTEM).setValue(newUri(targetSystem));
+        parameters.addParameter().setName(OWNER).setValue(newStringType(owner));
+        return parameters;
+    }
+
     protected static String formatOrg(String org) {
         return ORG_ + org;
     }

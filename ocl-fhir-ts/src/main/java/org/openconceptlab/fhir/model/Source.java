@@ -402,7 +402,7 @@ public class Source extends BaseOclEntity implements Serializable {
 	}
 
 	public String getCanonicalUrl() {
-		return canonicalUrl;
+		return this.canonicalUrl;
 	}
 
 	public void setCanonicalUrl(String canonicalUrl) {

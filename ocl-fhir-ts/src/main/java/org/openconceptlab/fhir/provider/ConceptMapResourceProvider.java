@@ -1,15 +1,11 @@
 package org.openconceptlab.fhir.provider;
 
-import ca.uhn.fhir.rest.annotation.OptionalParam;
-import ca.uhn.fhir.rest.annotation.RequiredParam;
-import ca.uhn.fhir.rest.annotation.Search;
+import ca.uhn.fhir.rest.annotation.*;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.IResourceProvider;
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import org.hl7.fhir.instance.model.api.IBaseResource;
-import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.CodeSystem;
-import org.hl7.fhir.r4.model.ConceptMap;
-import org.hl7.fhir.r4.model.StringType;
+import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.converter.CodeSystemConverter;
 import org.openconceptlab.fhir.converter.ConceptMapConverter;
 import org.openconceptlab.fhir.converter.ValueSetConverter;
@@ -100,7 +96,7 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
      */
     @Search
     @Transactional
-    public Bundle searchCodeSystemByOwnerAndId(@RequiredParam(name = OWNER) StringType owner,
+    public Bundle searchConceptMapByOwnerAndId(@RequiredParam(name = OWNER) StringType owner,
                                                @RequiredParam(name = ID) StringType id,
                                                @OptionalParam(name = VERSION) StringType version,
                                                @OptionalParam(name = PAGE) StringType page,
@@ -109,6 +105,31 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
         boolean includeMappings = !isVersionAll(version);
         List<ConceptMap> conceptMaps = conceptMapConverter.convertToConceptMap(sources, includeMappings, getPage(page));
         return OclFhirUtil.getBundle(conceptMaps, details.getFhirServerBase(), details.getRequestPath());
+    }
+
+    @Operation(name = TRANSLATE, idempotent = true)
+    @Transactional
+    public Parameters conceptMapTranslate(@OperationParam(name = URL, min = 1, type = UriType.class) UriType conceptMapUrl,
+                                          @OperationParam(name = CONCEPT_MAP_VERSION, type = StringType.class) StringType conceptMapVersion,
+                                          @OperationParam(name = SYSTEM, min = 1, type = UriType.class) UriType sourceSystem,
+                                          @OperationParam(name = VERSION, type = StringType.class) StringType sourceVersion,
+                                          @OperationParam(name = CODE, min = 1, type = CodeType.class) CodeType sourceCode,
+                                          @OperationParam(name = CODING, type = Coding.class) Coding coding,
+                                          @OperationParam(name = TARGET_SYSTEM, type = UriType.class) UriType targetSystem,
+                                          @OperationParam(name = OWNER, type = StringType.class) StringType owner) {
+
+        if (coding != null) {
+            sourceSystem = new UriType(coding.getSystem());
+            sourceCode = new CodeType(coding.getCode());
+            sourceVersion = new StringType(coding.getVersion());
+        }
+        if (!isValid(conceptMapUrl) || !isValid(sourceCode) || !isValid(sourceSystem)) {
+            String msg = "Could not perform ConceptMap $translate operation, the url, code and system parameters are required.";
+            throw new InvalidRequestException(msg);
+        }
+        Source conceptMap = isValid(owner) ? oclFhirUtil.getSourceByOwnerAndUrl(owner, newStringType(conceptMapUrl), conceptMapVersion, publicAccess) :
+                getSourceByUrl(newStringType(conceptMapUrl), conceptMapVersion, publicAccess).get(0);
+        return conceptMapConverter.translate(conceptMap, sourceSystem, sourceVersion, sourceCode, targetSystem, publicAccess);
     }
 
 }

@@ -233,5 +233,26 @@ public class OclFhirOrgController extends BaseOclFhirController {
         return handleSearchResource(ConceptMap.class, OWNER, formatOrg(org));
     }
 
+    @GetMapping(path = {"/{org}/ConceptMap/$translate"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> translateConceptMapByOrg(@PathVariable(name = ORG) String org,
+                                                           @RequestParam(name = URL) String conceptMapUrl,
+                                                           @RequestParam(name = CONCEPT_MAP_VERSION, required = false) String conceptMapVersion,
+                                                           @RequestParam(name = SYSTEM) String system,
+                                                           @RequestParam(name = VERSION, required = false) String version,
+                                                           @RequestParam(name = CODE) String code,
+                                                           @RequestParam(name = TARGET_SYSTEM, required = false) String targetSystem) {
+
+        Parameters parameters = conceptMapTranslateParameters(conceptMapUrl, conceptMapVersion, system, version, code,
+                targetSystem, formatOrg(org));
+        return handleFhirOperation(parameters, ConceptMap.class, TRANSLATE);
+    }
+
+    @PostMapping(path = {"/{org}/ConceptMap/$translate"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> translateConceptMapByOrg(@PathVariable(name = ORG) String org, @RequestBody String parameters) {
+        Parameters params = (Parameters) getResource(parameters);
+        params.addParameter().setName(OWNER).setValue(newStringType(formatOrg(org)));
+        return handleFhirOperation(params, ConceptMap.class, TRANSLATE);
+    }
+
 }
 

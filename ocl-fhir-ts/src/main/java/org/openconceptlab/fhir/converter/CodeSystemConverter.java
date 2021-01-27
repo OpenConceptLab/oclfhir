@@ -262,18 +262,6 @@ public class CodeSystemConverter extends BaseConverter {
 		return componentList;
 	}
 
-	private Parameters.ParametersParameterComponent getParameter(String name, Type value) {
-		Parameters.ParametersParameterComponent component = new Parameters.ParametersParameterComponent();
-		component.setName(name).setValue(value);
-		return component;
-	}
-
-	private Parameters.ParametersParameterComponent getParameter(String name, String value) {
-		Parameters.ParametersParameterComponent component = new Parameters.ParametersParameterComponent();
-		component.setName(name).setValue(new StringType(value));
-		return component;
-	}
-
 	public void createCodeSystem(CodeSystem codeSystem, String accessionId, String authToken) {
 		// validate and authenticate
 		OclEntity oclEntity = new OclEntity(codeSystem, accessionId, authToken);

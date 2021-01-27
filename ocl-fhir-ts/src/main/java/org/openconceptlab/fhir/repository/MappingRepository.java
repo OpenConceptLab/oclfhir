@@ -25,9 +25,23 @@ public interface MappingRepository extends BaseOclRepository<Mapping>{
                     " inner join mappings m1 on m1.id = ms.mapping_id " +
                     " where ms.source_id = :sourceId " +
                     " group by m1.from_source_url, m1.to_source_url, " +
-                    " tm1.from_concept_code, m1.to_concept_code, m1.map_type) as val " +
+                    " m1.from_concept_code, m1.to_concept_code, m1.map_type) as val " +
                     " ) " +
                     " order by m2.from_concept_code asc ")
     List<Mapping> findMappings(@Param("sourceId") Long sourceId, Pageable pageable);
 
+    @Query(nativeQuery = true, value =
+            "select * from mappings m2 where m2.id in " +
+                    " (select mapping_id from " +
+                    " (select max(ms.mapping_id) as mapping_id , m1.from_source_url, m1.to_source_url, " +
+                    " m1.from_concept_code, m1.to_concept_code, m1.map_type from mappings_sources ms " +
+                    " inner join mappings m1 on m1.id = ms.mapping_id " +
+                    " where ms.source_id = :sourceId " +
+                    " group by m1.from_source_url, m1.to_source_url, " +
+                    " m1.from_concept_code, m1.to_concept_code, m1.map_type) as val " +
+                    " ) and m2.from_concept_code = :fromCode and (m2.from_source_url = :fromUrlLocal or m2.from_source_url = :fromUrlCanonical) ")
+    List<Mapping> findMappingsForCode(@Param("sourceId") Long sourceId,
+                                      @Param("fromUrlLocal") String fromUrlLocal,
+                                      @Param("fromUrlCanonical") String fromUrlCanonical,
+                                      @Param("fromCode") String fromCode);
 }

@@ -6,12 +6,10 @@ import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceVersionConflictException;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import org.hl7.fhir.r4.model.BooleanType;
-import org.hl7.fhir.r4.model.CodeSystem;
-import org.hl7.fhir.r4.model.MetadataResource;
-import org.hl7.fhir.r4.model.ValueSet;
+import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.model.Collection;
+import org.openconceptlab.fhir.model.Organization;
 import org.openconceptlab.fhir.repository.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -443,5 +441,18 @@ public class BaseConverter {
             return accessionId;
         }
     }
+
+    protected Parameters.ParametersParameterComponent getParameter(String name, Type value) {
+        Parameters.ParametersParameterComponent component = new Parameters.ParametersParameterComponent();
+        component.setName(name).setValue(value);
+        return component;
+    }
+
+    protected Parameters.ParametersParameterComponent getParameter(String name, String value) {
+        Parameters.ParametersParameterComponent component = new Parameters.ParametersParameterComponent();
+        component.setName(name).setValue(new StringType(value));
+        return component;
+    }
+
 }
 
