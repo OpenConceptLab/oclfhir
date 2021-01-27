@@ -155,7 +155,7 @@ public class ValueSetConverter extends BaseConverter {
                             // way to get only concepts that we care about and not retrieve whole list. This has improved performance and consumes less memory
                             Optional<Concept> conceptOpt = oclFhirUtil.getSourceConcept(source, conceptId, conceptVersion);
                             conceptOpt.ifPresent(c -> {
-                                populateCompose(valueSet, includeConceptDesignation, c, source.getCanonicalUrl()
+                                populateCompose(valueSet, includeConceptDesignation, c, isValid(source.getCanonicalUrl()) ? source.getCanonicalUrl() : source.getUri()
                                         , source.getVersion(), source.getDefaultLocale());
                             });
                         }
