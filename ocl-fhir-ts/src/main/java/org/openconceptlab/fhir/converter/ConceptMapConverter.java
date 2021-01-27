@@ -1,8 +1,7 @@
 package org.openconceptlab.fhir.converter;
 
 import org.apache.commons.lang3.StringUtils;
-import org.hl7.fhir.r4.model.ConceptMap;
-import org.hl7.fhir.r4.model.Enumerations;
+import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.model.Concept;
 import org.openconceptlab.fhir.model.Mapping;
 import org.openconceptlab.fhir.model.Source;
@@ -96,57 +95,6 @@ public class ConceptMapConverter extends BaseConverter {
             addMappings(conceptMap, mappings);
     }
 
-    private String getFromConceptCode(final Mapping mapping) {
-        String fromConceptCode = mapping.getFromConceptCode();
-        if (!isValid(fromConceptCode)) {
-            Concept fromConcept = mapping.getFromConcept();
-            if (fromConcept != null)
-                return fromConcept.getMnemonic();
-        } else {
-            return fromConceptCode;
-        }
-        return EMPTY;
-    }
-
-    private String getToConceptCode(final Mapping mapping) {
-        String toConceptCode = mapping.getToConceptCode();
-        if (!isValid(toConceptCode)) {
-            Concept toConcept = mapping.getToConcept();
-            if (toConcept != null)
-                return toConcept.getMnemonic();
-        } else {
-            return toConceptCode;
-        }
-        return EMPTY;
-    }
-
-    private String getFromSourceUrl(final Mapping mapping) {
-        String fromSourceUrl = mapping.getFromSourceUrl();
-        if (!isValid(fromSourceUrl) || !fromSourceUrl.startsWith("http")) {
-            // only reason to resolve to canonical url from local url is to make sure compatibility with OCL imported
-            // data, since user can create mapping using local url in OCL. However, this should not be an issue when user
-            // creates mapping using OCL FHIR service because only canonical url is allowed as source/target system.
-            Source source = mapping.getFromSource();
-            if (source != null)
-                return source.getCanonicalUrl();
-        } else {
-            return fromSourceUrl;
-        }
-        return EMPTY;
-    }
-
-    private String getToSourceUrl(final Mapping mapping) {
-        String toSourceUrl = mapping.getToSourceUrl();
-        if (!isValid(toSourceUrl) || !toSourceUrl.startsWith("http")) {
-            Source source = mapping.getToSource();
-            if (source != null)
-                return source.getCanonicalUrl();
-        } else {
-            return toSourceUrl;
-        }
-        return EMPTY;
-    }
-
     private void addMappings(final ConceptMap conceptMap, final List<Mapping> mappings) {
         // creates ConceptMapGroups by grouping source/sourceversion/target/targetversion
         Map<Object, List<ConceptMapGroup>> map = mappings.stream().map(ConceptMapGroup::new)
@@ -223,10 +171,7 @@ public class ConceptMapConverter extends BaseConverter {
 
         public ConceptMapGroup(final Mapping mapping) {
             String fromSourceUrl = mapping.getFromSourceUrl();
-            if (!isValid(fromSourceUrl) || !fromSourceUrl.startsWith("http")) {
-                // only reason to resolve to canonical url from local url is to make sure compatibility with OCL imported
-                // data, since user can create mapping using local url in OCL. However, this should not be an issue when user
-                // creates mapping using OCL FHIR service because only canonical url is allowed as source/target system.
+            if (!isValid(fromSourceUrl)) {
                 Source source = mapping.getFromSource();
                 if (source != null)
                     this.fromSystemUrl = source.getCanonicalUrl();
@@ -235,7 +180,7 @@ public class ConceptMapConverter extends BaseConverter {
             }
 
             String toSourceUrl = mapping.getToSourceUrl();
-            if (!isValid(toSourceUrl) || !toSourceUrl.startsWith("http")) {
+            if (!isValid(toSourceUrl)) {
                 Source source = mapping.getToSource();
                 if (source != null)
                     this.toSystemUrl = source.getCanonicalUrl();
