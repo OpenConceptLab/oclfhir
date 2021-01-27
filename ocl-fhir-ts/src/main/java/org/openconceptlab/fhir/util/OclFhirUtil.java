@@ -239,7 +239,7 @@ public class OclFhirUtil {
     }
 
     public static void addConceptDesignation(Concept concept, CodeSystem.ConceptDefinitionComponent definitionComponent) {
-        concept.getConceptsNames().parallelStream().forEach(name -> {
+        concept.getConceptsNames().stream().forEach(name -> {
             CodeSystem.ConceptDefinitionDesignationComponent designation = new CodeSystem.ConceptDefinitionDesignationComponent();
             LocalizedText lt = name.getLocalizedText();
             if(lt != null) {
