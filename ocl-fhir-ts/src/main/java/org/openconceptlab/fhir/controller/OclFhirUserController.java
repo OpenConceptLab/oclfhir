@@ -68,8 +68,9 @@ public class OclFhirUserController extends BaseOclFhirController{
     }
 
     @GetMapping(path = {"/{user}/CodeSystem"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<String> searchCodeSystemsByUser(@PathVariable String user) {
-        return handleSearchResource(CodeSystem.class, OWNER, formatUser(user));
+    public ResponseEntity<String> searchCodeSystemsByUser(@PathVariable String user,
+                                                          @RequestParam(name = PAGE, required = false) Optional<String> page) {
+        return handleSearchResource(CodeSystem.class, OWNER, formatUser(user), PAGE, page.orElse("1"));
     }
 
     @DeleteMapping(path = {"/{user}/CodeSystem/{id}/version/{version}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
@@ -157,8 +158,9 @@ public class OclFhirUserController extends BaseOclFhirController{
     }
 
     @GetMapping(path = {"/{user}/ValueSet"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<String> searchValueSetsByUser(@PathVariable String user) {
-        return handleSearchResource(ValueSet.class, OWNER, formatUser(user));
+    public ResponseEntity<String> searchValueSetsByUser(@PathVariable String user,
+                                                        @RequestParam(name = PAGE, required = false) Optional<String> page) {
+        return handleSearchResource(ValueSet.class, OWNER, formatUser(user), PAGE, page.orElse("1"));
     }
 
     @GetMapping(path = {"/{user}/ValueSet/$validate-code"}, produces = {MediaType.APPLICATION_JSON_VALUE})
@@ -229,8 +231,9 @@ public class OclFhirUserController extends BaseOclFhirController{
     }
 
     @GetMapping(path = {"/{user}/ConceptMap"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<String> searchConceptMapsByUser(@PathVariable String user) {
-        return handleSearchResource(ConceptMap.class, OWNER, formatUser(user));
+    public ResponseEntity<String> searchConceptMapsByUser(@PathVariable String user,
+                                                          @RequestParam(name = PAGE, required = false) Optional<String> page) {
+        return handleSearchResource(ConceptMap.class, OWNER, formatUser(user), PAGE, page.orElse("1"));
     }
 
     @GetMapping(path = {"/{user}/ConceptMap/$translate"}, produces = {MediaType.APPLICATION_JSON_VALUE})

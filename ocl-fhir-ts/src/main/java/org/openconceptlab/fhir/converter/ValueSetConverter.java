@@ -65,11 +65,16 @@ public class ValueSetConverter extends BaseConverter {
         this.insertCollectionReference = new SimpleJdbcInsert(jdbcTemplate).withTableName("collection_references");
     }
 
-    public List<ValueSet> convertToValueSet(List<Collection> collections, Integer page) {
+    public List<ValueSet> convertToValueSet(List<Collection> collections, boolean includeCompose, Integer page) {
         List<ValueSet> valueSets = new ArrayList<>();
+        if (!includeCompose) {
+            int offset = page * 10;
+            int count = 10;
+            collections = paginate(collections, offset, count);
+        }
         collections.forEach(collection -> {
             ValueSet valueSet = toBaseValueSet(collection);
-            if (page != null)
+            if (includeCompose)
                 addCompose(valueSet, collection, False, page);
             valueSets.add(valueSet);
         });

@@ -454,5 +454,20 @@ public class BaseConverter {
         return component;
     }
 
+    protected <T> List<T> paginate(List<T> resources, Integer offset, Integer count) {
+        if (count == 0)
+            return resources;
+        if (offset < resources.size()) {
+            int start = offset;
+            int end = resources.size();
+            if (start + count < end)
+                end = start + count;
+            resources = resources.subList(start, end);
+        } else {
+            resources.clear();
+        }
+        return resources;
+    }
+
 }
 

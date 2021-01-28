@@ -47,9 +47,9 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
      */
     @Search()
     @Transactional
-    public Bundle searchConceptMaps(RequestDetails details) {
+    public Bundle searchConceptMaps(@OptionalParam(name = PAGE) StringType page, RequestDetails details) {
         List<Source> sources = filterSourceHead(getSources(publicAccess));
-        List<ConceptMap> conceptMaps = conceptMapConverter.convertToConceptMap(sources, false, 0);
+        List<ConceptMap> conceptMaps = conceptMapConverter.convertToConceptMap(sources, false, getPage(page));
         return OclFhirUtil.getBundle(conceptMaps, details.getFhirServerBase(), details.getRequestPath());
     }
 
@@ -80,9 +80,10 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
     @Search
     @Transactional
     public Bundle searchConceptMapByOwner(@RequiredParam(name = OWNER) StringType owner,
+                                          @OptionalParam(name = PAGE) StringType page,
                                           RequestDetails details) {
         List<Source> sources = filterSourceHead(getSourceByOwner(owner, publicAccess));
-        List<ConceptMap> conceptMaps = conceptMapConverter.convertToConceptMap(sources, false, 0);
+        List<ConceptMap> conceptMaps = conceptMapConverter.convertToConceptMap(sources, false, getPage(page));
         return OclFhirUtil.getBundle(conceptMaps, details.getFhirServerBase(), details.getRequestPath());
     }
 

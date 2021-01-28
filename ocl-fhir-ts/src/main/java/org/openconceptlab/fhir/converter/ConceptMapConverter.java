@@ -33,6 +33,11 @@ public class ConceptMapConverter extends BaseConverter {
 
     public List<ConceptMap> convertToConceptMap(List<Source> sources, boolean includeMappings, int page) {
         List<ConceptMap> conceptMaps = new ArrayList<>();
+        if (!includeMappings) {
+            int offset = page * 10;
+            int count = 10;
+            sources = paginate(sources, offset, count);
+        }
         sources.forEach(source -> {
             // convert to base concept map
             ConceptMap conceptMap = toConceptMap(source);

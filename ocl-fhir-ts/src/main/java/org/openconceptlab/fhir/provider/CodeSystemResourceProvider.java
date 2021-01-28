@@ -78,9 +78,9 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
      */
     @Search()
     @Transactional
-    public Bundle searchCodeSystems(RequestDetails details) {
+    public Bundle searchCodeSystems(@OptionalParam(name = PAGE) StringType page, RequestDetails details) {
         List<Source> sources = filterSourceHead(getSources(publicAccess));
-        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false, 0);
+        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false, getPage(page));
         return OclFhirUtil.getBundle(codeSystems, details.getFhirServerBase(), details.getRequestPath());
     }
 
@@ -111,9 +111,10 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
     @Search
     @Transactional
     public Bundle searchCodeSystemByOwner(@RequiredParam(name = OWNER) StringType owner,
+                                          @OptionalParam(name = PAGE) StringType page,
                                           RequestDetails details) {
         List<Source> sources = filterSourceHead(getSourceByOwner(owner, publicAccess));
-        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false, 0);
+        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false, getPage(page));
         return OclFhirUtil.getBundle(codeSystems, details.getFhirServerBase(), details.getRequestPath());
     }
 

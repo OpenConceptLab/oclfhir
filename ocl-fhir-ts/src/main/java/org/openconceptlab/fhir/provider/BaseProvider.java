@@ -4,6 +4,7 @@ import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import org.hl7.fhir.r4.model.CodeSystem;
+import org.hl7.fhir.r4.model.IntegerType;
 import org.hl7.fhir.r4.model.StringType;
 import org.openconceptlab.fhir.converter.CodeSystemConverter;
 import org.openconceptlab.fhir.converter.ConceptMapConverter;
@@ -47,7 +48,8 @@ public class BaseProvider {
     }
 
     protected List<Source> getSources(List<String> access) {
-        return sourceRepository.findAllMostRecentReleased(access);
+        return sourceRepository.findAllMostRecentReleased(access).stream().sorted(Comparator.comparing(Source::getMnemonic))
+                .collect(Collectors.toList());
     }
 
     protected List<Source> getSourceByUrl(StringType url, StringType version, List<String> access) {
@@ -89,7 +91,7 @@ public class BaseProvider {
         map.asMap().forEach((k,v) -> {
             v.stream().filter(s -> (s.getReleased() != null && s.getReleased())).max(Comparator.comparing(Source::getCreatedAt)).stream().findFirst().ifPresent(filtered::add);
         });
-        return filtered;
+        return filtered.stream().sorted(Comparator.comparing(Source::getMnemonic)).collect(Collectors.toList());
     }
 
     protected List<Source> getSourceByOwnerAndIdAndVersion(StringType id, StringType owner, StringType version, List<String> access) {
@@ -126,5 +128,4 @@ public class BaseProvider {
     protected List<Collection> filterCollectionHead(List<Collection> collections) {
         return collections.stream().filter(s -> !HEAD.equals(s.getVersion())).collect(Collectors.toList());
     }
-
 }

@@ -14,6 +14,7 @@ import org.openconceptlab.fhir.converter.CodeSystemConverter;
 import org.openconceptlab.fhir.converter.ConceptMapConverter;
 import org.openconceptlab.fhir.converter.ValueSetConverter;
 import org.openconceptlab.fhir.model.Collection;
+import org.openconceptlab.fhir.model.Source;
 import org.openconceptlab.fhir.repository.CollectionRepository;
 import org.openconceptlab.fhir.repository.SourceRepository;
 import org.openconceptlab.fhir.util.OclFhirUtil;
@@ -72,9 +73,9 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
      */
     @Search
     @Transactional
-    public Bundle searchValueSets(RequestDetails details) {
+    public Bundle searchValueSets(@OptionalParam(name = PAGE) StringType page, RequestDetails details) {
         List<Collection> collections = filterCollectionHead(getCollections(publicAccess));
-        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, null);
+        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, false, getPage(page));
         return OclFhirUtil.getBundle(valueSets, details.getFhirServerBase(), details.getRequestPath());
     }
 
@@ -91,7 +92,7 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
                                       @OptionalParam(name = PAGE) StringType page,
                                       RequestDetails details) {
         List<Collection> collections = filterCollectionHead(getCollectionByUrl(url, version, publicAccess));
-        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, isVersionAll(version) ? null : getPage(page));
+        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, !isVersionAll(version), getPage(page));
         return OclFhirUtil.getBundle(valueSets, details.getFhirServerBase(), details.getRequestPath());
     }
 
@@ -103,9 +104,10 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
     @Search
     @Transactional
     public Bundle searchValueSetByOwner(@RequiredParam(name = OWNER) StringType owner,
+                                        @OptionalParam(name = PAGE) StringType page,
                                         RequestDetails details) {
         List<Collection> collections = filterCollectionHead(getCollectionByOwner(owner, publicAccess));
-        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, null);
+        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, false, getPage(page));
         return OclFhirUtil.getBundle(valueSets, details.getFhirServerBase(), details.getRequestPath());
     }
 
@@ -125,7 +127,7 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
                                              @OptionalParam(name = PAGE) StringType page,
                                              RequestDetails details) {
         List<Collection> collections = filterCollectionHead(getCollectionByOwnerAndId(id, owner, version, publicAccess));
-        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, isVersionAll(version) ? null : getPage(page));
+        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, !isVersionAll(version), getPage(page));
         return OclFhirUtil.getBundle(valueSets, details.getFhirServerBase(), details.getRequestPath());
     }
 
@@ -203,7 +205,8 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
     }
 
     private List<Collection> getCollections(List<String> access) {
-        return collectionRepository.findAllMostRecentReleased(access);
+        return collectionRepository.findAllMostRecentReleased(access).stream().sorted(Comparator.comparing(Collection::getMnemonic))
+                .collect(Collectors.toList());
     }
 
     private List<Collection> getCollectionByUrl(StringType url, StringType version, List<String> access) {
@@ -258,7 +261,7 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
         map.asMap().forEach((k,v) -> {
             v.stream().filter(s -> (s.getReleased() != null && s.getReleased())).max(Comparator.comparing(Collection::getCreatedAt)).stream().findFirst().ifPresent(filtered::add);
         });
-        return filtered;
+        return filtered.stream().sorted(Comparator.comparing(Collection::getMnemonic)).collect(Collectors.toList());
     }
 
     private List<Collection> getCollectionByOwnerAndId(StringType id, StringType owner, StringType version, List<String> access) {

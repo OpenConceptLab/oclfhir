@@ -49,6 +49,11 @@ public class CodeSystemConverter extends BaseConverter {
 
 	public List<CodeSystem> convertToCodeSystem(List<Source> sources, boolean includeConcepts, int page) {
 		List<CodeSystem> codeSystems = new ArrayList<>();
+		if (!includeConcepts) {
+			int offset = page * 10;
+			int count = 10;
+			sources = paginate(sources, offset, count);
+		}
 		sources.forEach(source -> {
 			// convert to base
 			CodeSystem codeSystem = toBaseCodeSystem(source);
