@@ -154,7 +154,7 @@ public class OclFhirUtil {
     }
 
     public IGenericClient getClient() {
-        return context.newRestfulGenericClient(serverBase);
+        return context.newRestfulGenericClient(String.format("http://localhost:%s/fhir",port));
     }
 
     public String getResourceAsString(Resource resource) {

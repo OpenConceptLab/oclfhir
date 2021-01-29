@@ -55,7 +55,7 @@ public class OclFhirRestfulServer extends RestfulServer {
 		// Create a context for the appropriate version
 		setFhirContext(FhirContext.forR4());
 
-		setServerAddressStrategy(new HardcodedServerAddressStrategy(baseUrl));
+		// setServerAddressStrategy(new HardcodedServerAddressStrategy(baseUrl));
 
 		// Register resource providers
 		registerProvider(codeSystemResourceProvider);
