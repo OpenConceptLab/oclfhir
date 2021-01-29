@@ -17,9 +17,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import javax.annotation.PostConstruct;
 
+import java.net.URL;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -32,6 +36,14 @@ public class OclFhirUtil {
     
     @Value("${server.port}")
     private String port;
+
+    private static String BASE_URL;
+
+    @Value("${ocl.servlet.baseurl}")
+    public void setBaseUrl(String name) {
+        OclFhirUtil.BASE_URL = name;
+    }
+
     private static final Log log = LogFactory.getLog(OclFhirUtil.class);
     private static final FhirContext context;
     private SourceRepository sourceRepository;
@@ -53,15 +65,9 @@ public class OclFhirUtil {
         context = FhirContext.forR4();
     }
 
-    private String serverBase = "";
     public static IParser parser = context.newJsonParser();
     public static JsonParser jsonParser = new JsonParser();
     public static Gson gson = new Gson();
-
-    @PostConstruct
-    private void init() {
-        serverBase = String.format("http://localhost:%s/fhir",port);
-    }
 
     public static FhirContext getFhirContext() {
         return context;
@@ -70,11 +76,21 @@ public class OclFhirUtil {
     public static <T extends Resource> Bundle getBundle(List<T> resource, String fhirBase, String requestPath) {
         Bundle bundle = new Bundle();
         bundle.setType(Bundle.BundleType.SEARCHSET);
+        // add self link
+        try {
+            Bundle.BundleLinkComponent com = new Bundle.BundleLinkComponent();
+            com.setRelation("self");
+            com.setUrl(UriComponentsBuilder.fromHttpUrl(URLDecoder.decode(fhirBase, StandardCharsets.UTF_8.toString()))
+                    .host(new URL(BASE_URL).getHost())
+                    .toUriString());
+            bundle.setLink(Collections.singletonList(com));
+        } catch (Exception e) {
+            log.error("Error parsing url " + fhirBase);
+        }
         bundle.setTotal(resource.size());
         resource.forEach(r -> {
             Bundle.BundleEntryComponent component = new Bundle.BundleEntryComponent();
             component.setResource(r);
-            //component.setFullUrl(getCompleteUrl(fhirBase, requestPath, r.getId()));
             bundle.addEntry(component);
         });
         return bundle;
@@ -232,7 +248,7 @@ public class OclFhirUtil {
             return Optional.empty();
         Identifier identifier = new Identifier();
         identifier.setSystem(OCL_SYSTEM);
-        identifier.setValue(value.replace("sources", CODESYSTEM).replace("collections", VALUESET));
+        identifier.setValue(value.replace("sources", CODESYSTEM).replace("collections", VALUESET).trim());
         identifier.getType().setText("Accession ID");
         identifier.getType().getCodingFirstRep().setSystem(ACSN_SYSTEM).setCode(ACSN).setDisplay("Accession ID");
         return Optional.of(identifier);

@@ -76,7 +76,7 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
     public Bundle searchValueSets(@OptionalParam(name = PAGE) StringType page, RequestDetails details) {
         List<Collection> collections = filterCollectionHead(getCollections(publicAccess));
         List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, false, getPage(page));
-        return OclFhirUtil.getBundle(valueSets, details.getFhirServerBase(), details.getRequestPath());
+        return OclFhirUtil.getBundle(valueSets, details.getCompleteUrl(), details.getRequestPath());
     }
 
     /**
@@ -93,7 +93,7 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
                                       RequestDetails details) {
         List<Collection> collections = filterCollectionHead(getCollectionByUrl(url, version, publicAccess));
         List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, !isVersionAll(version), getPage(page));
-        return OclFhirUtil.getBundle(valueSets, details.getFhirServerBase(), details.getRequestPath());
+        return OclFhirUtil.getBundle(valueSets, details.getCompleteUrl(), details.getRequestPath());
     }
 
     /**
@@ -108,7 +108,7 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
                                         RequestDetails details) {
         List<Collection> collections = filterCollectionHead(getCollectionByOwner(owner, publicAccess));
         List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, false, getPage(page));
-        return OclFhirUtil.getBundle(valueSets, details.getFhirServerBase(), details.getRequestPath());
+        return OclFhirUtil.getBundle(valueSets, details.getCompleteUrl(), details.getRequestPath());
     }
 
     /**
@@ -128,7 +128,7 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
                                              RequestDetails details) {
         List<Collection> collections = filterCollectionHead(getCollectionByOwnerAndId(id, owner, version, publicAccess));
         List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, !isVersionAll(version), getPage(page));
-        return OclFhirUtil.getBundle(valueSets, details.getFhirServerBase(), details.getRequestPath());
+        return OclFhirUtil.getBundle(valueSets, details.getCompleteUrl(), details.getRequestPath());
     }
 
     @Operation(name = VALIDATE_CODE, idempotent = true)

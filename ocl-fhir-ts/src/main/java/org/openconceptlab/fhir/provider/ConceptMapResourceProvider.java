@@ -50,7 +50,7 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
     public Bundle searchConceptMaps(@OptionalParam(name = PAGE) StringType page, RequestDetails details) {
         List<Source> sources = filterSourceHead(getSources(publicAccess));
         List<ConceptMap> conceptMaps = conceptMapConverter.convertToConceptMap(sources, false, getPage(page));
-        return OclFhirUtil.getBundle(conceptMaps, details.getFhirServerBase(), details.getRequestPath());
+        return OclFhirUtil.getBundle(conceptMaps, details.getCompleteUrl(), details.getRequestPath());
     }
 
     /**
@@ -69,7 +69,7 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
         boolean includeMappings = !isValid(version) || !isVersionAll(version);
         List<ConceptMap> conceptMaps = conceptMapConverter.convertToConceptMap(sources, includeMappings,
                 getPage(page));
-        return OclFhirUtil.getBundle(conceptMaps, details.getFhirServerBase(), details.getRequestPath());
+        return OclFhirUtil.getBundle(conceptMaps, details.getCompleteUrl(), details.getRequestPath());
     }
 
     /**
@@ -84,7 +84,7 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
                                           RequestDetails details) {
         List<Source> sources = filterSourceHead(getSourceByOwner(owner, publicAccess));
         List<ConceptMap> conceptMaps = conceptMapConverter.convertToConceptMap(sources, false, getPage(page));
-        return OclFhirUtil.getBundle(conceptMaps, details.getFhirServerBase(), details.getRequestPath());
+        return OclFhirUtil.getBundle(conceptMaps, details.getCompleteUrl(), details.getRequestPath());
     }
 
     /**
@@ -105,7 +105,7 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
         List<Source> sources = filterSourceHead(getSourceByOwnerAndIdAndVersion(id, owner, version, publicAccess));
         boolean includeMappings = !isVersionAll(version);
         List<ConceptMap> conceptMaps = conceptMapConverter.convertToConceptMap(sources, includeMappings, getPage(page));
-        return OclFhirUtil.getBundle(conceptMaps, details.getFhirServerBase(), details.getRequestPath());
+        return OclFhirUtil.getBundle(conceptMaps, details.getCompleteUrl(), details.getRequestPath());
     }
 
     @Operation(name = TRANSLATE, idempotent = true)

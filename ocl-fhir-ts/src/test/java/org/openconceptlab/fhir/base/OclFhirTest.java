@@ -208,6 +208,7 @@ public class OclFhirTest {
 
     public ValueSetResourceProvider valueSetProvider() {
         OclFhirUtil oclFhirUtil = new OclFhirUtil(sourceRepository, conceptRepository, conceptsSourceRepository);
+        oclFhirUtil.setBaseUrl("http://test.org");
         ValueSetConverter converter = new TestValueSetConverter(sourceRepository, conceptRepository, oclFhirUtil, oclUser, conceptsSourceRepository, dataSource,
                 authtokenRepository, userProfilesOrganizationRepository, organizationRepository, userRepository, collectionRepository);
         return spy(new ValueSetResourceProvider(null, null, collectionRepository, converter, null, oclFhirUtil));
@@ -262,6 +263,7 @@ public class OclFhirTest {
 
     public CodeSystemResourceProvider codeSystemProvider() {
         OclFhirUtil oclFhirUtil = new OclFhirUtil(sourceRepository, conceptRepository, conceptsSourceRepository);
+        oclFhirUtil.setBaseUrl("http://test.org");
         CodeSystemConverter converter = new TestCodeSystemConverter(sourceRepository, conceptRepository, oclFhirUtil,
                 oclUser, conceptsSourceRepository, dataSource, authtokenRepository, userProfilesOrganizationRepository,
                 organizationRepository, userRepository);

@@ -47,8 +47,8 @@ public class OclFhirRestfulServer extends RestfulServer {
 		this.oclFhirLoggingInterceptor = oclFhirLoggingInterceptor;
 	}
 
-	@Value("${ocl.servlet.baseurl}")
-	private String baseUrl;
+//	@Value("${ocl.servlet.baseurl}")
+//	private String baseUrl;
 
 	@Override
 	protected void initialize() throws ServletException {

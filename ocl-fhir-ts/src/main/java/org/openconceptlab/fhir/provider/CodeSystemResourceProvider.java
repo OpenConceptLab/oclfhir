@@ -81,7 +81,7 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
     public Bundle searchCodeSystems(@OptionalParam(name = PAGE) StringType page, RequestDetails details) {
         List<Source> sources = filterSourceHead(getSources(publicAccess));
         List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false, getPage(page));
-        return OclFhirUtil.getBundle(codeSystems, details.getFhirServerBase(), details.getRequestPath());
+        return OclFhirUtil.getBundle(codeSystems, details.getCompleteUrl(), details.getRequestPath());
     }
 
     /**
@@ -100,7 +100,7 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
         boolean includeConcepts = !isValid(version) || !isVersionAll(version);
         List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, includeConcepts,
                 getPage(page));
-        return OclFhirUtil.getBundle(codeSystems, details.getFhirServerBase(), details.getRequestPath());
+        return OclFhirUtil.getBundle(codeSystems, details.getCompleteUrl(), details.getRequestPath());
     }
 
     /**
@@ -115,7 +115,7 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
                                           RequestDetails details) {
         List<Source> sources = filterSourceHead(getSourceByOwner(owner, publicAccess));
         List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false, getPage(page));
-        return OclFhirUtil.getBundle(codeSystems, details.getFhirServerBase(), details.getRequestPath());
+        return OclFhirUtil.getBundle(codeSystems, details.getCompleteUrl(), details.getRequestPath());
     }
 
     /**
@@ -136,7 +136,7 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
         List<Source> sources = filterSourceHead(getSourceByOwnerAndIdAndVersion(id, owner, version, publicAccess));
         boolean includeConcepts = !isVersionAll(version);
         List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, includeConcepts, getPage(page));
-        return OclFhirUtil.getBundle(codeSystems, details.getFhirServerBase(), details.getRequestPath());
+        return OclFhirUtil.getBundle(codeSystems, details.getCompleteUrl(), details.getRequestPath());
     }
 
     /**

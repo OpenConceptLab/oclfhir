@@ -52,6 +52,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
     @Before
     public void setUpBefore() {
         MockitoAnnotations.initMocks(this);
+        when(requestDetails.getCompleteUrl()).thenReturn("http://test.org");
         source1 = source(123L, "v1.0", concept1(), concept2(), concept3());
         source2 = source(234L, "v2.0", concept1(), concept2(), concept3(), concept4());
         source3 = source(345L, "v3.0", concept1(), concept2(), concept3(), concept4());
