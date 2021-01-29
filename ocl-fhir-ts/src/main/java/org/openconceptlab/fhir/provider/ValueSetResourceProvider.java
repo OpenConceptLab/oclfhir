@@ -8,6 +8,8 @@ import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.converter.CodeSystemConverter;
@@ -37,6 +39,8 @@ import static org.openconceptlab.fhir.util.OclFhirUtil.*;
  */
 @Component
 public class ValueSetResourceProvider extends BaseProvider implements IResourceProvider {
+
+    private static final Log log = LogFactory.getLog(ValueSetResourceProvider.class);
 
     public ValueSetResourceProvider(SourceRepository sourceRepository, CodeSystemConverter codeSystemConverter,
                                     CollectionRepository collectionRepository, ValueSetConverter valueSetConverter,
@@ -76,6 +80,7 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
     public Bundle searchValueSets(@OptionalParam(name = PAGE) StringType page, RequestDetails details) {
         List<Collection> collections = filterCollectionHead(getCollections(publicAccess));
         List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, false, getPage(page));
+        log.info("Found " + valueSets.size() + " ValueSets.");
         return OclFhirUtil.getBundle(valueSets, details.getCompleteUrl(), details.getRequestPath());
     }
 
@@ -93,6 +98,7 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
                                       RequestDetails details) {
         List<Collection> collections = filterCollectionHead(getCollectionByUrl(url, version, publicAccess));
         List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, !isVersionAll(version), getPage(page));
+        log.info("Found " + valueSets.size() + " ValueSets.");
         return OclFhirUtil.getBundle(valueSets, details.getCompleteUrl(), details.getRequestPath());
     }
 
@@ -108,6 +114,7 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
                                         RequestDetails details) {
         List<Collection> collections = filterCollectionHead(getCollectionByOwner(owner, publicAccess));
         List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, false, getPage(page));
+        log.info("Found " + valueSets.size() + " ValueSets.");
         return OclFhirUtil.getBundle(valueSets, details.getCompleteUrl(), details.getRequestPath());
     }
 
@@ -128,6 +135,7 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
                                              RequestDetails details) {
         List<Collection> collections = filterCollectionHead(getCollectionByOwnerAndId(id, owner, version, publicAccess));
         List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, !isVersionAll(version), getPage(page));
+        log.info("Found " + valueSets.size() + " ValueSets.");
         return OclFhirUtil.getBundle(valueSets, details.getCompleteUrl(), details.getRequestPath());
     }
 

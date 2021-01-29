@@ -4,6 +4,8 @@ import ca.uhn.fhir.rest.annotation.*;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.converter.CodeSystemConverter;
@@ -29,6 +31,8 @@ import static org.openconceptlab.fhir.util.OclFhirUtil.*;
 @Component
 public class ConceptMapResourceProvider extends BaseProvider implements IResourceProvider {
 
+    private static final Log log = LogFactory.getLog(ConceptMapResourceProvider.class);
+
     public ConceptMapResourceProvider(SourceRepository sourceRepository, CodeSystemConverter codeSystemConverter,
                                       CollectionRepository collectionRepository, ValueSetConverter valueSetConverter,
                                       ConceptMapConverter conceptMapConverter, OclFhirUtil oclFhirUtil) {
@@ -50,6 +54,7 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
     public Bundle searchConceptMaps(@OptionalParam(name = PAGE) StringType page, RequestDetails details) {
         List<Source> sources = filterSourceHead(getSources(publicAccess));
         List<ConceptMap> conceptMaps = conceptMapConverter.convertToConceptMap(sources, false, getPage(page));
+        log.info("Found " + conceptMaps.size() + " ConceptMaps.");
         return OclFhirUtil.getBundle(conceptMaps, details.getCompleteUrl(), details.getRequestPath());
     }
 
@@ -69,6 +74,7 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
         boolean includeMappings = !isValid(version) || !isVersionAll(version);
         List<ConceptMap> conceptMaps = conceptMapConverter.convertToConceptMap(sources, includeMappings,
                 getPage(page));
+        log.info("Found " + conceptMaps.size() + " ConceptMaps.");
         return OclFhirUtil.getBundle(conceptMaps, details.getCompleteUrl(), details.getRequestPath());
     }
 
@@ -84,6 +90,7 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
                                           RequestDetails details) {
         List<Source> sources = filterSourceHead(getSourceByOwner(owner, publicAccess));
         List<ConceptMap> conceptMaps = conceptMapConverter.convertToConceptMap(sources, false, getPage(page));
+        log.info("Found " + conceptMaps.size() + " ConceptMaps.");
         return OclFhirUtil.getBundle(conceptMaps, details.getCompleteUrl(), details.getRequestPath());
     }
 
@@ -105,6 +112,7 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
         List<Source> sources = filterSourceHead(getSourceByOwnerAndIdAndVersion(id, owner, version, publicAccess));
         boolean includeMappings = !isVersionAll(version);
         List<ConceptMap> conceptMaps = conceptMapConverter.convertToConceptMap(sources, includeMappings, getPage(page));
+        log.info("Found " + conceptMaps.size() + " ConceptMaps.");
         return OclFhirUtil.getBundle(conceptMaps, details.getCompleteUrl(), details.getRequestPath());
     }
 

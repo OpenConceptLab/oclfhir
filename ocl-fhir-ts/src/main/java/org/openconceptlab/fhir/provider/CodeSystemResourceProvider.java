@@ -5,6 +5,8 @@ import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.converter.CodeSystemConverter;
@@ -27,6 +29,8 @@ import java.util.*;
  */
 @Component
 public class CodeSystemResourceProvider extends BaseProvider implements IResourceProvider {
+
+    private static final Log log = LogFactory.getLog(CodeSystemResourceProvider.class);
 
     public CodeSystemResourceProvider(SourceRepository sourceRepository, CodeSystemConverter codeSystemConverter,
                                       CollectionRepository collectionRepository, ValueSetConverter valueSetConverter,
@@ -81,6 +85,7 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
     public Bundle searchCodeSystems(@OptionalParam(name = PAGE) StringType page, RequestDetails details) {
         List<Source> sources = filterSourceHead(getSources(publicAccess));
         List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false, getPage(page));
+        log.info("Found " + codeSystems.size() + " CodeSystems.");
         return OclFhirUtil.getBundle(codeSystems, details.getCompleteUrl(), details.getRequestPath());
     }
 
@@ -100,6 +105,7 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
         boolean includeConcepts = !isValid(version) || !isVersionAll(version);
         List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, includeConcepts,
                 getPage(page));
+        log.info("Found " + codeSystems.size() + " CodeSystems.");
         return OclFhirUtil.getBundle(codeSystems, details.getCompleteUrl(), details.getRequestPath());
     }
 
@@ -115,6 +121,7 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
                                           RequestDetails details) {
         List<Source> sources = filterSourceHead(getSourceByOwner(owner, publicAccess));
         List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false, getPage(page));
+        log.info("Found " + codeSystems.size() + " CodeSystems.");
         return OclFhirUtil.getBundle(codeSystems, details.getCompleteUrl(), details.getRequestPath());
     }
 
@@ -136,6 +143,7 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
         List<Source> sources = filterSourceHead(getSourceByOwnerAndIdAndVersion(id, owner, version, publicAccess));
         boolean includeConcepts = !isVersionAll(version);
         List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, includeConcepts, getPage(page));
+        log.info("Found " + codeSystems.size() + " CodeSystems.");
         return OclFhirUtil.getBundle(codeSystems, details.getCompleteUrl(), details.getRequestPath());
     }
 

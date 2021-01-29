@@ -3,7 +3,10 @@ package org.openconceptlab.fhir.controller;
 import ca.uhn.fhir.rest.gclient.IQuery;
 import ca.uhn.fhir.rest.gclient.StringClientParam;
 import ca.uhn.fhir.rest.server.exceptions.BaseServerResponseException;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.hl7.fhir.r4.model.*;
+import org.openconceptlab.fhir.provider.ConceptMapResourceProvider;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
@@ -22,6 +25,8 @@ import static org.openconceptlab.fhir.util.OclFhirConstants.FW_SLASH;
 @Component
 public class BaseOclFhirController {
 
+    private static final Log log = LogFactory.getLog(BaseOclFhirController.class);
+
     CodeSystemResourceProvider codeSystemResourceProvider;
     ValueSetResourceProvider valueSetResourceProvider;
     OclFhirUtil oclFhirUtil;
@@ -38,6 +43,7 @@ public class BaseOclFhirController {
     protected ResponseEntity<String> handleSearchResource(final Class<? extends MetadataResource> resourceClass, final String... args) {
         try {
             String resource = searchResource(resourceClass, args);
+            log.info("Finished searching " + resourceClass + ".");
             return ResponseEntity.ok(resource);
         } catch (BaseServerResponseException e) {
             return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBody());
