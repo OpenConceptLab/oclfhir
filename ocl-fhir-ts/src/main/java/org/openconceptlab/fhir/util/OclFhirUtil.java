@@ -81,7 +81,7 @@ public class OclFhirUtil {
             Bundle.BundleLinkComponent com = new Bundle.BundleLinkComponent();
             com.setRelation("self");
             com.setUrl(UriComponentsBuilder.fromHttpUrl(URLDecoder.decode(fhirBase, StandardCharsets.UTF_8.toString()))
-                    .host(new URL(BASE_URL).getHost())
+                    .host(new URL(BASE_URL).getHost()).port(-1)
                     .toUriString());
             bundle.setLink(Collections.singletonList(com));
         } catch (Exception e) {
