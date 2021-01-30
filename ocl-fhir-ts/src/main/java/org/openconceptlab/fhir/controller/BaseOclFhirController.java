@@ -46,8 +46,12 @@ public class BaseOclFhirController {
             log.info("Finished searching " + resourceClass + ".");
             return ResponseEntity.ok(resource);
         } catch (BaseServerResponseException e) {
+            log.error("BaseServerResponseException - " + e.getMessage());
+            log.error("BaseServerResponseException - " + e);
             return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBody());
         } catch (Exception e) {
+            log.error("Exception - " + e.getMessage());
+            log.error("Exception - " + e);
             return badRequest(e.getMessage());
         }
     }
@@ -75,6 +79,7 @@ public class BaseOclFhirController {
     }
 
     protected String searchResource(final Class<? extends MetadataResource> resourceClass, final String... filters) {
+        log.info("Building query");
         IQuery q = oclFhirUtil.getClient().search().forResource(resourceClass);
         if (filters.length % 2 == 0) {
             for (int i = 0; i < filters.length; i += 2) {
@@ -85,7 +90,9 @@ public class BaseOclFhirController {
                 }
             }
         }
+        log.info("Query built and executing the request.");
         Bundle bundle = (Bundle) q.execute();
+        log.info("Request executed successfully.");
         return oclFhirUtil.getResourceAsString(bundle);
     }
 
