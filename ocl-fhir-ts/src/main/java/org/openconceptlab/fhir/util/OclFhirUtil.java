@@ -93,7 +93,6 @@ public class OclFhirUtil {
             component.setResource(r);
             bundle.addEntry(component);
         });
-        log.info("Built bundle with " + bundle.getEntry().size() + " entries.");
         return bundle;
     }
 

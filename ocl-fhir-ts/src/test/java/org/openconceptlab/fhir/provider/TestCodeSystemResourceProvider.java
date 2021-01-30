@@ -134,7 +134,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         assertEquals(1, bundle.getTotal());
         assertEquals(0, ((CodeSystem) bundle.getEntryFirstRep().getResource()).getConcept().size());
         assertBaseCodeSystem((CodeSystem) bundle.getEntry().get(0).getResource(), URL_SOURCE_1, SOURCE_1_NAME, SOURCE_1_FULL_NAME,
-                "Jon Doe 1", "jondoe1@gmail.com", "USA", TEST_SOURCE, SOURCE_1_COPYRIGHT_TEXT, "?");
+                "Jon Doe 1", "jondoe1@gmail.com", "USA", TEST_SOURCE, SOURCE_1_COPYRIGHT_TEXT, null);
     }
 
     @Test
@@ -148,7 +148,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         assertEquals(1, bundle.getTotal());
         assertEquals(0, ((CodeSystem) bundle.getEntryFirstRep().getResource()).getConcept().size());
         assertBaseCodeSystem((CodeSystem) bundle.getEntry().get(0).getResource(), URL_SOURCE_1, SOURCE_1_NAME, SOURCE_1_FULL_NAME,
-                "Jon Doe 1", "jondoe1@gmail.com", "USA", TEST_SOURCE, SOURCE_1_COPYRIGHT_TEXT, "?");
+                "Jon Doe 1", "jondoe1@gmail.com", "USA", TEST_SOURCE, SOURCE_1_COPYRIGHT_TEXT, null);
     }
 
     @Test
@@ -779,6 +779,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         assertEquals(jurisdictionCode, system.getJurisdictionFirstRep().getCodingFirstRep().getCode());
         assertEquals(purpose, system.getPurpose());
         assertEquals(copyright, system.getCopyright());
-        assertEquals(contentType, system.getContent().toCode());
+        if (system.getContent() != null)
+            assertEquals(contentType, system.getContent().toCode());
     }
 }

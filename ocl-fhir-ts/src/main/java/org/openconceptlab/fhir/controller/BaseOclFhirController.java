@@ -60,10 +60,15 @@ public class BaseOclFhirController {
                                                           final String version, final String owner, final String auth) {
         try {
             performDelete(resourceClass.getSimpleName(), id, version, owner, auth);
+            log.info("Finished deleting " + resourceClass + ".");
             return ResponseEntity.noContent().build();
         } catch (BaseServerResponseException e) {
+            log.error("BaseServerResponseException - " + e.getMessage());
+            log.error("BaseServerResponseException - " + e);
             return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBody());
         } catch (Exception e) {
+            log.error("Exception - " + e.getMessage());
+            log.error("Exception - " + e);
             return badRequest(e.getMessage());
         }
     }
@@ -72,14 +77,17 @@ public class BaseOclFhirController {
         try {
             return ResponseEntity.ok(oclFhirUtil.getResourceAsString(performFhirOperation(parameters, type, operation)));
         } catch (BaseServerResponseException e) {
+            log.error("BaseServerResponseException - " + e.getMessage());
+            log.error("BaseServerResponseException - " + e);
             return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBody());
         } catch (Exception e) {
+            log.error("Exception - " + e.getMessage());
+            log.error("Exception - " + e);
             return badRequest(e.getMessage());
         }
     }
 
     protected String searchResource(final Class<? extends MetadataResource> resourceClass, final String... filters) {
-        log.info("Building query");
         IQuery q = oclFhirUtil.getClient().search().forResource(resourceClass);
         if (filters.length % 2 == 0) {
             for (int i = 0; i < filters.length; i += 2) {

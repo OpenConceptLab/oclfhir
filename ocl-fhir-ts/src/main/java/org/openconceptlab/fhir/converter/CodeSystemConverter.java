@@ -111,17 +111,13 @@ public class CodeSystemConverter extends BaseConverter {
 		// copyright
 		if (isValid(source.getCopyright()))
 			codeSystem.setCopyright(source.getCopyright());
-		// content_type
+		// The ? value is not parsable and invalid.
 		if (isValid(source.getContentType())) {
-			Optional<String> content = Stream.of(CodeSystem.CodeSystemContentMode.values()).map(Enum::toString).filter(m -> source.getContentType().equalsIgnoreCase(m))
+			Optional<String> content = Stream.of(CodeSystem.CodeSystemContentMode.values()).map(Enum::toString)
+					.filter(m -> source.getContentType().equalsIgnoreCase(m))
+					.filter(m -> !m.equals(CodeSystem.CodeSystemContentMode.NULL.toCode()))
 					.findAny();
-			if (content.isPresent()) {
-				codeSystem.setContent(CodeSystem.CodeSystemContentMode.fromCode(content.get().toLowerCase()));
-			} else {
-				codeSystem.setContent(CodeSystem.CodeSystemContentMode.NULL);
-			}
-		} else {
-			codeSystem.setContent(CodeSystem.CodeSystemContentMode.NULL);
+			content.ifPresent(s -> codeSystem.setContent(CodeSystem.CodeSystemContentMode.fromCode(s.toLowerCase())));
 		}
 		// revision date
 		if (source.getRevisionDate() != null)
@@ -441,7 +437,7 @@ public class CodeSystemConverter extends BaseConverter {
 		String name = isValid(codeSystem.getName()) ? codeSystem.getName() : codeSystem.getId();
 		source.setName(name);
 		// content type
-		if (codeSystem.getContent() != null)
+		if (codeSystem.getContent() != null && !codeSystem.getContent().toCode().equals(CodeSystem.CodeSystemContentMode.NULL.toCode()))
 			source.setContentType(codeSystem.getContent().toCode());
 		// copyright
 		if (isValid(codeSystem.getCopyright()))
