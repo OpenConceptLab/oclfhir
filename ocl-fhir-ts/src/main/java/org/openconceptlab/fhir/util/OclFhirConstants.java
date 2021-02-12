@@ -89,7 +89,7 @@ public final class OclFhirConstants {
 	public static final String DEFINITION = "definition";
 	public static final String NA = "N/A";
 	public static final String EMPTY_JSON = "{}";
-	public static final String FW_SLASH = "/";
+	public static final String FS = "/";
 	public static final String TYPE = "type";
 	public static final String LOCALE = "locale";
 	public static final String LOCALE_PREFERRED = "locale_preferred";

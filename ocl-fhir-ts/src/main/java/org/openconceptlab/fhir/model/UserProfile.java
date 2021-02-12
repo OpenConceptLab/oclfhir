@@ -79,7 +79,7 @@ public class UserProfile extends BaseOclEntity implements Serializable {
 	@Column
 	private String username;
 
-	@OneToMany(mappedBy="userProfile")
+	@OneToMany(fetch = FetchType.EAGER, mappedBy="userProfile", cascade = CascadeType.ALL)
 	private List<AuthtokenToken> authtokenTokens;
 
 	@ManyToOne(fetch = FetchType.LAZY)

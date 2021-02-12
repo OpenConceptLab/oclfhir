@@ -5,11 +5,13 @@ import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.client.RestTemplate;
 
+import java.net.URI;
 import java.util.Optional;
 
 import static org.openconceptlab.fhir.util.OclFhirUtil.*;
@@ -30,20 +32,14 @@ public class OclFhirOrgController extends BaseOclFhirController {
     public ResponseEntity<String> createCodeSystemForOrg(@PathVariable(name = ORG) String org,
                                                          @RequestBody String codeSystem,
                                                          @RequestHeader(name = AUTHORIZATION) String auth) {
-        try {
-            CodeSystem system = (CodeSystem) parser.parseResource(codeSystem);
-            Optional<Identifier> acsnOpt = hasAccessionIdentifier(system.getIdentifier());
-            ResponseEntity<String> response = validate(org, system.getId(), acsnOpt, ORGS, org);
-            if (response != null) return response;
-            if (acsnOpt.isEmpty()) addIdentifier(system.getIdentifier(), ORGS, org, CODESYSTEM, system.getId());
+        CodeSystem system = (CodeSystem) parser.parseResource(codeSystem);
+        Optional<Identifier> acsnOpt = hasAccessionIdentifier(system.getIdentifier());
+        ResponseEntity<String> response = validate(org, system.getId(), acsnOpt, ORGS, org);
+        if (response != null) return response;
+        if (acsnOpt.isEmpty()) addIdentifier(system.getIdentifier(), ORGS, org, CODESYSTEM, system.getId());
 
-            performCreate(system, auth);
-            return ResponseEntity.status(HttpStatus.CREATED).build();
-        } catch (BaseServerResponseException e) {
-            return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBody());
-        } catch (Exception e) {
-            return badRequest(e.getMessage());
-        }
+        performCreate(system, auth);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @GetMapping(path = {"/{org}/CodeSystem/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
@@ -81,6 +77,32 @@ public class OclFhirOrgController extends BaseOclFhirController {
         return handleDeleteResource(CodeSystem.class, id, version, formatOrg(org), auth);
     }
 
+    @PutMapping(path = {"/{org}/CodeSystem/{id}/version/{version}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> updateCodeSystemForOrg(@PathVariable(name = ID) String id,
+                                                         @PathVariable(name = VERSION) String version,
+                                                         @PathVariable(name = ORG) String org,
+                                                         @RequestBody String codeSystem,
+                                                         @RequestHeader(name = AUTHORIZATION) String auth) {
+        CodeSystem system = (CodeSystem) parser.parseResource(codeSystem);
+        Optional<Identifier> acsnOpt = hasAccessionIdentifier(system.getIdentifier());
+        ResponseEntity<String> response = validate(org, id, acsnOpt, USERS, org);
+        if (response != null) return response;
+        IdType idType = new IdType(CODESYSTEM, id, version);
+
+        performUpdate(system, auth, idType, formatOrg(org));
+        return ResponseEntity.status(HttpStatus.OK).build();
+    }
+
+    @DeleteMapping(path = {"/{org}/CodeSystem/{id}/version/{version}/concepts/{concept_id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> deleteConceptInCodeSystemForOrg(@PathVariable(name = ID) String id,
+                                                                  @PathVariable(name = VERSION) String version,
+                                                                  @PathVariable(name = CONCEPT_ID) String conceptId,
+                                                                  @PathVariable(name = ORG) String org,
+                                                                  @RequestHeader(name = AUTHORIZATION) String auth) {
+        String url = OCLAPI_BASE_URL + FS + ORGS + FS + org + FS + SOURCES + FS + id + FS + version + FS + CONCEPTS + FS + conceptId + FS;
+        return performDeleteOclApi(url, auth);
+    }
+
     @GetMapping(path = {"/{org}/CodeSystem/$lookup"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> lookUpCodeSystemsByOrg(@PathVariable String org,
                                                          @RequestParam(name = SYSTEM) String system,
@@ -92,7 +114,7 @@ public class OclFhirOrgController extends BaseOclFhirController {
     }
 
     @PostMapping(path = {"/{org}/CodeSystem/$lookup"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<String> lookUpCodeSystemsByOrg(@PathVariable String org, @RequestBody String parameters){
+    public ResponseEntity<String> lookUpCodeSystemsByOrg(@PathVariable String org, @RequestBody String parameters) {
         Parameters params = (Parameters) getResource(parameters);
         params.addParameter().setName(OWNER).setValue(newStringType(formatOrg(org)));
         return handleFhirOperation(params, CodeSystem.class, LOOKUP);
@@ -110,7 +132,7 @@ public class OclFhirOrgController extends BaseOclFhirController {
     }
 
     @PostMapping(path = {"/{org}/CodeSystem/$validate-code"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<String> validateCodeSystemsByOrg(@PathVariable String org, @RequestBody String parameters){
+    public ResponseEntity<String> validateCodeSystemsByOrg(@PathVariable String org, @RequestBody String parameters) {
         Parameters params = (Parameters) getResource(parameters);
         params.addParameter().setName(OWNER).setValue(newStringType(formatOrg(org)));
         return handleFhirOperation(params, CodeSystem.class, VALIDATE_CODE);
@@ -120,20 +142,14 @@ public class OclFhirOrgController extends BaseOclFhirController {
     public ResponseEntity<String> createValueSetForOrg(@PathVariable(name = ORG) String org,
                                                        @RequestBody String valueSet,
                                                        @RequestHeader(name = AUTHORIZATION) String auth) {
-        try {
-            ValueSet set = (ValueSet) parser.parseResource(valueSet);
-            Optional<Identifier> acsnOpt = hasAccessionIdentifier(set.getIdentifier());
-            ResponseEntity<String> response = validate(org, set.getId(), acsnOpt, ORGS, org);
-            if (response != null) return response;
-            if (acsnOpt.isEmpty()) addIdentifier(set.getIdentifier(), ORGS, org, VALUESET, set.getId());
+        ValueSet set = (ValueSet) parser.parseResource(valueSet);
+        Optional<Identifier> acsnOpt = hasAccessionIdentifier(set.getIdentifier());
+        ResponseEntity<String> response = validate(org, set.getId(), acsnOpt, ORGS, org);
+        if (response != null) return response;
+        if (acsnOpt.isEmpty()) addIdentifier(set.getIdentifier(), ORGS, org, VALUESET, set.getId());
 
-            performCreate(set, auth);
-            return ResponseEntity.status(HttpStatus.CREATED).build();
-        } catch (BaseServerResponseException e) {
-            return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBody());
-        } catch (Exception e) {
-            return badRequest(e.getMessage());
-        }
+        performCreate(set, auth);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @GetMapping(path = {"/{org}/ValueSet/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
@@ -179,7 +195,7 @@ public class OclFhirOrgController extends BaseOclFhirController {
     }
 
     @PostMapping(path = {"/{org}/ValueSet/$validate-code"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<String> validateValueSetByOrg(@PathVariable String org, @RequestBody String parameters){
+    public ResponseEntity<String> validateValueSetByOrg(@PathVariable String org, @RequestBody String parameters) {
         Parameters params = (Parameters) getResource(parameters);
         params.addParameter().setName(OWNER).setValue(newStringType(formatOrg(org)));
         return handleFhirOperation(params, ValueSet.class, VALIDATE_CODE);
@@ -203,7 +219,7 @@ public class OclFhirOrgController extends BaseOclFhirController {
     }
 
     @PostMapping(path = {"/{org}/ValueSet/$expand"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<String> expandValueSetByOrg(@PathVariable String org, @RequestBody String parameters){
+    public ResponseEntity<String> expandValueSetByOrg(@PathVariable String org, @RequestBody String parameters) {
         Parameters params = (Parameters) getResource(parameters);
         params.addParameter().setName(OWNER).setValue(newStringType(formatOrg(org)));
         return handleFhirOperation(params, ValueSet.class, EXPAND);

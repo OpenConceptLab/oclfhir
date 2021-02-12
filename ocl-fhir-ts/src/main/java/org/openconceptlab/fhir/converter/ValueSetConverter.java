@@ -150,7 +150,7 @@ public class ValueSetConverter extends BaseConverter {
 
         // for each source let's evaluate expressions for concept and concept version and populate compose
         sources.forEach(source -> {
-            expressions.stream().map(m -> formatExpression(m).split(FW_SLASH))
+            expressions.stream().map(m -> formatExpression(m).split(FS))
                     .filter(m -> source.getMnemonic().equals(getSourceId(m)) && source.getVersion().equals(getSourceVersion(m)))
                     .forEachOrdered(m -> {
                         String conceptId = getConceptId(m);
@@ -187,7 +187,7 @@ public class ValueSetConverter extends BaseConverter {
         // this is to cover the edge case where user provides source that is not referenced in expression and we would
         // want to use sources that are referenced in expressions
         List<Source> filtered = new ArrayList<>();
-        expressions.parallelStream().map(m -> formatExpression(m).split(FW_SLASH))
+        expressions.parallelStream().map(m -> formatExpression(m).split(FS))
                 .map(m -> ownerType(m) + "|" + ownerId(m) + "|" + getSourceId(m) + "|" + getSourceVersion(m))
                 .distinct()
                 .map(m -> m.split("\\|"))
@@ -212,7 +212,7 @@ public class ValueSetConverter extends BaseConverter {
     }
 
     private List<Source> getSourcesFromExpressions(List<String> expressions) {
-        return expressions.parallelStream().map(m -> formatExpression(m).split(FW_SLASH))
+        return expressions.parallelStream().map(m -> formatExpression(m).split(FS))
                 .map(m -> ownerType(m) + "|" + ownerId(m) + "|" + getSourceId(m) + "|" + getSourceVersion(m))
                 .distinct()
                 .map(m -> m.split("\\|"))
@@ -231,7 +231,7 @@ public class ValueSetConverter extends BaseConverter {
                 .map(CollectionsReference::getCollectionReference)
                 .map(CollectionReference::getExpression)
                 .forEach(e -> {
-                    String [] ar = formatExpression(e).split(FW_SLASH);
+                    String [] ar = formatExpression(e).split(FS);
                     String conceptId = getConceptId(ar);
                     if (isValid(conceptId))
                         map.put(conceptId + getConceptVersion(ar) + getSourceId(ar) + getSourceVersion(ar), e);
@@ -444,7 +444,7 @@ public class ValueSetConverter extends BaseConverter {
                 .filter(m -> m.length == 2)
                 .collect(Collectors.toMap(m -> m[0], m->m[1]));
         sources.forEach(source -> {
-            expressions.stream().map(m -> formatExpression(m).split(FW_SLASH))
+            expressions.stream().map(m -> formatExpression(m).split(FS))
                     .filter(m -> {
                         if (map.containsKey(source.getCanonicalUrl()))
                             return map.get(source.getCanonicalUrl()).equals(source.getVersion());
@@ -519,12 +519,12 @@ public class ValueSetConverter extends BaseConverter {
     }
 
     private String buildExpression(String sourceId, String sourceVersion, String conceptId, String ownerType, String ownerId) {
-        return FW_SLASH + (ORG.equals(ownerType) ? ORGS : USERS) +
-                FW_SLASH + ownerId +
-                FW_SLASH + SOURCES +
-                FW_SLASH + sourceId +
-                FW_SLASH + (!isValid(sourceVersion) || HEAD.equals(sourceVersion) ? EMPTY : sourceVersion + FW_SLASH) +
-                CONCEPTS + FW_SLASH + conceptId + FW_SLASH;
+        return FS + (ORG.equals(ownerType) ? ORGS : USERS) +
+                FS + ownerId +
+                FS + SOURCES +
+                FS + sourceId +
+                FS + (!isValid(sourceVersion) || HEAD.equals(sourceVersion) ? EMPTY : sourceVersion + FS) +
+                CONCEPTS + FS + conceptId + FS;
     }
 
     private String getSourceId(String[] ar) {
@@ -560,7 +560,7 @@ public class ValueSetConverter extends BaseConverter {
 
     public void createValueSet(ValueSet valueSet, String accessionId, String authToken) {
         // validate and authenticate
-        OclEntity oclEntity = new OclEntity(valueSet, accessionId, authToken);
+        OclEntity oclEntity = new OclEntity(valueSet, accessionId, authToken, true);
         UserProfile user = oclEntity.getUserProfile();
         // base collection
         Collection collection = toBaseCollection(valueSet, user, oclEntity.getAccessionId());
@@ -655,10 +655,10 @@ public class ValueSetConverter extends BaseConverter {
     }
 
     private String toExpression(String ownerType, String owner, String sourceId, String sourceVersion, String conceptId) {
-        String pre = FW_SLASH + ownerType + FW_SLASH + owner + FW_SLASH + SOURCES + FW_SLASH + sourceId + FW_SLASH;
+        String pre = FS + ownerType + FS + owner + FS + SOURCES + FS + sourceId + FS;
         if (isValid(sourceVersion) && !HEAD.equals(sourceVersion))
-            pre = pre + sourceVersion + FW_SLASH;
-        return pre + CONCEPTS + FW_SLASH + conceptId + FW_SLASH;
+            pre = pre + sourceVersion + FS;
+        return pre + CONCEPTS + FS + conceptId + FS;
     }
 
     private Collection toBaseCollection(final ValueSet valueSet, final UserProfile user, final String uri) {

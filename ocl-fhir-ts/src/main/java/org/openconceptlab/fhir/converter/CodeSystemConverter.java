@@ -1,5 +1,6 @@
 package org.openconceptlab.fhir.converter;
 
+import java.sql.*;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.regex.Pattern;
@@ -25,6 +26,8 @@ import org.openconceptlab.fhir.repository.*;
 import org.openconceptlab.fhir.util.OclFhirConstants;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
@@ -265,7 +268,7 @@ public class CodeSystemConverter extends BaseConverter {
 
 	public void createCodeSystem(CodeSystem codeSystem, String accessionId, String authToken) {
 		// validate and authenticate
-		OclEntity oclEntity = new OclEntity(codeSystem, accessionId, authToken);
+		OclEntity oclEntity = new OclEntity(codeSystem, accessionId, authToken, true);
 		UserProfile user = oclEntity.getUserProfile();
 		// base source
 		Source source = toBaseSource(codeSystem, user, oclEntity.getAccessionId());
@@ -273,32 +276,29 @@ public class CodeSystemConverter extends BaseConverter {
 		addParent(source, oclEntity.getOwner());
 		// add identifier, contact and jurisdiction
 		addJsonStrings(codeSystem, source);
-		// version-less source uri
-		String value = source.getUri().substring(0, source.getUri().lastIndexOf(FW_SLASH));
-		String versionLessSourceUri = value.substring(0, value.lastIndexOf(FW_SLASH)) + FW_SLASH;
 		// add concepts
 		List<Concept> concepts = toConcepts(codeSystem.getConcept(), codeSystem.getLanguage());
-		concepts.forEach(c -> {
-			c.setParent(source);
-			c.setPublicAccess(source.getPublicAccess());
-			c.setVersion("1");
-			c.setIsLatestVersion(True);
-			c.setReleased(c.getIsActive());
-			c.setRetired(c.getIsActive());
-			c.setDefaultLocale(source.getDefaultLocale());
-			c.setCreatedBy(user);
-			c.setUpdatedBy(user);
-			c.setVersionedObject(c);
-			c.setUri(versionLessSourceUri + "concepts/" + c.getMnemonic() + FW_SLASH + c.getVersion() + FW_SLASH);
-			c.setExtras(EMPTY_JSON);
-		});
+		populateBaseConceptField(concepts, source, oclEntity.getUserProfile());
 
 		// save source
 		sourceRepository.saveAndFlush(source);
 		log.info("saved source - " + source.getMnemonic());
 
 		// save concepts
+		saveConcepts(source.getId(), concepts);
+	}
+
+	private void saveConcepts(Long sourceId, List<Concept> concepts) {
 		List<Integer> conceptIds = new CopyOnWriteArrayList<>();
+		// save concept
+		persistConcepts(concepts, conceptIds);
+		// update concept version
+		List<List<Integer>> conceptIdBatches = updateConceptsVersion(conceptIds);
+		// save concepts sources
+		saveConceptsSources(sourceId, conceptIds, conceptIdBatches);
+	}
+
+	private void persistConcepts(List<Concept> concepts, List<Integer> conceptIds) {
 		// concept, concept names, concept descriptions, localized texts
 		List<List<Concept>> conceptBatches = ListUtils.partition(concepts, 1000);
 		int i = 1;
@@ -307,13 +307,18 @@ public class CodeSystemConverter extends BaseConverter {
 			batchConcepts(cb, conceptIds);
 			i++;
 		}
+	}
 
+	private List<List<Integer>> updateConceptsVersion(List<Integer> conceptIds) {
 		// update concept version = concept id
 		List<List<Integer>> conceptIdBatches = ListUtils.partition(conceptIds, 1000);
 		conceptIdBatches.forEach(this::batchUpdateConceptVersion);
+		return conceptIdBatches;
+	}
 
+	private void saveConceptsSources(Long sourceId, List<Integer> conceptIds, List<List<Integer>> conceptIdBatches) {
 		// save concepts sources
-		conceptIdBatches.forEach(b -> batchUpdateConceptSources(b, source.getId().intValue()));
+		conceptIdBatches.forEach(b -> batchUpdateConceptSources(b, sourceId));
 		log.info("saved " + conceptIds.size() + " concepts");
 	}
 
@@ -513,6 +518,107 @@ public class CodeSystemConverter extends BaseConverter {
 		// retire source and update
 		source.setRetired(True);
 		sourceRepository.saveAndFlush(source);
+	}
+
+	public void updateCodeSystem(final CodeSystem codeSystem, final Source source, final String accessionId, final String authToken) {
+		final OclEntity oclEntity = new OclEntity(codeSystem, accessionId, authToken, false);
+		// we don't allow updating id, version and canonical_url(TODO - ?)
+		// update status
+		if (codeSystem.getStatus() != null) {
+			if (PublicationStatus.DRAFT.toCode().equals(codeSystem.getStatus().toCode()) || PublicationStatus.UNKNOWN.toCode().equals(codeSystem.getStatus().toCode())) {
+				source.setReleased(False);
+			} else if (PublicationStatus.ACTIVE.toCode().equals(codeSystem.getStatus().toCode())) {
+				source.setReleased(True);
+			} else if (PublicationStatus.RETIRED.toCode().equals(codeSystem.getStatus().toCode())) {
+				source.setRetired(True);
+				source.setReleased(False);
+			}
+		}
+		// update language
+		if (isValid(codeSystem.getLanguage()))
+			source.setDefaultLocale(codeSystem.getLanguage());
+		// update name
+		if (isValid(codeSystem.getName()))
+			source.setName(codeSystem.getName());
+		// content type
+		if (codeSystem.getContent() != null &&
+				isValid(codeSystem.getContent().toCode()) &&
+				!codeSystem.getContent().toCode().equals(CodeSystem.CodeSystemContentMode.NULL.toCode()))
+			source.setContentType(codeSystem.getContent().toCode());
+		// copyright
+		if (isValid(codeSystem.getCopyright()))
+			source.setCopyright(codeSystem.getCopyright());
+		// description
+		if (isValid(codeSystem.getDescription()))
+			source.setDescription(codeSystem.getDescription());
+		// title
+		if (isValid(codeSystem.getTitle()))
+			source.setFullName(codeSystem.getTitle());
+		// publisher
+		if (isValid(codeSystem.getPublisher()))
+			source.setPublisher(codeSystem.getPublisher());
+		// purpose
+		if (isValid(codeSystem.getPurpose()))
+			source.setPurpose(codeSystem.getPurpose());
+		// revision date TODO - Add validation
+		if (codeSystem.getDate() != null)
+			source.setRevisionDate(codeSystem.getDate());
+		// updated by
+		source.setUpdatedBy(oclEntity.getUserProfile());
+		// updated at
+		source.setUpdatedAt(new Timestamp(System.currentTimeMillis()));
+		// update base source resource
+		sourceRepository.saveAndFlush(source);
+		updateIndex(SOURCES, source.getMnemonic());
+
+		// We create new concepts if provided
+		List<Concept> concepts = toConcepts(codeSystem.getConcept(), codeSystem.getLanguage());
+		List<List<Concept>> conceptBatches = ListUtils.partition(concepts, 25000);
+		for (List<Concept> batch : conceptBatches) {
+			List<String> existingConcepts = getExistingConcepts(batch.stream().map(Concept::getMnemonic)
+					.distinct()
+					.collect(Collectors.toList()), source.getId());
+			List<Concept> newConcepts = batch.stream().filter(f -> !existingConcepts.contains(f.getMnemonic())).collect(Collectors.toList());
+			if (!newConcepts.isEmpty()) {
+				populateBaseConceptField(newConcepts, source, oclEntity.getUserProfile());
+				saveConcepts(source.getId(), newConcepts);
+				populateIndex(CONCEPTS);
+			}
+		}
+	}
+
+	private void populateBaseConceptField(List<Concept> concepts, Source source, UserProfile user) {
+		// version-less source uri
+		String value = source.getUri().substring(0, source.getUri().lastIndexOf(FS));
+		String versionLessSourceUri = value.substring(0, value.lastIndexOf(FS)) + FS;
+
+		concepts.forEach(c -> {
+			c.setParent(source);
+			c.setPublicAccess(source.getPublicAccess());
+			c.setVersion("1");
+			c.setIsLatestVersion(True);
+			c.setReleased(c.getIsActive());
+			c.setRetired(c.getIsActive());
+			c.setDefaultLocale(source.getDefaultLocale());
+			c.setCreatedBy(user);
+			c.setUpdatedBy(user);
+			c.setVersionedObject(c);
+			c.setUri(versionLessSourceUri + CONCEPTS + FS + c.getMnemonic() + FS + c.getVersion() + FS);
+			c.setExtras(EMPTY_JSON);
+		});
+	}
+
+	private List<String> getExistingConcepts(List<String> concepts, Long sourceId) {
+		MapSqlParameterSource s = new MapSqlParameterSource();
+		s.addValue("sourceId", sourceId);
+		s.addValue("mnemonic", concepts);
+		return namedParameterJdbcTemplate.query("select c.mnemonic from concepts_sources cs inner join concepts c on cs.concept_id = c.id " +
+				" where cs.source_id = :sourceId and c.mnemonic in (mnemonic)", s, new RowMapper<String>() {
+			@Override
+			public String mapRow(ResultSet rs, int rowNum) throws SQLException {
+				return rs.getString(1);
+			}
+		});
 	}
 
 }

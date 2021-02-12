@@ -15,11 +15,14 @@ import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.util.UriComponentsBuilder;
-
-import javax.annotation.PostConstruct;
 
 import java.net.URL;
 import java.net.URLDecoder;
@@ -344,6 +347,10 @@ public class OclFhirUtil {
         return ResponseEntity.badRequest().body("{\"exception\":\"" + msg + "\"}");
     }
 
+    public static ResponseEntity<String> badRequestRawMsg(String msg) {
+        return ResponseEntity.badRequest().body(msg);
+    }
+
     public static StringType newStringType(UriType type) {
         StringType stringType = new StringType();
         if (type != null) stringType.setValue(type.getValue());
@@ -433,8 +440,8 @@ public class OclFhirUtil {
 
     public static String formatExpression(String expression) {
         String uri = expression.trim();
-        if (!uri.startsWith(FW_SLASH)) uri = FW_SLASH + uri;
-        if (!uri.endsWith(FW_SLASH)) uri = uri + FW_SLASH;
+        if (!uri.startsWith(FS)) uri = FS + uri;
+        if (!uri.endsWith(FS)) uri = uri + FS;
         return uri;
     }
 
@@ -460,6 +467,19 @@ public class OclFhirUtil {
             }
         }
         return Optional.empty();
+    }
+
+    public HttpHeaders getHeaders(Optional<String> token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        token.ifPresent(authToken -> headers.add(HttpHeaders.AUTHORIZATION, authToken));
+        return headers;
+    }
+
+    public HttpEntity<MultiValueMap<String, String>> getRequest(Optional<String> token, String key, String... values) {
+        MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
+        map.put(key, Arrays.asList(values));
+        return new HttpEntity<>(map, getHeaders(token));
     }
 
 }

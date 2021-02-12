@@ -16,6 +16,7 @@ services:
       - DATABASE_DIALECT=${DATABASE_DIALECT-org.hibernate.dialect.ProgressDialect}
       - SERVER_PORT=${SERVER_PORT-8080}
       - OCL_SERVLET_BASEURL=${OCL_SERVLET_BASEURL-http://localhost:8080/fhir}
+      - OCLAPI_BASE_URL=${OCLAPI_BASE_URL-http://localhost:8000}
 networks:
   default:
     external:

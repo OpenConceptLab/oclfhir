@@ -60,6 +60,41 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
         return new MethodOutcome();
     }
 
+    @Update
+    @Transactional
+    public MethodOutcome updateCodeSystem(@IdParam IdType idType,
+                                          @ResourceParam CodeSystem codeSystem,
+                                          RequestDetails requestDetails) {
+        if (codeSystem == null) {
+            throw new InvalidRequestException("The CodeSystem can not be empty");
+        }
+        if (idType == null || !isValid(idType.getIdPart()) || !isValid(idType.getVersionIdPart()) ||
+                isVersionAll(newStringType(idType.getVersionIdPart()))) {
+            throw new InvalidRequestException("Invalid CodeSystem.id or CodeSystem.version provided. Both parameters are required.");
+        }
+        StringType owner = newStringType(requestDetails.getHeader(OWNER));
+        if (!isValid(owner))
+            throw new InvalidRequestException("Owner can not be empty.");
+        List<Source> sources = filterSourceHead(
+                getSourceByOwnerAndIdAndVersion(idType.getIdPart(), owner.getValue(), idType.getVersionIdPart(), publicAccess));
+        if (sources.isEmpty()) {
+            throw new InvalidRequestException("CodeSystem is not found.");
+        }
+        String accessionId = buildAccessionId(idType, owner);
+        codeSystemConverter.updateCodeSystem(codeSystem, sources.get(0), accessionId, requestDetails.getHeader(AUTHORIZATION));
+        return new MethodOutcome();
+    }
+
+    private String buildAccessionId(IdType idType, StringType owner) {
+        String ownerType = getOwnerType(owner.getValue());
+        String value = getOwner(owner.getValue());
+        return FS + (ORG.equals(ownerType) ? ORGS : USERS) +
+                FS + value +
+                FS + CODESYSTEM +
+                FS + idType.getIdPart() +
+                FS + (isValid(idType.getVersionIdPart()) ? idType.getVersionIdPart() + FS : EMPTY);
+    }
+
     @Delete
     @Transactional
     public void deleteCodeSystem(@IdParam(optional = true) IdType idType,

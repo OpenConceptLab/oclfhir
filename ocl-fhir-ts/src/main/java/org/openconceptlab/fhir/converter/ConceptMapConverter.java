@@ -322,7 +322,7 @@ public class ConceptMapConverter extends BaseConverter {
         String owner = source.getOrganization() != null ? source.getOrganization().getMnemonic()
                 : source.getUserId().getUsername();
         String sourceId = source.getMnemonic();
-        return FW_SLASH + ownerType + FW_SLASH + owner +FW_SLASH + SOURCES + FW_SLASH + sourceId + FW_SLASH;
+        return FS + ownerType + FS + owner + FS + SOURCES + FS + sourceId + FS;
     }
 
     private List<Parameters.ParametersParameterComponent> getMatchParameter(String toSystemUrl, String version, String toCode,

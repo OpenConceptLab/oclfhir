@@ -5,9 +5,7 @@ import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Optional;
@@ -18,11 +16,11 @@ import static org.openconceptlab.fhir.util.OclFhirConstants.CODESYSTEM;
 
 @RestController
 @RequestMapping({"/users"})
-public class OclFhirUserController extends BaseOclFhirController{
+public class OclFhirUserController extends BaseOclFhirController {
 
     public OclFhirUserController(CodeSystemResourceProvider codeSystemResourceProvider,
-                                ValueSetResourceProvider valueSetResourceProvider,
-                                OclFhirUtil oclFhirUtil) {
+                                 ValueSetResourceProvider valueSetResourceProvider,
+                                 OclFhirUtil oclFhirUtil) {
         super(codeSystemResourceProvider, valueSetResourceProvider, oclFhirUtil);
     }
 
@@ -30,20 +28,40 @@ public class OclFhirUserController extends BaseOclFhirController{
     public ResponseEntity<String> createCodeSystemForUser(@PathVariable(name = USER) String user,
                                                           @RequestBody String codeSystem,
                                                           @RequestHeader(name = AUTHORIZATION) String auth) {
-        try {
-            CodeSystem system = (CodeSystem) parser.parseResource(codeSystem);
-            Optional<Identifier> acsnOpt = hasAccessionIdentifier(system.getIdentifier());
-            ResponseEntity<String> response = validate(user, system.getId(), acsnOpt, USERS, user);
-            if (response != null) return response;
-            if (acsnOpt.isEmpty()) addIdentifier(system.getIdentifier(), USERS, user, CODESYSTEM, system.getId());
+        CodeSystem system = (CodeSystem) parser.parseResource(codeSystem);
+        Optional<Identifier> acsnOpt = hasAccessionIdentifier(system.getIdentifier());
+        ResponseEntity<String> response = validate(user, system.getId(), acsnOpt, USERS, user);
+        if (response != null) return response;
+        if (acsnOpt.isEmpty()) addIdentifier(system.getIdentifier(), USERS, user, CODESYSTEM, system.getId());
 
-            performCreate(system, auth);
-            return ResponseEntity.status(HttpStatus.CREATED).build();
-        } catch (BaseServerResponseException e) {
-            return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBody());
-        } catch (Exception e) {
-            return badRequest();
-        }
+        performCreate(system, auth);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    @PutMapping(path = {"/{user}/CodeSystem/{id}/version/{version}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> updateCodeSystemForUser(@PathVariable(name = ID) String id,
+                                                          @PathVariable(name = VERSION) String version,
+                                                          @PathVariable(name = USER) String user,
+                                                          @RequestBody String codeSystem,
+                                                          @RequestHeader(name = AUTHORIZATION) String auth) {
+        CodeSystem system = (CodeSystem) parser.parseResource(codeSystem);
+        Optional<Identifier> acsnOpt = hasAccessionIdentifier(system.getIdentifier());
+        ResponseEntity<String> response = validate(user, id, acsnOpt, USERS, user);
+        if (response != null) return response;
+        IdType idType = new IdType(CODESYSTEM, id, version);
+
+        performUpdate(system, auth, idType, formatUser(user));
+        return ResponseEntity.status(HttpStatus.OK).build();
+    }
+
+    @DeleteMapping(path = {"/{user}/CodeSystem/{id}/version/{version}/concepts/{concept_id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> deleteConceptInCodeSystemForUser(@PathVariable(name = ID) String id,
+                                                                   @PathVariable(name = VERSION) String version,
+                                                                   @PathVariable(name = CONCEPT_ID) String conceptId,
+                                                                   @PathVariable(name = USER) String user,
+                                                                   @RequestHeader(name = AUTHORIZATION) String auth) {
+        String url = OCLAPI_BASE_URL + FS + USERS + FS + user + FS + SOURCES + FS + id + FS + version + FS + CONCEPTS + FS + conceptId + FS;
+        return performDeleteOclApi(url, auth);
     }
 
     @GetMapping(path = {"/{user}/CodeSystem/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
@@ -92,7 +110,7 @@ public class OclFhirUserController extends BaseOclFhirController{
     }
 
     @PostMapping(path = {"/{user}/CodeSystem/$lookup"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<String> lookUpCodeSystemsByUser(@PathVariable String user, @RequestBody String parameters){
+    public ResponseEntity<String> lookUpCodeSystemsByUser(@PathVariable String user, @RequestBody String parameters) {
         Parameters params = (Parameters) getResource(parameters);
         params.addParameter().setName(OWNER).setValue(newStringType(formatUser(user)));
         return handleFhirOperation(params, CodeSystem.class, LOOKUP);
@@ -110,7 +128,7 @@ public class OclFhirUserController extends BaseOclFhirController{
     }
 
     @PostMapping(path = {"/{user}/CodeSystem/$validate-code"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<String> validateCodeSystemsByUser(@PathVariable String user, @RequestBody String parameters){
+    public ResponseEntity<String> validateCodeSystemsByUser(@PathVariable String user, @RequestBody String parameters) {
         Parameters params = (Parameters) getResource(parameters);
         params.addParameter().setName(OWNER).setValue(newStringType(formatUser(user)));
         return handleFhirOperation(params, CodeSystem.class, VALIDATE_CODE);
@@ -120,20 +138,14 @@ public class OclFhirUserController extends BaseOclFhirController{
     public ResponseEntity<String> createValueSetForUser(@PathVariable(name = USER) String user,
                                                         @RequestBody String valueSet,
                                                         @RequestHeader(name = AUTHORIZATION) String auth) {
-        try {
-            ValueSet set = (ValueSet) parser.parseResource(valueSet);
-            Optional<Identifier> acsnOpt = hasAccessionIdentifier(set.getIdentifier());
-            ResponseEntity<String> response = validate(user, set.getId(), acsnOpt, USERS, user);
-            if (response != null) return response;
-            if (acsnOpt.isEmpty()) addIdentifier(set.getIdentifier(), USERS, user, VALUESET, set.getId());
+        ValueSet set = (ValueSet) parser.parseResource(valueSet);
+        Optional<Identifier> acsnOpt = hasAccessionIdentifier(set.getIdentifier());
+        ResponseEntity<String> response = validate(user, set.getId(), acsnOpt, USERS, user);
+        if (response != null) return response;
+        if (acsnOpt.isEmpty()) addIdentifier(set.getIdentifier(), USERS, user, VALUESET, set.getId());
 
-            performCreate(set, auth);
-            return ResponseEntity.status(HttpStatus.CREATED).build();
-        } catch (BaseServerResponseException e) {
-            return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBody());
-        } catch (Exception e) {
-            return badRequest(e.getMessage());
-        }
+        performCreate(set, auth);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     @GetMapping(path = {"/{user}/ValueSet/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
@@ -172,14 +184,13 @@ public class OclFhirUserController extends BaseOclFhirController{
                                                          @RequestParam(name = SYSTEM_VERSION, required = false) String systemVersion,
                                                          @RequestParam(name = DISPLAY, required = false) String display,
                                                          @RequestParam(name = DISP_LANG, required = false) String displayLanguage) {
-
         Parameters parameters = valueSetVCParameters(url, EMPTY, valueSetVersion, code, system, systemVersion, display,
                 displayLanguage, formatUser(user));
         return handleFhirOperation(parameters, ValueSet.class, VALIDATE_CODE);
     }
 
     @PostMapping(path = {"/{user}/ValueSet/$validate-code"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<String> validateValueSetByUser(@PathVariable String user, @RequestBody String parameters){
+    public ResponseEntity<String> validateValueSetByUser(@PathVariable String user, @RequestBody String parameters) {
         Parameters params = (Parameters) getResource(parameters);
         params.addParameter().setName(OWNER).setValue(newStringType(formatUser(user)));
         return handleFhirOperation(params, ValueSet.class, VALIDATE_CODE);
@@ -196,14 +207,13 @@ public class OclFhirUserController extends BaseOclFhirController{
                                                        @RequestParam(name = ACTIVE_ONLY, defaultValue = "true") Boolean activeOnly,
                                                        @RequestParam(name = DISPLAY_LANGUAGE, required = false) String displayLanguage,
                                                        @RequestParam(name = FILTER, required = false) String filter) {
-
         Parameters parameters = valueSetExpandParameters(url, valueSetVersion, offset, count, includeDesignations,
                 includeDefinition, activeOnly, displayLanguage, filter, formatUser(user));
         return handleFhirOperation(parameters, ValueSet.class, EXPAND);
     }
 
     @PostMapping(path = {"/{user}/ValueSet/$expand"}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<String> expandValueSetByUser(@PathVariable String user, @RequestBody String parameters){
+    public ResponseEntity<String> expandValueSetByUser(@PathVariable String user, @RequestBody String parameters) {
         Parameters params = (Parameters) getResource(parameters);
         params.addParameter().setName(OWNER).setValue(newStringType(formatUser(user)));
         return handleFhirOperation(params, ValueSet.class, EXPAND);
@@ -244,7 +254,6 @@ public class OclFhirUserController extends BaseOclFhirController{
                                                             @RequestParam(name = VERSION, required = false) String version,
                                                             @RequestParam(name = CODE) String code,
                                                             @RequestParam(name = TARGET_SYSTEM, required = false) String targetSystem) {
-
         Parameters parameters = conceptMapTranslateParameters(conceptMapUrl, conceptMapVersion, system, version, code,
                 targetSystem, formatUser(user));
         return handleFhirOperation(parameters, ConceptMap.class, TRANSLATE);

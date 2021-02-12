@@ -6,6 +6,8 @@ import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceVersionConflictException;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.model.Collection;
@@ -13,15 +15,24 @@ import org.openconceptlab.fhir.model.Organization;
 import org.openconceptlab.fhir.repository.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
 import javax.sql.DataSource;
+import javax.transaction.Transactional;
 
+import java.net.URI;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.*;
@@ -57,6 +68,10 @@ public class BaseConverter {
     protected static final String insertConceptDescSql = "insert into concepts_descriptions (localizedtext_id,concept_id) values (?,?)";
     protected static final String updateConceptVersionSql = "update concepts set version = ? where id = ?";
     protected static final String insertConceptsSources = "insert into concepts_sources (concept_id,source_id) values (?,?)";
+    private static final Log log = LogFactory.getLog(BaseConverter.class);
+
+    @Value("${oclapi.baseUrl}")
+    private String OCLAPI_BASE_URL;
 
     @Autowired
     public BaseConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil,
@@ -209,12 +224,12 @@ public class BaseConverter {
         });
     }
 
-    protected void batchUpdateConceptSources(List<Integer> conceptIds, Integer sourceId) {
+    protected void batchUpdateConceptSources(List<Integer> conceptIds, Long sourceId) {
         this.jdbcTemplate.batchUpdate(insertConceptsSources, new BatchPreparedStatementSetter() {
             public void setValues(PreparedStatement ps, int i)
                     throws SQLException {
                 ps.setInt(1, conceptIds.get(i));
-                ps.setInt(2, sourceId);
+                ps.setLong(2, sourceId);
             }
             public int getBatchSize() {
                 return conceptIds.size();
@@ -379,7 +394,7 @@ public class BaseConverter {
         private UserProfile userProfile;
         private String accessionId;
 
-        public OclEntity(MetadataResource resource, String accessionId, String authToken) {
+        public OclEntity(MetadataResource resource, String accessionId, String authToken, boolean validateIfExists) {
             // we'll support two type of accession id patterns as input
             // 1. /users/testuser/<resource>/Test2/v20.0/
             // 2. /users/testuser/<resource>/Test2/version/v20.0/
@@ -387,7 +402,7 @@ public class BaseConverter {
             String username = EMPTY;
             String resourceId = EMPTY;
             String formattedId = formatExpression(accessionId);
-            String [] ar = formattedId.split(FW_SLASH);
+            String [] ar = formattedId.split(FS);
             if (ar.length >= 5) {
                 if (ORGS.equals(ar[1]) && isValid(ar[2])) {
                     org = ar[2];
@@ -407,9 +422,9 @@ public class BaseConverter {
                     }
                 } else if (!isValid(resource.getVersion())) {
                     resource.setVersion(DEFAULT_RES_VERSION);
-                    formattedId = formattedId + DEFAULT_RES_VERSION + FW_SLASH;
+                    formattedId = formattedId + DEFAULT_RES_VERSION + FS;
                 } else {
-                    formattedId = formattedId + resource.getVersion() + FW_SLASH;
+                    formattedId = formattedId + resource.getVersion() + FS;
                 }
             }
 
@@ -421,9 +436,10 @@ public class BaseConverter {
             BaseOclEntity owner = validateOwner(org, username);
             AuthtokenToken token = validateToken(authToken);
             authenticate(token, username, org);
-            validateId(username, org, resourceId, resource.getVersion(), resource.getClass().getSimpleName());
-            validateCanonicalUrl(username, org, resource.getUrl(), resource.getVersion(), resource.getClass().getSimpleName());
-
+            if (validateIfExists) {
+                validateId(username, org, resourceId, resource.getVersion(), resource.getClass().getSimpleName());
+                validateCanonicalUrl(username, org, resource.getUrl(), resource.getVersion(), resource.getClass().getSimpleName());
+            }
             this.owner = owner;
             this.userProfile = token.getUserProfile();
             this.accessionId = formattedId;
@@ -469,5 +485,52 @@ public class BaseConverter {
         return resources;
     }
 
+    protected void updateIndex(String resource, String... ids) {
+        // Update indexes for given resource and ids
+        // Use for existing resource
+        URI url = null;
+        try {
+            url = new URI(OCLAPI_BASE_URL + "/indexes/resources/" + resource + FS);
+            new RestTemplate().postForEntity(url, oclFhirUtil.getRequest(getToken(), "ids", ids), String.class);
+        } catch (Exception e) {
+            String msg = String.format("Could not update index. Url - %s. Parameters - Key:ids, Value:%s. \n %s",
+                    url, Arrays.toString(ids), e.getMessage());
+            log.error(msg);
+        }
+    }
+
+    protected void populateIndex(String... apps) {
+        // populate index for new app
+        // Use for new resource
+        URI url = null;
+        try {
+            url = new URI(OCLAPI_BASE_URL + "/indexes/apps/populate/");
+            new RestTemplate().postForEntity(url, oclFhirUtil.getRequest(getToken(), "apps", apps), String.class);
+        } catch (Exception e) {
+            String msg = String.format("Could not populate index. Url - %s. Parameters - Key:apps, Value:%s. \n %s",
+                    url, Arrays.toString(apps), e.getMessage());
+            log.error(msg);
+        }
+    }
+
+    protected void rebuildIndex(String... apps) {
+        // rebuild index for given app
+        URI url = null;
+        try {
+            url = new URI(OCLAPI_BASE_URL + "/indexes/apps/rebuild/");
+            new RestTemplate().postForEntity(url, oclFhirUtil.getRequest(getToken(), "apps", apps), String.class);
+        } catch (Exception e) {
+            String msg = String.format("Could not rebuild index. Url - %s. Parameters - Key:apps, Value:%s. \n %s",
+                    url, Arrays.toString(apps), e.getMessage());
+            log.error(msg);
+        }
+    }
+
+    private Optional<String> getToken() {
+        return oclUser.getAuthtokenTokens().stream()
+                .filter(f -> isValid(f.getKey()))
+                .map(m -> "Token " + m.getKey())
+                .findFirst();
+    }
 }
 

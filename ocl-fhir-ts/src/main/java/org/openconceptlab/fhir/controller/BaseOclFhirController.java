@@ -6,21 +6,26 @@ import ca.uhn.fhir.rest.server.exceptions.BaseServerResponseException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hl7.fhir.r4.model.*;
-import org.openconceptlab.fhir.provider.ConceptMapResourceProvider;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.client.RestTemplate;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 
 import static org.openconceptlab.fhir.util.OclFhirUtil.*;
 import static org.openconceptlab.fhir.util.OclFhirUtil.getIdentifier;
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
-import static org.openconceptlab.fhir.util.OclFhirConstants.FW_SLASH;
+import static org.openconceptlab.fhir.util.OclFhirConstants.FS;
 
 @Component
 public class BaseOclFhirController {
@@ -30,6 +35,9 @@ public class BaseOclFhirController {
     CodeSystemResourceProvider codeSystemResourceProvider;
     ValueSetResourceProvider valueSetResourceProvider;
     OclFhirUtil oclFhirUtil;
+
+    @Value("${oclapi.baseUrl}")
+    protected String OCLAPI_BASE_URL;
 
     @Autowired
     public BaseOclFhirController(CodeSystemResourceProvider codeSystemResourceProvider,
@@ -120,15 +128,37 @@ public class BaseOclFhirController {
                 .execute();
     }
 
+    protected void performUpdate(MetadataResource resource, String auth, IdType idType, String owner) {
+        oclFhirUtil.getClient()
+                .update()
+                .resource(resource)
+                .withId(idType)
+                .withAdditionalHeader(AUTHORIZATION, auth)
+                .withAdditionalHeader(OWNER, owner)
+                .execute();
+    }
+
     protected void performDelete(String type, String id, String version, String owner, String auth) {
         oclFhirUtil.getClient()
                 .delete()
-                .resourceById(new IdType(type + FW_SLASH + "1"))
+                .resourceById(new IdType(type + FS + "1"))
                 .withAdditionalHeader(ID, id)
                 .withAdditionalHeader(VERSION, version)
                 .withAdditionalHeader(OWNER, owner)
                 .withAdditionalHeader(AUTHORIZATION, auth)
         .execute();
+    }
+
+    protected ResponseEntity<String> performDeleteOclApi(String url, String auth) {
+        try {
+            java.net.URI uri = new URI(url);
+            HttpEntity request = new HttpEntity(oclFhirUtil.getHeaders(Optional.of(auth)));
+            return new RestTemplate().exchange(uri, HttpMethod.DELETE, request, String.class);
+        } catch (RestClientResponseException e){
+            return badRequestRawMsg(e.getResponseBodyAsString());
+        } catch (Exception e) {
+            return badRequest(e.getMessage());
+        }
     }
 
     protected Parameters generateParameters(String code, String displayLanguage, String owner) {
@@ -235,7 +265,7 @@ public class BaseOclFhirController {
 
     protected ResponseEntity<String> validateAccessionId(Optional<Identifier> acsnOpt, String ownerType, String ownerId) {
         if (acsnOpt.isPresent()) {
-            String[] values = formatExpression(acsnOpt.get().getValue()).split(FW_SLASH);
+            String[] values = formatExpression(acsnOpt.get().getValue()).split(FS);
             if (!(values.length >= 3 && ownerType.equals(values[1]) && ownerId.equals(values[2]))) {
                 return badRequest("The Accession id does not match with given request.");
             }
@@ -244,7 +274,7 @@ public class BaseOclFhirController {
     }
 
     protected void addIdentifier(List<Identifier> identifiers, String ownerType, String ownerId, String resType, String resId) {
-        identifiers.add(getIdentifier(FW_SLASH + ownerType + FW_SLASH + ownerId + FW_SLASH + resType + FW_SLASH + resId + FW_SLASH).get());
+        identifiers.add(getIdentifier(FS + ownerType + FS + ownerId + FS + resType + FS + resId + FS).get());
     }
 
 }

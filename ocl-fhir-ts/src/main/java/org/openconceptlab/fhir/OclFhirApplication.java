@@ -67,7 +67,7 @@ public class OclFhirApplication extends SpringBootServletInitializer {
     }
 
     @Bean
-    public UserProfile getOclUser() {
+    UserProfile getOclUser() {
         return oclUser;
     }
 

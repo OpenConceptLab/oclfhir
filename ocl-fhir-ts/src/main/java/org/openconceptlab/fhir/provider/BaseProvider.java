@@ -94,6 +94,10 @@ public class BaseProvider {
         return filtered.stream().sorted(Comparator.comparing(Source::getMnemonic)).collect(Collectors.toList());
     }
 
+    protected List<Source> getSourceByOwnerAndIdAndVersion(String id, String owner, String version, List<String> access) {
+        return getSourceByOwnerAndIdAndVersion(newStringType(id), newStringType(owner), newStringType(version), access);
+    }
+
     protected List<Source> getSourceByOwnerAndIdAndVersion(StringType id, StringType owner, StringType version, List<String> access) {
         List<Source> sources = new ArrayList<>();
         String ownerType = getOwnerType(owner.getValue());
