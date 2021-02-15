@@ -99,7 +99,7 @@ public class OclFhirOrgController extends BaseOclFhirController {
                                                                   @PathVariable(name = CONCEPT_ID) String conceptId,
                                                                   @PathVariable(name = ORG) String org,
                                                                   @RequestHeader(name = AUTHORIZATION) String auth) {
-        String url = OCLAPI_BASE_URL + FS + ORGS + FS + org + FS + SOURCES + FS + id + FS + version + FS + CONCEPTS + FS + conceptId + FS;
+        String url = oclFhirUtil.oclApiBaseUrl() + FS + ORGS + FS + org + FS + SOURCES + FS + id + FS + version + FS + CONCEPTS + FS + conceptId + FS;
         return performDeleteOclApi(url, auth);
     }
 

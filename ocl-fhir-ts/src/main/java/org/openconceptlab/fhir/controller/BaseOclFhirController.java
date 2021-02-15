@@ -36,9 +36,6 @@ public class BaseOclFhirController {
     ValueSetResourceProvider valueSetResourceProvider;
     OclFhirUtil oclFhirUtil;
 
-    @Value("${oclapi.baseUrl}")
-    protected String OCLAPI_BASE_URL;
-
     @Autowired
     public BaseOclFhirController(CodeSystemResourceProvider codeSystemResourceProvider,
                              ValueSetResourceProvider valueSetResourceProvider,

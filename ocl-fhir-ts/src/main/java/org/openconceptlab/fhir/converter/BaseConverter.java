@@ -16,21 +16,15 @@ import org.openconceptlab.fhir.repository.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.stereotype.Component;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
 import javax.sql.DataSource;
-import javax.transaction.Transactional;
 
 import java.net.URI;
 import java.sql.PreparedStatement;
@@ -69,9 +63,6 @@ public class BaseConverter {
     protected static final String updateConceptVersionSql = "update concepts set version = ? where id = ?";
     protected static final String insertConceptsSources = "insert into concepts_sources (concept_id,source_id) values (?,?)";
     private static final Log log = LogFactory.getLog(BaseConverter.class);
-
-    @Value("${oclapi.baseUrl}")
-    private String OCLAPI_BASE_URL;
 
     @Autowired
     public BaseConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil,
@@ -490,7 +481,7 @@ public class BaseConverter {
         // Use for existing resource
         URI url = null;
         try {
-            url = new URI(OCLAPI_BASE_URL + "/indexes/resources/" + resource + FS);
+            url = new URI(oclFhirUtil.oclApiBaseUrl() + "/indexes/resources/" + resource + FS);
             new RestTemplate().postForEntity(url, oclFhirUtil.getRequest(getToken(), "ids", ids), String.class);
         } catch (Exception e) {
             String msg = String.format("Could not update index. Url - %s. Parameters - Key:ids, Value:%s. \n %s",
@@ -504,7 +495,7 @@ public class BaseConverter {
         // Use for new resource
         URI url = null;
         try {
-            url = new URI(OCLAPI_BASE_URL + "/indexes/apps/populate/");
+            url = new URI(oclFhirUtil.oclApiBaseUrl() + "/indexes/apps/populate/");
             new RestTemplate().postForEntity(url, oclFhirUtil.getRequest(getToken(), "apps", apps), String.class);
         } catch (Exception e) {
             String msg = String.format("Could not populate index. Url - %s. Parameters - Key:apps, Value:%s. \n %s",
@@ -517,7 +508,7 @@ public class BaseConverter {
         // rebuild index for given app
         URI url = null;
         try {
-            url = new URI(OCLAPI_BASE_URL + "/indexes/apps/rebuild/");
+            url = new URI(oclFhirUtil.oclApiBaseUrl() + "/indexes/apps/rebuild/");
             new RestTemplate().postForEntity(url, oclFhirUtil.getRequest(getToken(), "apps", apps), String.class);
         } catch (Exception e) {
             String msg = String.format("Could not rebuild index. Url - %s. Parameters - Key:apps, Value:%s. \n %s",

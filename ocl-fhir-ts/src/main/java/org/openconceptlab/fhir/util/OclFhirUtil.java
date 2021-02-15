@@ -47,6 +47,12 @@ public class OclFhirUtil {
         OclFhirUtil.BASE_URL = name;
     }
 
+    @Value("${oclapi.host}")
+    private String OCLAPI_HOST;
+
+    @Value("${oclapi.port}")
+    private String OCLAPI_PORT;
+
     private static final Log log = LogFactory.getLog(OclFhirUtil.class);
     private static final FhirContext context;
     private SourceRepository sourceRepository;
@@ -480,6 +486,10 @@ public class OclFhirUtil {
         MultiValueMap<String, String> map = new LinkedMultiValueMap<>();
         map.put(key, Arrays.asList(values));
         return new HttpEntity<>(map, getHeaders(token));
+    }
+
+    public String oclApiBaseUrl() {
+        return "api".equals(OCLAPI_HOST) ? "http://"+OCLAPI_HOST+":"+OCLAPI_PORT : OCLAPI_HOST;
     }
 
 }
