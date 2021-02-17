@@ -714,7 +714,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         system.setUrl(URL_SOURCE_1);
         Identifier identifier = system.getIdentifierFirstRep();
         identifier.getType().getCodingFirstRep().setSystem(ACSN_SYSTEM).setCode(ACSN);
-        identifier.setSystem(OCL_SYSTEM);
+        identifier.setSystem("http://test.org");
         identifier.setValue("/orgs/OCL/CodeSystem/testsource/2.0");
         system.setName("Test Code System");
         system.setStatus(Enumerations.PublicationStatus.DRAFT);

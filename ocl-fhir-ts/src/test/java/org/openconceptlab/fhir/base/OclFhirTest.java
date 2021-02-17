@@ -263,7 +263,7 @@ public class OclFhirTest {
 
     public CodeSystemResourceProvider codeSystemProvider() {
         OclFhirUtil oclFhirUtil = new OclFhirUtil(sourceRepository, conceptRepository, conceptsSourceRepository);
-        oclFhirUtil.setBaseUrl("http://test.org");
+        oclFhirUtil.setBaseUrl("http://test.org/fhir");
         CodeSystemConverter converter = new TestCodeSystemConverter(sourceRepository, conceptRepository, oclFhirUtil,
                 oclUser, conceptsSourceRepository, dataSource, authtokenRepository, userProfilesOrganizationRepository,
                 organizationRepository, userRepository);

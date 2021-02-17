@@ -32,7 +32,8 @@ public class OclFhirUserController extends BaseOclFhirController {
         Optional<Identifier> acsnOpt = hasAccessionIdentifier(system.getIdentifier());
         ResponseEntity<String> response = validate(user, system.getId(), acsnOpt, USERS, user);
         if (response != null) return response;
-        if (acsnOpt.isEmpty()) addIdentifier(system.getIdentifier(), USERS, user, CODESYSTEM, system.getId());
+        if (acsnOpt.isEmpty()) addIdentifier(
+                system.getIdentifier(), USERS, user, CODESYSTEM, system.getId(), system.getVersion());
 
         performCreate(system, auth);
         return ResponseEntity.status(HttpStatus.CREATED).build();
@@ -142,7 +143,7 @@ public class OclFhirUserController extends BaseOclFhirController {
         Optional<Identifier> acsnOpt = hasAccessionIdentifier(set.getIdentifier());
         ResponseEntity<String> response = validate(user, set.getId(), acsnOpt, USERS, user);
         if (response != null) return response;
-        if (acsnOpt.isEmpty()) addIdentifier(set.getIdentifier(), USERS, user, VALUESET, set.getId());
+        if (acsnOpt.isEmpty()) addIdentifier(set.getIdentifier(), USERS, user, VALUESET, set.getId(), set.getVersion());
 
         performCreate(set, auth);
         return ResponseEntity.status(HttpStatus.CREATED).build();

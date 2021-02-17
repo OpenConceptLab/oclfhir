@@ -777,7 +777,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         valueSet.setUrl(URL_COLLECTION_1);
         Identifier identifier = valueSet.getIdentifierFirstRep();
         identifier.getType().getCodingFirstRep().setSystem(ACSN_SYSTEM).setCode(ACSN);
-        identifier.setSystem(OCL_SYSTEM);
+        identifier.setSystem("http://test.org");
         identifier.setValue("/orgs/OCL/ValueSet/testsource/2.0");
         valueSet.setName("Test Code System");
         valueSet.setStatus(Enumerations.PublicationStatus.DRAFT);

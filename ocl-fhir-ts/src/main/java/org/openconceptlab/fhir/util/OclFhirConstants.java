@@ -1,7 +1,9 @@
 package org.openconceptlab.fhir.util;
 
 import org.hl7.fhir.r4.model.CodeSystem;
+import org.hl7.fhir.r4.model.ConceptMap;
 import org.hl7.fhir.r4.model.ValueSet;
+import org.openconceptlab.fhir.model.Concept;
 
 import java.util.Arrays;
 import java.util.List;
@@ -84,6 +86,7 @@ public final class OclFhirConstants {
 
 	public static final String CODESYSTEM = CodeSystem.class.getSimpleName();
 	public static final String VALUESET = ValueSet.class.getSimpleName();
+	public static final String CONCEPTMAP = ConceptMap.class.getSimpleName();
 
 	public static final String EN_LOCALE = "en";
 	public static final String DEFINITION = "definition";

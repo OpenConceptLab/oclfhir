@@ -36,7 +36,7 @@ public class OclFhirOrgController extends BaseOclFhirController {
         Optional<Identifier> acsnOpt = hasAccessionIdentifier(system.getIdentifier());
         ResponseEntity<String> response = validate(org, system.getId(), acsnOpt, ORGS, org);
         if (response != null) return response;
-        if (acsnOpt.isEmpty()) addIdentifier(system.getIdentifier(), ORGS, org, CODESYSTEM, system.getId());
+        if (acsnOpt.isEmpty()) addIdentifier(system.getIdentifier(), ORGS, org, CODESYSTEM, system.getId(), system.getVersion());
 
         performCreate(system, auth);
         return ResponseEntity.status(HttpStatus.CREATED).build();
@@ -146,7 +146,7 @@ public class OclFhirOrgController extends BaseOclFhirController {
         Optional<Identifier> acsnOpt = hasAccessionIdentifier(set.getIdentifier());
         ResponseEntity<String> response = validate(org, set.getId(), acsnOpt, ORGS, org);
         if (response != null) return response;
-        if (acsnOpt.isEmpty()) addIdentifier(set.getIdentifier(), ORGS, org, VALUESET, set.getId());
+        if (acsnOpt.isEmpty()) addIdentifier(set.getIdentifier(), ORGS, org, VALUESET, set.getId(), set.getVersion());
 
         performCreate(set, auth);
         return ResponseEntity.status(HttpStatus.CREATED).build();

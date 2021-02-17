@@ -694,7 +694,8 @@ public class ValueSetConverter extends BaseConverter {
         // default locale
         collection.setDefaultLocale(isValid(valueSet.getLanguage()) ? valueSet.getLanguage() : EN_LOCALE);
         // uri
-        collection.setUri(uri.replaceAll("(?i)"+ Pattern.quote(VALUESET), COLLECTIONS));
+        collection.setUri(uri.replaceAll("(?i)"+ Pattern.quote(VALUESET), COLLECTIONS)
+                .replace("/version", EMPTY));
         // name
         String name = isValid(valueSet.getName()) ? valueSet.getName() : valueSet.getId();
         collection.setName(name);

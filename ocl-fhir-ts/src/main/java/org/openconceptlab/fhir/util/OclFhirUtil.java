@@ -256,7 +256,7 @@ public class OclFhirUtil {
         if (!isValid(value))
             return Optional.empty();
         Identifier identifier = new Identifier();
-        identifier.setSystem(OCL_SYSTEM);
+        identifier.setSystem(BASE_URL.replace("/fhir", EMPTY));
         identifier.setValue(value.replace("sources", CODESYSTEM).replace("collections", VALUESET).trim());
         identifier.getType().setText("Accession ID");
         identifier.getType().getCodingFirstRep().setSystem(ACSN_SYSTEM).setCode(ACSN).setDisplay("Accession ID");
@@ -466,9 +466,9 @@ public class OclFhirUtil {
                     .findAny();
             if (coding.isPresent()) {
                 if (isValid(identifier.getSystem())
-                        && OCL_SYSTEM.equals(identifier.getSystem())
+                        && BASE_URL.replace("/fhir", EMPTY).equals(identifier.getSystem())
                         && isValid(identifier.getValue())) {
-                    return Optional.of(identifier);
+                    return validateAccessionId(Optional.of(identifier));
                 }
             }
         }
@@ -489,7 +489,37 @@ public class OclFhirUtil {
     }
 
     public String oclApiBaseUrl() {
-        return "api".equals(OCLAPI_HOST) ? "http://"+OCLAPI_HOST+":"+OCLAPI_PORT : OCLAPI_HOST;
+        return "http://"+OCLAPI_HOST+":"+OCLAPI_PORT;
+    }
+
+    public static Optional<Identifier> validateAccessionId(Optional<Identifier> identifier) {
+        if (identifier.isPresent()) {
+            String validated = validateAccessionId(identifier.get().getValue());
+            if (isValid(validated))
+                identifier.get().setValue(validated);
+        }
+        return identifier;
+    }
+
+    public static String validateAccessionId(String uri) {
+        String formatExpression = formatExpression(uri);
+        String[] ar = formatExpression.split(FS);
+        if (ar.length >= 5) {
+            if (ORGS.equals(ar[1]) || USERS.equals(ar[1])) {
+                if (ar[3].matches(CODESYSTEM + "|" + VALUESET + "|" + CONCEPTMAP)) {
+                    if (ar.length >= 6 && isValid(ar[5]) && !VERSION.equals(ar[5])) {
+                        return FS + ar[1] + FS + ar[2] + FS + ar[3] + FS + ar[4] + FS + VERSION + FS + ar[5] + FS;
+                    }
+                } else {
+                    throw new InvalidRequestException(String.format("Invalid resource_type %s provided.", ar[3]));
+                }
+            } else {
+                throw new InvalidRequestException(String.format("Invalid owner_type %s provided.", ar[1]));
+            }
+        } else {
+            throw new InvalidRequestException("Invalid accessionId provided.");
+        }
+        return EMPTY;
     }
 
 }
