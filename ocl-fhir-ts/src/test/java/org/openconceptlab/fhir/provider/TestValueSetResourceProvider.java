@@ -901,4 +901,24 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         }
         return output;
     }
+
+    @Test
+    public void testToOclUri() {
+        assertEquals("/orgs/OCL/sources/test/1.0/", OclFhirUtil.toOclUri("/orgs/OCL/CodeSystem/test/version/1.0"));
+        assertEquals("/orgs/OCL/sources/test/1.0/", OclFhirUtil.toOclUri("/orgs/OCL/CodeSystem/test/version/1.0/"));
+        assertEquals("/orgs/OCL/sources/test/1.0/", OclFhirUtil.toOclUri("orgs/OCL/CodeSystem/test/version/1.0"));
+        assertEquals("/orgs/OCL/sources/test/1.0/", OclFhirUtil.toOclUri("orgs/OCL/codesystem/test/version/1.0"));
+        assertEquals("/orgs/OCL/sources/test/1.0/", OclFhirUtil.toOclUri("orgs/OCL/cODesYsteM/test/version/1.0"));
+        assertEquals("/orgs/OCL/sources/test/1.0/", OclFhirUtil.toOclUri("/orgs/OCL/CodeSystem/test/1.0"));
+        assertEquals("/orgs/OCL/sources/test/1.0/", OclFhirUtil.toOclUri("/orgs/OCL/CodeSystem/test/1.0/"));
+        assertEquals("/orgs/OCL/sources/test/1.0/", OclFhirUtil.toOclUri("orgs/OCL/CodeSystem/test/1.0"));
+        assertEquals("/orgs/OCL/sources/test/1.0/", OclFhirUtil.toOclUri("orgs/OCL/codesystem/test/1.0"));
+        assertEquals("/orgs/OCL/sources/test/", OclFhirUtil.toOclUri("orgs/OCL/cODesYsteM/test/"));
+        assertEquals("/orgs/OCL/sources/test/", OclFhirUtil.toOclUri("orgs/OCL/CodeSystem/test/ "));
+        assertEquals("/orgs/OCL/sources/test/", OclFhirUtil.toOclUri(" orgs/OCL/CodeSystem/test/ "));
+        assertEquals("/orgs/OCL/sources/test/", OclFhirUtil.toOclUri(" /orgs/OCL/CodeSystem/test "));
+        assertEquals("/orgs/OCL/sources/test/", OclFhirUtil.toOclUri("/orgs/OCL/codesystem/test/ "));
+        assertEquals("/orgs/OCL/sources/test/", OclFhirUtil.toOclUri("/orgs/OCL/cODesYsteM/test/ "));
+    }
+
 }

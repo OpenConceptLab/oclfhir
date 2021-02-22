@@ -598,4 +598,44 @@ public class OclFhirUtil {
         return EMPTY;
     }
 
+    public static String toOclUri(String uri) {
+        // makes uri compatible to oclapi
+        // removes "version" string and replaces CodeSystem/ConceptMap to sources and ValueSet to collections.
+        String formatExpression = formatExpression(uri);
+        String[] ar = formatExpression.split(FS);
+        if (ar.length == 5 && validateResType(ar[3])) {
+            return FS + ar[1] + FS + ar[2] + FS + toOclResource(ar[3]) + FS + ar[4] + FS;
+        }
+        if (ar.length >= 6 && validateResType(ar[3]) && isValid(ar[5])) {
+            if (VERSION.equals(ar[5]) && ar.length >= 7) {
+                return FS + ar[1] + FS + ar[2] + FS + toOclResource(ar[3]) + FS + ar[4] + FS + ar[6] + FS;
+            } else {
+                return FS + ar[1] + FS + ar[2] + FS + toOclResource(ar[3]) + FS + ar[4] + FS + ar[5] + FS;
+            }
+        }
+        return formatExpression;
+    }
+
+    public static boolean validateResType(String resourceType) {
+        // validate if resourceType is the one supported by oclfhir
+        if (!isValid(resourceType)) return false;
+        return resourceType.toLowerCase()
+                .matches(CODESYSTEM.toLowerCase() + "|" + VALUESET.toLowerCase() + "|" + CONCEPTMAP.toLowerCase()
+                        + "|" + SOURCES + "|" + COLLECTIONS);
+    }
+
+    public static String toOclResource(String resourceType) {
+        // convert FHIR resourceType to OCL resourceType
+        if (!isValid(resourceType)) return EMPTY;
+        String type = resourceType.toLowerCase();
+        if (type.equals(CODESYSTEM.toLowerCase()) || type.equals(CONCEPTMAP.toLowerCase())) {
+            return SOURCES;
+        } else if (type.equals(VALUESET.toLowerCase())) {
+            return COLLECTIONS;
+        } else {
+            throw new InvalidRequestException("Invalid resource type - " + resourceType);
+        }
+    }
 }
+
+

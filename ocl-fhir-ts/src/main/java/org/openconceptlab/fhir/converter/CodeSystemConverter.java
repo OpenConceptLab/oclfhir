@@ -443,8 +443,7 @@ public class CodeSystemConverter extends BaseConverter {
 		// default locale
 		source.setDefaultLocale(isValid(codeSystem.getLanguage()) ? codeSystem.getLanguage() : EN_LOCALE);
 		// uri
-		source.setUri(uri.replaceAll("(?i)"+ Pattern.quote(CODESYSTEM), "sources")
-				.replace("/version", EMPTY));
+		source.setUri(toOclUri(uri));
 		// name
 		String name = isValid(codeSystem.getName()) ? codeSystem.getName() : codeSystem.getId();
 		source.setName(name);
