@@ -8,6 +8,7 @@ import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.Optional;
 
 import static org.openconceptlab.fhir.util.OclFhirUtil.*;
@@ -68,10 +69,10 @@ public class OclFhirUserController extends BaseOclFhirController {
     @GetMapping(path = {"/{user}/CodeSystem/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> getCodeSystemByUser(@PathVariable String user,
                                                       @PathVariable String id,
-                                                      @RequestParam(name = PAGE, required = false) String page) {
-        if (isValid(page))
-            return handleSearchResource(CodeSystem.class, OWNER, formatUser(user), ID, id, PAGE, page);
-        return handleSearchResource(CodeSystem.class, OWNER, formatUser(user), ID, id);
+                                                      @RequestParam(name = PAGE, required = false) Optional<String> page,
+                                                      HttpServletRequest request) {
+        return handleSearchResource(CodeSystem.class, OWNER, formatUser(user), ID, id, PAGE, page.orElse("1"),
+                OWNER_URL, getRequestUrl(request));
     }
 
     @GetMapping(path = {"/{user}/CodeSystem/{id}/version",
@@ -80,16 +81,18 @@ public class OclFhirUserController extends BaseOclFhirController {
     public ResponseEntity<String> getCodeSystemVersionsByUser(@PathVariable(name = USER) String user,
                                                               @PathVariable(name = ID) String id,
                                                               @PathVariable(name = VERSION) Optional<String> version,
-                                                              @RequestParam(name = PAGE, required = false) String page) {
-        if (isValid(page))
-            return handleSearchResource(CodeSystem.class, OWNER, formatUser(user), ID, id, VERSION, version.orElse(ALL), PAGE, page);
-        return handleSearchResource(CodeSystem.class, OWNER, formatUser(user), ID, id, VERSION, version.orElse(ALL));
+                                                              @RequestParam(name = PAGE, required = false) Optional<String> page,
+                                                              HttpServletRequest request) {
+        return handleSearchResource(CodeSystem.class, OWNER, formatUser(user), ID, id, VERSION, version.orElse(ALL),
+                PAGE, page.orElse("1"), OWNER_URL, getRequestUrl(request));
     }
 
     @GetMapping(path = {"/{user}/CodeSystem"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> searchCodeSystemsByUser(@PathVariable String user,
-                                                          @RequestParam(name = PAGE, required = false) Optional<String> page) {
-        return handleSearchResource(CodeSystem.class, OWNER, formatUser(user), PAGE, page.orElse("1"));
+                                                          @RequestParam(name = PAGE, required = false) Optional<String> page,
+                                                          HttpServletRequest request) {
+        return handleSearchResource(CodeSystem.class, OWNER, formatUser(user), PAGE, page.orElse("1"),
+                OWNER_URL, getRequestUrl(request));
     }
 
     @DeleteMapping(path = {"/{user}/CodeSystem/{id}/version/{version}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
@@ -152,10 +155,10 @@ public class OclFhirUserController extends BaseOclFhirController {
     @GetMapping(path = {"/{user}/ValueSet/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> getValueSetByUser(@PathVariable String user,
                                                     @PathVariable String id,
-                                                    @RequestParam(name = PAGE, required = false) String page) {
-        if (isValid(page))
-            return handleSearchResource(ValueSet.class, OWNER, formatUser(user), ID, id, PAGE, page);
-        return handleSearchResource(ValueSet.class, OWNER, formatUser(user), ID, id);
+                                                    @RequestParam(name = PAGE, required = false) Optional<String> page,
+                                                    HttpServletRequest request) {
+        return handleSearchResource(ValueSet.class, OWNER, formatUser(user), ID, id, PAGE, page.orElse("1"),
+                OWNER_URL, getRequestUrl(request));
     }
 
     @GetMapping(path = {"/{user}/ValueSet/{id}/version",
@@ -164,16 +167,18 @@ public class OclFhirUserController extends BaseOclFhirController {
     public ResponseEntity<String> getValueSetVersionsByUser(@PathVariable(name = USER) String user,
                                                             @PathVariable(name = ID) String id,
                                                             @PathVariable(name = VERSION) Optional<String> version,
-                                                            @RequestParam(name = PAGE, required = false) String page) {
-        if (isValid(page))
-            return handleSearchResource(ValueSet.class, OWNER, formatUser(user), ID, id, VERSION, version.orElse(ALL), PAGE, page);
-        return handleSearchResource(ValueSet.class, OWNER, formatUser(user), ID, id, VERSION, version.orElse(ALL));
+                                                            @RequestParam(name = PAGE, required = false) Optional<String> page,
+                                                            HttpServletRequest request) {
+        return handleSearchResource(ValueSet.class, OWNER, formatUser(user), ID, id, VERSION, version.orElse(ALL),
+                PAGE, page.orElse("1"), OWNER_URL, getRequestUrl(request));
     }
 
     @GetMapping(path = {"/{user}/ValueSet"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> searchValueSetsByUser(@PathVariable String user,
-                                                        @RequestParam(name = PAGE, required = false) Optional<String> page) {
-        return handleSearchResource(ValueSet.class, OWNER, formatUser(user), PAGE, page.orElse("1"));
+                                                        @RequestParam(name = PAGE, required = false) Optional<String> page,
+                                                        HttpServletRequest request) {
+        return handleSearchResource(ValueSet.class, OWNER, formatUser(user), PAGE, page.orElse("1"),
+                OWNER_URL, getRequestUrl(request));
     }
 
     @GetMapping(path = {"/{user}/ValueSet/$validate-code"}, produces = {MediaType.APPLICATION_JSON_VALUE})
@@ -223,10 +228,10 @@ public class OclFhirUserController extends BaseOclFhirController {
     @GetMapping(path = {"/{user}/ConceptMap/{id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> getConceptMapByUser(@PathVariable(name = USER) String user,
                                                       @PathVariable(name = ID) String id,
-                                                      @RequestParam(name = PAGE, required = false) String page) {
-        if (isValid(page))
-            return handleSearchResource(ConceptMap.class, OWNER, formatUser(user), ID, id, PAGE, page);
-        return handleSearchResource(ConceptMap.class, OWNER, formatUser(user), ID, id);
+                                                      @RequestParam(name = PAGE, required = false) Optional<String> page,
+                                                      HttpServletRequest request) {
+        return handleSearchResource(ConceptMap.class, OWNER, formatUser(user), ID, id, PAGE, page.orElse("1"),
+                OWNER_URL, getRequestUrl(request));
     }
 
     @GetMapping(path = {"/{user}/ConceptMap/{id}/version",
@@ -235,16 +240,18 @@ public class OclFhirUserController extends BaseOclFhirController {
     public ResponseEntity<String> getConceptMapVersionsByUser(@PathVariable(name = USER) String user,
                                                               @PathVariable(name = ID) String id,
                                                               @PathVariable(name = VERSION) Optional<String> version,
-                                                              @RequestParam(name = PAGE, required = false) String page) {
-        if (isValid(page))
-            return handleSearchResource(ConceptMap.class, OWNER, formatUser(user), ID, id, VERSION, version.orElse(ALL), PAGE, page);
-        return handleSearchResource(ConceptMap.class, OWNER, formatUser(user), ID, id, VERSION, version.orElse(ALL));
+                                                              @RequestParam(name = PAGE, required = false) Optional<String> page,
+                                                              HttpServletRequest request) {
+        return handleSearchResource(ConceptMap.class, OWNER, formatUser(user), ID, id, VERSION, version.orElse(ALL),
+                PAGE, page.orElse("1"), OWNER_URL, getRequestUrl(request));
     }
 
     @GetMapping(path = {"/{user}/ConceptMap"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> searchConceptMapsByUser(@PathVariable String user,
-                                                          @RequestParam(name = PAGE, required = false) Optional<String> page) {
-        return handleSearchResource(ConceptMap.class, OWNER, formatUser(user), PAGE, page.orElse("1"));
+                                                          @RequestParam(name = PAGE, required = false) Optional<String> page,
+                                                          HttpServletRequest request) {
+        return handleSearchResource(ConceptMap.class, OWNER, formatUser(user), PAGE, page.orElse("1"),
+                OWNER_URL, getRequestUrl(request));
     }
 
     @GetMapping(path = {"/{user}/ConceptMap/$translate"}, produces = {MediaType.APPLICATION_JSON_VALUE})

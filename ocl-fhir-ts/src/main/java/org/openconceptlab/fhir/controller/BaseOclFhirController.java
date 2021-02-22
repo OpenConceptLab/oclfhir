@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
+import javax.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.List;
 import java.util.Optional;
@@ -275,6 +276,11 @@ public class BaseOclFhirController {
         String uri = FS + ownerType + FS + ownerId + FS + resType + FS + resId + FS +
                 (isValid(version) ? ( VERSION + FS + version + FS ) : EMPTY);
         identifiers.add(getIdentifier(uri).get());
+    }
+
+    protected static String getRequestUrl(HttpServletRequest request) {
+        return request.getRequestURL().toString() +
+                (isValid(request.getQueryString()) ? "?" + request.getQueryString() : EMPTY) ;
     }
 
 }
