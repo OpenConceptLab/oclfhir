@@ -117,11 +117,16 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
      */
     @Search()
     @Transactional
-    public Bundle searchCodeSystems(@OptionalParam(name = PAGE) StringType page, RequestDetails details) {
+    public Bundle searchCodeSystems(@OptionalParam(name = PAGE) StringType page,
+                                    @OptionalParam(name = OWNER_URL) StringType ownerUrl,
+                                    RequestDetails details) {
         List<Source> sources = filterSourceHead(getSources(publicAccess));
-        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false, getPage(page));
+        StringBuilder hasNext = new StringBuilder();
+        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false,
+                getPage(page), hasNext);
         log.info("Found " + codeSystems.size() + " CodeSystems.");
-        return OclFhirUtil.getBundle(codeSystems, details.getCompleteUrl(), details.getRequestPath());
+        return OclFhirUtil.getBundle(codeSystems, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
+                getPrevPage(page), getNextPage(page, hasNext));
     }
 
     /**
@@ -135,13 +140,16 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
     public Bundle searchCodeSystemByUrl(@RequiredParam(name = CodeSystem.SP_URL) StringType url,
                                         @OptionalParam(name = VERSION) StringType version,
                                         @OptionalParam(name = PAGE) StringType page,
+                                        @OptionalParam(name = OWNER_URL) StringType ownerUrl,
                                         RequestDetails details) {
         List<Source> sources = filterSourceHead(getSourceByUrl(url, version, publicAccess));
         boolean includeConcepts = !isValid(version) || !isVersionAll(version);
+        StringBuilder hasNext = new StringBuilder();
         List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, includeConcepts,
-                getPage(page));
+                getPage(page), hasNext);
         log.info("Found " + codeSystems.size() + " CodeSystems.");
-        return OclFhirUtil.getBundle(codeSystems, details.getCompleteUrl(), details.getRequestPath());
+        return OclFhirUtil.getBundle(codeSystems, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
+                getPrevPage(page), getNextPage(page, hasNext));
     }
 
     /**
@@ -153,11 +161,15 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
     @Transactional
     public Bundle searchCodeSystemByOwner(@RequiredParam(name = OWNER) StringType owner,
                                           @OptionalParam(name = PAGE) StringType page,
+                                          @OptionalParam(name = OWNER_URL) StringType ownerUrl,
                                           RequestDetails details) {
         List<Source> sources = filterSourceHead(getSourceByOwner(owner, publicAccess));
-        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false, getPage(page));
+        StringBuilder hasNext = new StringBuilder();
+        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false, getPage(page),
+                hasNext);
         log.info("Found " + codeSystems.size() + " CodeSystems.");
-        return OclFhirUtil.getBundle(codeSystems, details.getCompleteUrl(), details.getRequestPath());
+        return OclFhirUtil.getBundle(codeSystems, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
+                getPrevPage(page), getNextPage(page, hasNext));
     }
 
     /**
@@ -174,12 +186,16 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
                                                @RequiredParam(name = ID) StringType id,
                                                @OptionalParam(name = VERSION) StringType version,
                                                @OptionalParam(name = PAGE) StringType page,
+                                               @OptionalParam(name = OWNER_URL) StringType ownerUrl,
                                                RequestDetails details) {
         List<Source> sources = filterSourceHead(getSourceByOwnerAndIdAndVersion(id, owner, version, publicAccess));
         boolean includeConcepts = !isVersionAll(version);
-        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, includeConcepts, getPage(page));
+        StringBuilder hasNext = new StringBuilder();
+        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, includeConcepts, getPage(page)
+                , hasNext);
         log.info("Found " + codeSystems.size() + " CodeSystems.");
-        return OclFhirUtil.getBundle(codeSystems, details.getCompleteUrl(), details.getRequestPath());
+        return OclFhirUtil.getBundle(codeSystems, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
+                getPrevPage(page), getNextPage(page, hasNext));
     }
 
     /**

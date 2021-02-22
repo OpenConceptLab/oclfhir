@@ -8,6 +8,7 @@ import org.openconceptlab.fhir.model.Source;
 import org.openconceptlab.fhir.model.UserProfile;
 import org.openconceptlab.fhir.repository.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
@@ -31,11 +32,16 @@ public class ConceptMapConverter extends BaseConverter {
                 userProfilesOrganizationRepository, organizationRepository, userRepository, collectionRepository, mappingRepository);
     }
 
-    public List<ConceptMap> convertToConceptMap(List<Source> sources, boolean includeMappings, int page) {
+    public List<ConceptMap> convertToConceptMap(List<Source> sources, boolean includeMappings, int page, StringBuilder hasNext) {
         List<ConceptMap> conceptMaps = new ArrayList<>();
         if (!includeMappings) {
             int offset = page * 10;
             int count = 10;
+            if (page == 0) {
+                if (sources.size() > count) hasNext.append(True);
+            } else if (page < sources.size()/count) {
+                hasNext.append(True);
+            }
             sources = paginate(sources, offset, count);
         }
         sources.forEach(source -> {
@@ -43,7 +49,7 @@ public class ConceptMapConverter extends BaseConverter {
             ConceptMap conceptMap = toConceptMap(source);
             if (includeMappings) {
                 // populate mappings
-                addMappingsToConceptMap(conceptMap, source.getId(), page);
+                addMappingsToConceptMap(conceptMap, source.getId(), page, hasNext);
             }
             conceptMaps.add(conceptMap);
         });
@@ -94,10 +100,10 @@ public class ConceptMapConverter extends BaseConverter {
         return conceptMap;
     }
 
-    private void addMappingsToConceptMap(final ConceptMap conceptMap, final Long sourceId, int page) {
-        List<Mapping> mappings = mappingRepository.findMappings(sourceId, PageRequest.of(page, 100));
-        if (mappings != null && !mappings.isEmpty())
-            addMappings(conceptMap, mappings);
+    private void addMappingsToConceptMap(final ConceptMap conceptMap, final Long sourceId, int page, StringBuilder hasNext) {
+        Page<Mapping> mappings = mappingRepository.findMappings(sourceId, PageRequest.of(page, 100));
+        if (page < mappings.getTotalPages() - 1) hasNext.append(True);
+        if (!mappings.getContent().isEmpty()) addMappings(conceptMap, mappings.getContent());
     }
 
     private void addMappings(final ConceptMap conceptMap, final List<Mapping> mappings) {

@@ -2,6 +2,7 @@ package org.openconceptlab.fhir.repository;
 
 import org.openconceptlab.fhir.model.Concept;
 import org.openconceptlab.fhir.model.LocalizedText;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -26,7 +27,7 @@ public interface ConceptRepository extends BaseOclRepository<Concept>{
             "where cs.source_id = :sourceId\n" +
             "group by c1.mnemonic) as val \n" +
             ") order by c2.mnemonic asc")
-    List<Concept> findConcepts(@Param("sourceId") Long sourceId, Pageable pageable);
+    Page<Concept> findConcepts(@Param("sourceId") Long sourceId, Pageable pageable);
 
     @Query(nativeQuery = true, value = "select count(*) from (select max(cs.concept_id) as concept_id , c1.mnemonic from concepts_sources cs \n" +
             "inner join concepts c1 on c1.id = cs.concept_id \n" +

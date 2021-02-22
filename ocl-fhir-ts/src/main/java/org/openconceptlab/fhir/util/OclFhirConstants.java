@@ -130,4 +130,6 @@ public final class OclFhirConstants {
 	public static final String CONCEPT_MAP_VERSION = "conceptMapVersion";
 	public static final String TARGET_SYSTEM = "targetSystem";
 	public static final String TRANSLATE = "$translate";
+
+	public static final String OWNER_URL = "ownerUrl";
 }

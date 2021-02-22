@@ -2,6 +2,7 @@ package org.openconceptlab.fhir.repository;
 
 import org.openconceptlab.fhir.model.Concept;
 import org.openconceptlab.fhir.model.Mapping;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -28,7 +29,7 @@ public interface MappingRepository extends BaseOclRepository<Mapping>{
                     " m1.from_concept_code, m1.to_concept_code, m1.map_type) as val " +
                     " ) " +
                     " order by m2.from_concept_code asc ")
-    List<Mapping> findMappings(@Param("sourceId") Long sourceId, Pageable pageable);
+    Page<Mapping> findMappings(@Param("sourceId") Long sourceId, Pageable pageable);
 
     @Query(nativeQuery = true, value =
             "select * from mappings m2 where m2.id in " +

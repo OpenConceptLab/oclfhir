@@ -40,7 +40,7 @@ public class OclFhirUtil {
     @Value("${server.port}")
     private String port;
 
-    private static String BASE_URL;
+    public static String BASE_URL;
 
     @Value("${ocl.servlet.baseurl}")
     public void setBaseUrl(String name) {
@@ -82,17 +82,56 @@ public class OclFhirUtil {
         return context;
     }
 
+    public static <T extends Resource> Bundle getBundle(List<T> resource, String completeUrl,
+                                                        Integer prevPage, Integer nextPage) {
+        Bundle bundle = getBundle(resource, completeUrl, EMPTY);
+
+        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(completeUrl);
+        MultiValueMap<String, String> parameters = builder.build().getQueryParams();
+
+        StringBuilder url = new StringBuilder(completeUrl.replaceAll("\\?.*", EMPTY));
+        int i = 0;
+        for (Map.Entry<String, List<String>> entry : parameters.entrySet()) {
+            String key = entry.getKey();
+            List<String> values = entry.getValue();
+            if (!PAGE.equals(key)) {
+                if (i == 0) url.append("?");
+                url.append(key).append("=").append(StringUtils.join(values, ",")).append("&");
+                i++;
+            }
+        }
+        String finalUrl = url.toString().endsWith("&") ? url.replace(url.length() - 1, url.length(), EMPTY).toString()
+                : url.toString();
+        String prevUrl = null;
+        String nextUrl = null;
+        if (prevPage != null) {
+            if (parameters.isEmpty() || (parameters.size() == 1 && parameters.containsKey(PAGE))) {
+                prevUrl = finalUrl + "?page=" + prevPage;
+            } else {
+                prevUrl = finalUrl + "&page=" + prevPage;
+            }
+        }
+        if (nextPage != null) {
+            if (parameters.isEmpty() || (parameters.size() == 1 && parameters.containsKey(PAGE))) {
+                nextUrl = finalUrl + "?page=" + nextPage;
+            } else {
+                nextUrl = finalUrl + "&page=" + nextPage;
+            }
+        }
+
+        addLink(bundle, "prev", prevUrl != null ? buildUrl(prevUrl) : "null");
+        addLink(bundle, "next", nextUrl != null ? buildUrl(nextUrl) : "null");
+
+        return bundle;
+    }
+
     public static <T extends Resource> Bundle getBundle(List<T> resource, String fhirBase, String requestPath) {
         Bundle bundle = new Bundle();
         bundle.setType(Bundle.BundleType.SEARCHSET);
         // add self link
         try {
             Bundle.BundleLinkComponent com = new Bundle.BundleLinkComponent();
-            com.setRelation("self");
-            com.setUrl(UriComponentsBuilder.fromHttpUrl(URLDecoder.decode(fhirBase, StandardCharsets.UTF_8.toString()))
-                    .host(new URL(BASE_URL).getHost()).port(-1)
-                    .toUriString());
-            bundle.setLink(Collections.singletonList(com));
+            addLink(bundle, "self", buildUrl(fhirBase));
         } catch (Exception e) {
             log.error("Error parsing url " + fhirBase);
         }
@@ -103,6 +142,40 @@ public class OclFhirUtil {
             bundle.addEntry(component);
         });
         return bundle;
+    }
+
+    public static void addLink(Bundle bundle, String relation, String url) {
+        Bundle.BundleLinkComponent component = new Bundle.BundleLinkComponent();
+        try {
+            component.setRelation(relation);
+            component.setUrl(url);
+            bundle.getLink().add(component);
+        } catch (Exception e) {
+            log.error("Error parsing url " + url);
+        }
+    }
+
+    public static String buildUrl(String url) {
+        try {
+            return UriComponentsBuilder.fromHttpUrl(URLDecoder.decode(url, StandardCharsets.UTF_8.toString()))
+                    .host(new URL(BASE_URL).getHost()).port(-1)
+                    .toUriString();
+        } catch (Exception e) {
+            log.error("Error parsing url " + url + ". " + e.getMessage());
+        }
+        return EMPTY;
+    }
+
+    public static boolean isFirstPage(StringType page) {
+        return page == null || page.getValue().matches("0|1");
+    }
+
+    public static Integer getPrevPage(StringType page) {
+        return isFirstPage(page) ? null : Integer.parseInt(page.getValue()) - 1;
+    }
+
+    public static Integer getNextPage(StringType page, StringBuilder hasNext) {
+        return hasNext.toString().equals(String.valueOf(True)) ? (isFirstPage(page) ? 2 : Integer.parseInt(page.getValue()) + 1) : null;
     }
 
     private static String getCompleteUrl(final String fhirBase, final String requestPath, final String id) {
@@ -502,11 +575,14 @@ public class OclFhirUtil {
     }
 
     public static String validateAccessionId(String uri) {
+        // user mostly for POST/PUT operation
+        // adds "version" string in accessionId if not provided
         String formatExpression = formatExpression(uri);
         String[] ar = formatExpression.split(FS);
         if (ar.length >= 5) {
             if (ORGS.equals(ar[1]) || USERS.equals(ar[1])) {
-                if (ar[3].matches(CODESYSTEM + "|" + VALUESET + "|" + CONCEPTMAP)) {
+                if (ar[3].toLowerCase().matches(CODESYSTEM.toLowerCase() + "|" + VALUESET.toLowerCase()
+                        + "|" + CONCEPTMAP.toLowerCase())) {
                     if (ar.length >= 6 && isValid(ar[5]) && !VERSION.equals(ar[5])) {
                         return FS + ar[1] + FS + ar[2] + FS + ar[3] + FS + ar[4] + FS + VERSION + FS + ar[5] + FS;
                     }

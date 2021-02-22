@@ -25,7 +25,6 @@ import static org.openconceptlab.fhir.util.OclFhirUtil.getOwner;
 import java.sql.*;
 import java.util.*;
 import java.util.Date;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -65,17 +64,22 @@ public class ValueSetConverter extends BaseConverter {
         this.insertCollectionReference = new SimpleJdbcInsert(jdbcTemplate).withTableName("collection_references");
     }
 
-    public List<ValueSet> convertToValueSet(List<Collection> collections, boolean includeCompose, Integer page) {
+    public List<ValueSet> convertToValueSet(List<Collection> collections, boolean includeCompose, Integer page, StringBuilder hasNext) {
         List<ValueSet> valueSets = new ArrayList<>();
         if (!includeCompose) {
             int offset = page * 10;
             int count = 10;
+            if (page == 0) {
+                if (collections.size() > count) hasNext.append(True);
+            } else if (page < collections.size()/count) {
+                hasNext.append(True);
+            }
             collections = paginate(collections, offset, count);
         }
         collections.forEach(collection -> {
             ValueSet valueSet = toBaseValueSet(collection);
             if (includeCompose)
-                addCompose(valueSet, collection, False, page);
+                addCompose(valueSet, collection, False, page, hasNext);
             valueSets.add(valueSet);
         });
         return valueSets;
@@ -138,12 +142,15 @@ public class ValueSetConverter extends BaseConverter {
         }
     }
 
-    private void addCompose(ValueSet valueSet, Collection collection, boolean includeConceptDesignation, Integer page) {
+    private void addCompose(ValueSet valueSet, Collection collection, boolean includeConceptDesignation, Integer page, StringBuilder hasNext) {
         // We have to use expressions to determine actual Source version since its not possible through CollectionsConcepts
         IntegerType offset = new IntegerType(page * 100);
         IntegerType count = new IntegerType(100);
 
-        List<String> expressions = getExpressions(collection, offset, count);
+        List<String> allExpressions = getAllExpressions(collection);
+        if (page < allExpressions.size()/count.getValue() + 1) hasNext.append(True);
+
+        List<String> expressions = getExpressions(allExpressions, offset, count);
 
         // lets get all the source versions first to reduce the database calls
         List<Source> sources = getSourcesFromExpressions(expressions);
@@ -225,7 +232,7 @@ public class ValueSetConverter extends BaseConverter {
                 .collect(Collectors.toList());
     }
 
-    private List<String> getExpressions(Collection collection) {
+    private List<String> getAllExpressions(Collection collection) {
         Map<String, String> map = new TreeMap<>();
         collection.getCollectionsReferences().stream()
                 .map(CollectionsReference::getCollectionReference)
@@ -241,7 +248,11 @@ public class ValueSetConverter extends BaseConverter {
     }
 
     private List<String> getExpressions(Collection collection, IntegerType offset, IntegerType count) {
-        List<String> expressions = getExpressions(collection);
+        List<String> expressions = getAllExpressions(collection);
+        return getExpressions(expressions, offset, count);
+    }
+
+    private List<String> getExpressions(List<String> expressions, IntegerType offset, IntegerType count) {
         if (count.getValue() == 0)
             return expressions;
         if (offset.getValue() < expressions.size()) {

@@ -3,7 +3,6 @@ package org.openconceptlab.fhir.converter;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -25,6 +24,7 @@ import org.openconceptlab.fhir.model.Organization;
 import org.openconceptlab.fhir.repository.*;
 import org.openconceptlab.fhir.util.OclFhirConstants;
 import org.openconceptlab.fhir.util.OclFhirUtil;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -50,11 +50,16 @@ public class CodeSystemConverter extends BaseConverter {
 				userProfilesOrganizationRepository, organizationRepository, userRepository, collectionRepository, mappingRepository);
 	}
 
-	public List<CodeSystem> convertToCodeSystem(List<Source> sources, boolean includeConcepts, int page) {
+	public List<CodeSystem> convertToCodeSystem(List<Source> sources, boolean includeConcepts, int page, StringBuilder hasNext) {
 		List<CodeSystem> codeSystems = new ArrayList<>();
 		if (!includeConcepts) {
 			int offset = page * 10;
 			int count = 10;
+			if (page == 0) {
+				if (sources.size() > count) hasNext.append(True);
+			} else if (page < sources.size()/count) {
+				hasNext.append(True);
+			}
 			sources = paginate(sources, offset, count);
 		}
 		sources.forEach(source -> {
@@ -62,7 +67,7 @@ public class CodeSystemConverter extends BaseConverter {
 			CodeSystem codeSystem = toBaseCodeSystem(source);
 			if (includeConcepts) {
 				// add concepts
-				addConceptsToCodeSystem(codeSystem, source, page);
+				addConceptsToCodeSystem(codeSystem, source, page, hasNext);
 			}
 			codeSystems.add(codeSystem);
 		});
@@ -153,9 +158,10 @@ public class CodeSystemConverter extends BaseConverter {
 		return component;
 	}
 
-	private void addConceptsToCodeSystem(final CodeSystem codeSystem, final Source source, int page) {
-		List<Concept> concepts = conceptRepository.findConcepts(source.getId(), PageRequest.of(page, 100));
-		for (Concept concept : concepts) {
+	private void addConceptsToCodeSystem(final CodeSystem codeSystem, final Source source, int page, StringBuilder hasNext) {
+		Page<Concept> concepts = conceptRepository.findConcepts(source.getId(), PageRequest.of(page, 100));
+		if (page < concepts.getTotalPages() - 1) hasNext.append(True);
+		for (Concept concept : concepts.getContent()) {
 			CodeSystem.ConceptDefinitionComponent definitionComponent = new CodeSystem.ConceptDefinitionComponent();
 			// code
 			definitionComponent.setCode(concept.getMnemonic());

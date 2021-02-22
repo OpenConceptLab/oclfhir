@@ -400,7 +400,7 @@ public class BaseConverter {
                 } else if (USERS.equals(ar[1]) && isValid(ar[2])){
                     username = ar[2];
                 }
-                if (resource.getClass().getSimpleName().equals(ar[3]) && isValid(ar[4])) {
+                if (resource.getClass().getSimpleName().toLowerCase().equals(ar[3].toLowerCase()) && isValid(ar[4])) {
                     resourceId = ar[4];
                     resource.setId(resourceId);
                 }
