@@ -100,7 +100,8 @@ public class OclFhirUserController extends BaseOclFhirController {
                                                          @PathVariable(name = VERSION) String version,
                                                          @PathVariable(name = USER) String user,
                                                          @RequestHeader(name = AUTHORIZATION) String auth) {
-        return handleDeleteResource(CodeSystem.class, id, version, formatUser(user), auth);
+        String url = oclFhirUtil.oclApiBaseUrl() + FS + USERS + FS + user + FS + SOURCES + FS + id + FS + version + FS;
+        return performDeleteOclApi(url, auth);
     }
 
     @GetMapping(path = {"/{user}/CodeSystem/$lookup"}, produces = {MediaType.APPLICATION_JSON_VALUE})

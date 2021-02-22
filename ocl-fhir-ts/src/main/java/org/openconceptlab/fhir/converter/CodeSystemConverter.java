@@ -483,7 +483,8 @@ public class CodeSystemConverter extends BaseConverter {
 		}
 	}
 
-	public void retireCodeSystem(String id, String version, StringType owner, String authToken) {
+	@Deprecated
+	private void retireCodeSystem(String id, String version, StringType owner, String authToken) {
 		// id, version and owner are all required
 		if (!isValid(id))
 			throw new InvalidRequestException("The id can not be empty. Please provide id.");

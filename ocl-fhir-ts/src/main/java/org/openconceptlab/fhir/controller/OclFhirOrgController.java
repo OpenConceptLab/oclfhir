@@ -77,7 +77,8 @@ public class OclFhirOrgController extends BaseOclFhirController {
                                                         @PathVariable(name = VERSION) String version,
                                                         @PathVariable(name = ORG) String org,
                                                         @RequestHeader(name = AUTHORIZATION) String auth) {
-        return handleDeleteResource(CodeSystem.class, id, version, formatOrg(org), auth);
+        String url = oclFhirUtil.oclApiBaseUrl() + FS + ORGS + FS + org + FS + SOURCES + FS + id + FS + version + FS;
+        return performDeleteOclApi(url, auth);
     }
 
     @PutMapping(path = {"/{org}/CodeSystem/{id}/version/{version}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
