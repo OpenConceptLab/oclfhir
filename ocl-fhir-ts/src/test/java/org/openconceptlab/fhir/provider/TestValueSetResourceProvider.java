@@ -1,7 +1,5 @@
 package org.openconceptlab.fhir.provider;
 
-import static org.mockito.Mockito.*;
-
 import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
@@ -9,9 +7,6 @@ import ca.uhn.fhir.rest.server.exceptions.ResourceVersionConflictException;
 import com.google.common.collect.Sets;
 import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.*;
-import static org.junit.Assert.*;
-import static org.openconceptlab.fhir.util.OclFhirConstants.*;
-
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -31,6 +26,11 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.*;
+import static org.openconceptlab.fhir.util.OclFhirConstants.ACSN;
+import static org.openconceptlab.fhir.util.OclFhirConstants.ACSN_SYSTEM;
 
 public class TestValueSetResourceProvider extends OclFhirTest {
 

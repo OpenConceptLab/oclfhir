@@ -9,13 +9,12 @@ import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hl7.fhir.r4.model.*;
-import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.model.Collection;
 import org.openconceptlab.fhir.model.Organization;
+import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.repository.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -25,7 +24,6 @@ import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
 import javax.sql.DataSource;
-
 import java.net.URI;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -35,7 +33,6 @@ import java.util.stream.Collectors;
 import static org.openconceptlab.fhir.converter.CodeSystemConverter.DEFAULT_RES_VERSION;
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 import static org.openconceptlab.fhir.util.OclFhirUtil.*;
-import static org.openconceptlab.fhir.util.OclFhirUtil.gson;
 
 @Component
 public class BaseConverter {

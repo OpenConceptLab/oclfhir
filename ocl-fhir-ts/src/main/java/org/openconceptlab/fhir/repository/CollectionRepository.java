@@ -1,7 +1,6 @@
 package org.openconceptlab.fhir.repository;
 
 import org.openconceptlab.fhir.model.Collection;
-import org.openconceptlab.fhir.model.Source;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;

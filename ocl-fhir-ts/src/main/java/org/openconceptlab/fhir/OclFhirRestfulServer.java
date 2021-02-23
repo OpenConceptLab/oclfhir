@@ -1,10 +1,6 @@
 package org.openconceptlab.fhir;
 
-import javax.servlet.ServletException;
-import javax.servlet.annotation.WebServlet;
-
 import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.fhir.rest.server.HardcodedServerAddressStrategy;
 import ca.uhn.fhir.rest.server.RestfulServer;
 import ca.uhn.fhir.rest.server.interceptor.ResponseHighlighterInterceptor;
 import org.openconceptlab.fhir.interceptor.OclFhirAuthorizationInterceptor;
@@ -14,8 +10,10 @@ import org.openconceptlab.fhir.provider.ConceptMapResourceProvider;
 import org.openconceptlab.fhir.provider.OclCapabilityStatementProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
 
 /**
  * The OclFhirRestfulServer.

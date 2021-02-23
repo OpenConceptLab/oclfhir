@@ -6,11 +6,11 @@ import ca.uhn.fhir.rest.server.exceptions.BaseServerResponseException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hl7.fhir.r4.model.*;
-import org.openconceptlab.fhir.util.OclFhirUtil;
+import org.openconceptlab.fhir.model.Source;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
+import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
@@ -23,10 +23,8 @@ import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 
-import static org.openconceptlab.fhir.util.OclFhirUtil.*;
-import static org.openconceptlab.fhir.util.OclFhirUtil.getIdentifier;
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
-import static org.openconceptlab.fhir.util.OclFhirConstants.FS;
+import static org.openconceptlab.fhir.util.OclFhirUtil.*;
 
 @Component
 public class BaseOclFhirController {
@@ -281,6 +279,17 @@ public class BaseOclFhirController {
     protected static String getRequestUrl(HttpServletRequest request) {
         return request.getRequestURL().toString() +
                 (isValid(request.getQueryString()) ? "?" + request.getQueryString() : EMPTY) ;
+    }
+
+    protected boolean validateIfEditable(String resourceType, String id, String version, String ownerType, String owner) {
+        if (CODESYSTEM.equals(resourceType) || CONCEPTMAP.equals(resourceType)) {
+            Source source = oclFhirUtil.getSourceVersion(id, version, publicAccess, ownerType, owner);
+            if (source != null && isValid(source.getSourceType())) {
+                return (CODESYSTEM.equals(resourceType) && source.getSourceType().contains(CODESYSTEM)) ||
+                        (CONCEPTMAP.equals(resourceType) && source.getSourceType().contains(CONCEPTMAP));
+            }
+        }
+        return false;
     }
 
 }

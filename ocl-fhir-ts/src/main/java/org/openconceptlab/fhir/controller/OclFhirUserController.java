@@ -1,19 +1,19 @@
 package org.openconceptlab.fhir.controller;
 
-import ca.uhn.fhir.rest.server.exceptions.BaseServerResponseException;
 import org.hl7.fhir.r4.model.*;
-import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
-import org.springframework.http.*;
+import org.openconceptlab.fhir.util.OclFhirUtil;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.Optional;
 
-import static org.openconceptlab.fhir.util.OclFhirUtil.*;
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
-import static org.openconceptlab.fhir.util.OclFhirConstants.CODESYSTEM;
+import static org.openconceptlab.fhir.util.OclFhirUtil.*;
 
 @RestController
 @RequestMapping({"/users"})
@@ -46,6 +46,7 @@ public class OclFhirUserController extends BaseOclFhirController {
                                                           @PathVariable(name = USER) String user,
                                                           @RequestBody String codeSystem,
                                                           @RequestHeader(name = AUTHORIZATION) String auth) {
+        if (!validateIfEditable(CODESYSTEM, id, version, USER, user)) return badRequest("The CodeSystem can not be edited.");
         CodeSystem system = (CodeSystem) parser.parseResource(codeSystem);
         Optional<Identifier> acsnOpt = hasAccessionIdentifier(system.getIdentifier());
         ResponseEntity<String> response = validate(user, id, acsnOpt, USERS, user);
@@ -75,8 +76,7 @@ public class OclFhirUserController extends BaseOclFhirController {
                 OWNER_URL, getRequestUrl(request));
     }
 
-    @GetMapping(path = {"/{user}/CodeSystem/{id}/version",
-            "/{user}/CodeSystem/{id}/version/{version}"},
+    @GetMapping(path = {"/{user}/CodeSystem/{id}/version", "/{user}/CodeSystem/{id}/version/{version}"},
             produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> getCodeSystemVersionsByUser(@PathVariable(name = USER) String user,
                                                               @PathVariable(name = ID) String id,
@@ -100,7 +100,27 @@ public class OclFhirUserController extends BaseOclFhirController {
                                                          @PathVariable(name = VERSION) String version,
                                                          @PathVariable(name = USER) String user,
                                                          @RequestHeader(name = AUTHORIZATION) String auth) {
+        if (!validateIfEditable(CODESYSTEM, id, version, USER, user)) return badRequest("The CodeSystem can not be deleted.");
         String url = oclFhirUtil.oclApiBaseUrl() + FS + USERS + FS + user + FS + SOURCES + FS + id + FS + version + FS;
+        return performDeleteOclApi(url, auth);
+    }
+
+    @DeleteMapping(path = {"/{user}/ValueSet/{id}/version/{version}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> deleteValueSetByUser(@PathVariable(name = ID) String id,
+                                                       @PathVariable(name = VERSION) String version,
+                                                       @PathVariable(name = USER) String user,
+                                                       @RequestHeader(name = AUTHORIZATION) String auth) {
+        String url = oclFhirUtil.oclApiBaseUrl() + FS + USERS + FS + user + FS + COLLECTIONS + FS + id + FS + version + FS;
+        return performDeleteOclApi(url, auth);
+    }
+
+    @DeleteMapping(path = {"/{user}/ValueSet/{id}/version/{version}/concepts/{concept_id}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> deleteConceptInValueSetForUser(@PathVariable(name = ID) String id,
+                                                                 @PathVariable(name = VERSION) String version,
+                                                                 @PathVariable(name = CONCEPT_ID) String conceptId,
+                                                                 @PathVariable(name = USER) String user,
+                                                                 @RequestHeader(name = AUTHORIZATION) String auth) {
+        String url = oclFhirUtil.oclApiBaseUrl() + FS + USERS + FS + user + FS + COLLECTIONS + FS + id + FS + version + FS + CONCEPTS + FS + conceptId + FS;
         return performDeleteOclApi(url, auth);
     }
 

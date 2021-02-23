@@ -1,11 +1,5 @@
 package org.openconceptlab.fhir.converter;
 
-import java.sql.*;
-import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import org.apache.commons.collections4.ListUtils;
@@ -15,12 +9,8 @@ import org.apache.commons.logging.LogFactory;
 import org.hl7.fhir.r4.model.*;
 import org.hl7.fhir.r4.model.CodeSystem.ConceptPropertyComponent;
 import org.hl7.fhir.r4.model.codesystems.PublicationStatus;
-import org.openconceptlab.fhir.model.*;
-
-import static org.openconceptlab.fhir.util.OclFhirConstants.*;
-import static org.openconceptlab.fhir.util.OclFhirUtil.*;
-
 import org.openconceptlab.fhir.model.Organization;
+import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.repository.*;
 import org.openconceptlab.fhir.util.OclFhirConstants;
 import org.openconceptlab.fhir.util.OclFhirUtil;
@@ -31,6 +21,18 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static org.openconceptlab.fhir.util.OclFhirConstants.*;
+import static org.openconceptlab.fhir.util.OclFhirUtil.*;
 
 /**
  * The CodeSystemConverter.

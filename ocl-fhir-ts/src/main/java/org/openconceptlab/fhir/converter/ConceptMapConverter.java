@@ -18,7 +18,6 @@ import java.util.stream.Collectors;
 
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 import static org.openconceptlab.fhir.util.OclFhirUtil.*;
-import static org.openconceptlab.fhir.util.OclFhirUtil.isValid;
 
 @Component
 public class ConceptMapConverter extends BaseConverter {

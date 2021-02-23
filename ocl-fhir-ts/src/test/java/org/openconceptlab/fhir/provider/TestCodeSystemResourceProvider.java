@@ -9,37 +9,29 @@ import com.openpojo.validation.Validator;
 import com.openpojo.validation.ValidatorBuilder;
 import com.openpojo.validation.test.impl.GetterTester;
 import com.openpojo.validation.test.impl.SetterTester;
-import org.aspectj.apache.bcel.classfile.Code;
 import org.hl7.fhir.r4.model.*;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
-import org.mockito.verification.VerificationMode;
 import org.openconceptlab.fhir.base.OclFhirTest;
-import org.openconceptlab.fhir.model.*;
-import org.openconceptlab.fhir.model.Collection;
 import org.openconceptlab.fhir.model.Organization;
-import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
+import org.openconceptlab.fhir.model.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 
+import java.util.Arrays;
+import java.util.Collections;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.*;
-import static org.junit.Assert.*;
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
-
-import java.time.LocalDate;
-import java.time.ZoneId;
-import java.util.*;
 
 public class TestCodeSystemResourceProvider extends OclFhirTest {
 

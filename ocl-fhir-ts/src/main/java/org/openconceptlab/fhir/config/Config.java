@@ -6,9 +6,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 
-import javax.annotation.PostConstruct;
-import java.util.List;
-
 /**
  * The Configuration class.
  * @author harpatel1

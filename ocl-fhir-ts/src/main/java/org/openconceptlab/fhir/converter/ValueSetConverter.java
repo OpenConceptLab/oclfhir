@@ -3,9 +3,9 @@ package org.openconceptlab.fhir.converter;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import org.hl7.fhir.r4.model.*;
 import org.hl7.fhir.r4.model.codesystems.PublicationStatus;
-import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.model.Collection;
 import org.openconceptlab.fhir.model.Organization;
+import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.repository.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,15 +17,14 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import javax.sql.DataSource;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 import static org.openconceptlab.fhir.util.OclFhirUtil.*;
-import static org.openconceptlab.fhir.util.OclFhirUtil.getOwner;
-
-import java.sql.*;
-import java.util.*;
-import java.util.Date;
-import java.util.stream.Collectors;
 
 /**
  * The ValueSerConverter.

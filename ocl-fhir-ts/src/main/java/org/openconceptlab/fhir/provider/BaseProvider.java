@@ -4,7 +4,6 @@ import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import org.hl7.fhir.r4.model.CodeSystem;
-import org.hl7.fhir.r4.model.IntegerType;
 import org.hl7.fhir.r4.model.StringType;
 import org.openconceptlab.fhir.converter.CodeSystemConverter;
 import org.openconceptlab.fhir.converter.ConceptMapConverter;
@@ -24,7 +23,6 @@ import java.util.stream.Collectors;
 import static org.openconceptlab.fhir.util.OclFhirConstants.HEAD;
 import static org.openconceptlab.fhir.util.OclFhirConstants.ORG;
 import static org.openconceptlab.fhir.util.OclFhirUtil.*;
-import static org.openconceptlab.fhir.util.OclFhirUtil.notFound;
 
 public class BaseProvider {
 

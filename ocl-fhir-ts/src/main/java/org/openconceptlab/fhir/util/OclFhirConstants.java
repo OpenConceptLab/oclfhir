@@ -3,7 +3,6 @@ package org.openconceptlab.fhir.util;
 import org.hl7.fhir.r4.model.CodeSystem;
 import org.hl7.fhir.r4.model.ConceptMap;
 import org.hl7.fhir.r4.model.ValueSet;
-import org.openconceptlab.fhir.model.Concept;
 
 import java.util.Arrays;
 import java.util.List;

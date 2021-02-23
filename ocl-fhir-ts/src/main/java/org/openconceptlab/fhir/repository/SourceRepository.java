@@ -1,7 +1,5 @@
 package org.openconceptlab.fhir.repository;
 
-import org.hl7.fhir.r4.model.Base;
-import org.openconceptlab.fhir.model.BaseOclEntity;
 import org.openconceptlab.fhir.model.Source;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

@@ -1,7 +1,6 @@
 package org.openconceptlab.fhir.provider;
 
 import ca.uhn.fhir.rest.api.server.RequestDetails;
-import org.hl7.fhir.r4.hapi.rest.server.ServerCapabilityStatementProvider;
 import org.hl7.fhir.r4.model.CapabilityStatement;
 import org.hl7.fhir.r4.model.CodeSystem;
 import org.hl7.fhir.r4.model.Enumerations;
@@ -10,16 +9,14 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
-import org.mockito.invocation.InvocationOnMock;
-import org.mockito.stubbing.Answer;
 import org.openconceptlab.fhir.base.OclFhirTest;
-import org.openconceptlab.fhir.provider.OclCapabilityStatementProvider;
 
-import static org.junit.Assert.*;
-import static org.mockito.Mockito.*;
-import static org.openconceptlab.fhir.provider.OclCapabilityStatementProvider.*;
 import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletRequestWrapper;
+
+import static org.junit.Assert.assertEquals;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.doReturn;
+import static org.openconceptlab.fhir.provider.OclCapabilityStatementProvider.*;
 
 public class TestOclCapabilityStatementProvider extends OclFhirTest {
 
