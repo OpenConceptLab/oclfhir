@@ -2,6 +2,7 @@ package org.openconceptlab.fhir.util;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
+import ca.uhn.fhir.rest.annotation.OptionalParam;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
@@ -332,11 +333,15 @@ public class OclFhirUtil {
         if (!isValid(value))
             return Optional.empty();
         Identifier identifier = new Identifier();
-        identifier.setSystem(BASE_URL.replace("/fhir", EMPTY));
+        identifier.setSystem(oclSystem());
         identifier.setValue(value.replace("sources", CODESYSTEM).replace("collections", VALUESET).trim());
         identifier.getType().setText("Accession ID");
         identifier.getType().getCodingFirstRep().setSystem(ACSN_SYSTEM).setCode(ACSN).setDisplay("Accession ID");
-        return Optional.of(identifier);
+        return validateAccessionId(Optional.of(identifier));
+    }
+
+    public static String oclSystem() {
+        return BASE_URL.replaceFirst("(/fhir)$", EMPTY);
     }
 
     public static void addConceptDesignation(Concept concept, CodeSystem.ConceptDefinitionComponent definitionComponent) {
@@ -542,7 +547,7 @@ public class OclFhirUtil {
                     .findAny();
             if (coding.isPresent()) {
                 if (isValid(identifier.getSystem())
-                        && BASE_URL.replace("/fhir", EMPTY).equals(identifier.getSystem())
+                        && oclSystem().equals(identifier.getSystem())
                         && isValid(identifier.getValue())) {
                     return validateAccessionId(Optional.of(identifier));
                 }
