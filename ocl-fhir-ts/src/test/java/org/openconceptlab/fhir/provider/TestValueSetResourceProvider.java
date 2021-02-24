@@ -86,7 +86,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
 
     private void populateCollection2(Collection collection2) {
         collection2.setMnemonic(COLLECTION_2);
-        collection2.setUri(URL_COLLECTION_2);
+        collection2.setUri(URI_COLLECTION_2);
         collection2.setCanonicalUrl(URL_COLLECTION_2);
         collection2.setName(COLLECTION_2_NAME);
         collection2.setFullName(COLLECTION_2_FULL_NAME);
@@ -103,7 +103,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
 
     private void populateCollection1(Collection collection1) {
         collection1.setMnemonic(COLLECTION_1);
-        collection1.setUri(URL_COLLECTION_1);
+        collection1.setUri(URI_COLLECTION_1);
         collection1.setCanonicalUrl(URL_COLLECTION_1);
         collection1.setName(COLLECTION_1_NAME);
         collection1.setFullName(COLLECTION_1_FULL_NAME);
