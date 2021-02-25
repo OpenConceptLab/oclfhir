@@ -246,10 +246,9 @@ public class BaseOclFhirController {
         return USER_ + user;
     }
 
-    protected ResponseEntity<String> validate(String user, String resId, Optional<Identifier> acsnOpt,
-                                              String ownerType, String ownerId) {
-        ResponseEntity<String> response1 = validateId(resId);
-        if (response1 != null) return response1;
+    protected ResponseEntity<String> validate(String resId, Optional<Identifier> acsnOpt, String ownerType, String ownerId) {
+        if (!isValid(resId) && acsnOpt.isEmpty())
+            return badRequest("Either id or accession identifier is required. Both can not be empty.");
         return validateAccessionId(acsnOpt, ownerType, ownerId);
     }
 

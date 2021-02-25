@@ -31,10 +31,10 @@ public class OclFhirUserController extends BaseOclFhirController {
                                                           @RequestHeader(name = AUTHORIZATION) String auth) {
         CodeSystem system = (CodeSystem) parser.parseResource(codeSystem);
         Optional<Identifier> acsnOpt = hasAccessionIdentifier(system.getIdentifier());
-        ResponseEntity<String> response = validate(user, system.getId(), acsnOpt, USERS, user);
+        ResponseEntity<String> response = validate(system.getIdElement().getIdPart(), acsnOpt, USERS, user);
         if (response != null) return response;
         if (acsnOpt.isEmpty()) addIdentifier(
-                system.getIdentifier(), USERS, user, CODESYSTEM, system.getId(), system.getVersion());
+                system.getIdentifier(), USERS, user, CODESYSTEM, system.getIdElement().getIdPart(), system.getVersion());
 
         performCreate(system, auth);
         return ResponseEntity.status(HttpStatus.CREATED).build();
@@ -49,7 +49,7 @@ public class OclFhirUserController extends BaseOclFhirController {
         if (!validateIfEditable(CODESYSTEM, id, version, USER, user)) return badRequest("The CodeSystem can not be edited.");
         CodeSystem system = (CodeSystem) parser.parseResource(codeSystem);
         Optional<Identifier> acsnOpt = hasAccessionIdentifier(system.getIdentifier());
-        ResponseEntity<String> response = validate(user, id, acsnOpt, USERS, user);
+        ResponseEntity<String> response = validate(id, acsnOpt, USERS, user);
         if (response != null) return response;
         IdType idType = new IdType(CODESYSTEM, id, version);
 
@@ -165,9 +165,9 @@ public class OclFhirUserController extends BaseOclFhirController {
                                                         @RequestHeader(name = AUTHORIZATION) String auth) {
         ValueSet set = (ValueSet) parser.parseResource(valueSet);
         Optional<Identifier> acsnOpt = hasAccessionIdentifier(set.getIdentifier());
-        ResponseEntity<String> response = validate(user, set.getId(), acsnOpt, USERS, user);
+        ResponseEntity<String> response = validate(set.getIdElement().getIdPart(), acsnOpt, USERS, user);
         if (response != null) return response;
-        if (acsnOpt.isEmpty()) addIdentifier(set.getIdentifier(), USERS, user, VALUESET, set.getId(), set.getVersion());
+        if (acsnOpt.isEmpty()) addIdentifier(set.getIdentifier(), USERS, user, VALUESET, set.getIdElement().getIdPart(), set.getVersion());
 
         performCreate(set, auth);
         return ResponseEntity.status(HttpStatus.CREATED).build();
