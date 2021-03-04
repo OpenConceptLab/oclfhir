@@ -16,6 +16,7 @@ import org.openconceptlab.fhir.converter.CodeSystemConverter;
 import org.openconceptlab.fhir.converter.ConceptMapConverter;
 import org.openconceptlab.fhir.converter.ValueSetConverter;
 import org.openconceptlab.fhir.model.Collection;
+import org.openconceptlab.fhir.model.Source;
 import org.openconceptlab.fhir.repository.CollectionRepository;
 import org.openconceptlab.fhir.repository.SourceRepository;
 import org.openconceptlab.fhir.util.OclFhirUtil;
@@ -65,6 +66,31 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
             throw new InvalidRequestException("The ValueSet.url can not be empty. Please provide canonical url.");
         }
         valueSetConverter.createValueSet(valueSet, accessionId, requestDetails.getHeader(AUTHORIZATION));
+        return new MethodOutcome();
+    }
+
+    @Update
+    @Transactional
+    public MethodOutcome updateValueSet(@IdParam IdType idType,
+                                        @ResourceParam ValueSet valueSet,
+                                        RequestDetails requestDetails) {
+        if (valueSet == null) {
+            throw new InvalidRequestException("The ValueSet can not be empty");
+        }
+        if (idType == null || !isValid(idType.getIdPart()) || !isValid(idType.getVersionIdPart()) ||
+                isVersionAll(newStringType(idType.getVersionIdPart()))) {
+            throw new InvalidRequestException("Invalid ValueSet.id or ValueSet.version provided. Both parameters are required.");
+        }
+        StringType owner = newStringType(requestDetails.getHeader(OWNER));
+        if (!isValid(owner))
+            throw new InvalidRequestException("Owner can not be empty.");
+        List<Collection> collections = filterCollectionHead(
+                getCollectionByOwnerAndIdAndVersion(idType.getIdPart(), owner, idType.getVersionIdPart(), publicAccess));
+        if (collections.isEmpty()) {
+            throw new InvalidRequestException("ValueSet is not found.");
+        }
+        String accessionId = buildAccessionId(VALUESET, idType, owner);
+        valueSetConverter.updateValueSet(valueSet, collections.get(0), accessionId, requestDetails.getHeader(AUTHORIZATION));
         return new MethodOutcome();
     }
 

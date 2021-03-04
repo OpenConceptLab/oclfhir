@@ -1,5 +1,6 @@
 package org.openconceptlab.fhir.model;
 
+import com.fasterxml.jackson.annotation.JsonRawValue;
 import org.hibernate.annotations.Type;
 
 import javax.persistence.*;
@@ -106,10 +107,6 @@ public class Collection extends BaseOclEntity implements Serializable {
 
 	@Column
 	private Boolean retired;
-
-	@Type(type = "jsonb")
-	@Column(name="supported_locales", columnDefinition = "jsonb")
-	private String supportedLocales;
 
 	@Column(name="updated_at")
 	private Timestamp updatedAt = new Timestamp(System.currentTimeMillis());
@@ -375,14 +372,6 @@ public class Collection extends BaseOclEntity implements Serializable {
 
 	public void setRetired(Boolean retired) {
 		this.retired = retired;
-	}
-
-	public String getSupportedLocales() {
-		return this.supportedLocales;
-	}
-
-	public void setSupportedLocales(String supportedLocales) {
-		this.supportedLocales = supportedLocales;
 	}
 
 	public Timestamp getUpdatedAt() {

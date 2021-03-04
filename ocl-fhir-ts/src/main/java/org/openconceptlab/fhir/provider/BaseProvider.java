@@ -4,6 +4,7 @@ import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import org.hl7.fhir.r4.model.CodeSystem;
+import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.StringType;
 import org.openconceptlab.fhir.converter.CodeSystemConverter;
 import org.openconceptlab.fhir.converter.ConceptMapConverter;
@@ -16,12 +17,12 @@ import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.openconceptlab.fhir.util.OclFhirConstants.HEAD;
-import static org.openconceptlab.fhir.util.OclFhirConstants.ORG;
+import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 import static org.openconceptlab.fhir.util.OclFhirUtil.*;
 
 public class BaseProvider {
@@ -92,6 +93,21 @@ public class BaseProvider {
         return filtered.stream().sorted(Comparator.comparing(Source::getMnemonic)).collect(Collectors.toList());
     }
 
+    protected List<Collection> getCollectionByOwnerAndIdAndVersion(String id, StringType owner, String version, List<String> access) {
+        String ownerType = getOwnerType(owner.getValue());
+        String value = getOwner(owner.getValue());
+        final Collection collection;
+            // get a given version
+            if (ORG.equals(ownerType)) {
+                collection = collectionRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(
+                        id, version, value, access);
+            } else {
+                collection = collectionRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(
+                        id, version, value, access);
+            }
+        return collection == null ? new ArrayList<>() : Collections.singletonList(collection);
+    }
+
     protected List<Source> getSourceByOwnerAndIdAndVersion(String id, String owner, String version, List<String> access) {
         return getSourceByOwnerAndIdAndVersion(newStringType(id), newStringType(owner), newStringType(version), access);
     }
@@ -129,5 +145,15 @@ public class BaseProvider {
 
     protected List<Collection> filterCollectionHead(List<Collection> collections) {
         return collections.stream().filter(s -> !HEAD.equals(s.getVersion())).collect(Collectors.toList());
+    }
+
+    protected String buildAccessionId(String resourceType, IdType idType, StringType owner) {
+        String ownerType = getOwnerType(owner.getValue());
+        String value = getOwner(owner.getValue());
+        return FS + (ORG.equals(ownerType) ? ORGS : USERS) +
+                FS + value +
+                FS + resourceType +
+                FS + idType.getIdPart() +
+                FS + (isValid(idType.getVersionIdPart()) ? idType.getVersionIdPart() + FS : EMPTY);
     }
 }

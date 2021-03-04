@@ -84,9 +84,6 @@ public class CodeSystemConverter extends BaseConverter {
         }
         // id
         codeSystem.setId(source.getMnemonic());
-        // identifier
-		getIdentifier(source.getUri())
-				.ifPresent(i -> codeSystem.getIdentifier().add(i));
         // version
         codeSystem.setVersion(source.getVersion());
         // name
@@ -111,10 +108,16 @@ public class CodeSystemConverter extends BaseConverter {
 		// publisher
 		if (isValid(source.getPublisher()))
 			codeSystem.setPublisher(source.getPublisher());
-		// override default identifier with database value
 		// identifier, contact, jurisdiction
 		addJsonFields(codeSystem, isValid(source.getIdentifier()) && !EMPTY_JSON.equals(source.getIdentifier()) ? source.getIdentifier() : EMPTY,
 				source.getContact(), source.getJurisdiction());
+		// add accession identifier if not present
+		Optional<Identifier> identifierOpt = codeSystem.getIdentifier().stream()
+				.filter(i -> i.getType().hasCoding(ACSN_SYSTEM, ACSN)).findAny();
+		if (codeSystem.getIdentifier().isEmpty() || identifierOpt.isEmpty()) {
+			getIdentifier(source.getUri())
+					.ifPresent(i -> codeSystem.getIdentifier().add(i));
+		}
 		// purpose
 		if (isValid(source.getPurpose()))
 			codeSystem.setPurpose(source.getPurpose());
@@ -294,6 +297,9 @@ public class CodeSystemConverter extends BaseConverter {
 
 		// save concepts
 		saveConcepts(source.getId(), concepts);
+
+		// populate index
+		oclFhirUtil.populateIndex(getToken(), SOURCES, CONCEPTS);
 	}
 
 	private void saveConcepts(Long sourceId, List<Concept> concepts) {
@@ -531,7 +537,6 @@ public class CodeSystemConverter extends BaseConverter {
 
 	public void updateCodeSystem(final CodeSystem codeSystem, final Source source, final String accessionId, final String authToken) {
 		final OclEntity oclEntity = new OclEntity(codeSystem, accessionId, authToken, false);
-		// we don't allow updating id, version and canonical_url(TODO - ?)
 		// update status
 		if (codeSystem.getStatus() != null) {
 			if (PublicationStatus.DRAFT.toCode().equals(codeSystem.getStatus().toCode()) || PublicationStatus.UNKNOWN.toCode().equals(codeSystem.getStatus().toCode())) {
@@ -543,6 +548,9 @@ public class CodeSystemConverter extends BaseConverter {
 				source.setReleased(False);
 			}
 		}
+		// update canonical url
+		if (isValid(codeSystem.getUrl()))
+			source.setCanonicalUrl(codeSystem.getUrl());
 		// update language
 		if (isValid(codeSystem.getLanguage()))
 			source.setDefaultLocale(codeSystem.getLanguage());
@@ -576,9 +584,13 @@ public class CodeSystemConverter extends BaseConverter {
 		source.setUpdatedBy(oclEntity.getUserProfile());
 		// updated at
 		source.setUpdatedAt(new Timestamp(System.currentTimeMillis()));
+		// we won't allow to update accession identifier, so let's remove it if its present
+		removeAccessionIdentifier(codeSystem.getIdentifier());
+		// update identifier, contact and jurisdiction
+		addJsonStrings(codeSystem, source);
 		// update base source resource
 		sourceRepository.saveAndFlush(source);
-		updateIndex(SOURCES, source.getMnemonic());
+		oclFhirUtil.updateIndex(getToken(), SOURCES, source.getMnemonic());
 
 		// We create new concepts if provided
 		List<Concept> concepts = toConcepts(codeSystem.getConcept(), codeSystem.getLanguage());
@@ -591,7 +603,7 @@ public class CodeSystemConverter extends BaseConverter {
 			if (!newConcepts.isEmpty()) {
 				populateBaseConceptField(newConcepts, source, oclEntity.getUserProfile());
 				saveConcepts(source.getId(), newConcepts);
-				populateIndex(CONCEPTS);
+				oclFhirUtil.populateIndex(getToken(), CONCEPTS);
 			}
 		}
 	}

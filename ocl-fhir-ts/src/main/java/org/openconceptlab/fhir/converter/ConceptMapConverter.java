@@ -63,9 +63,6 @@ public class ConceptMapConverter extends BaseConverter {
         }
         // id
         conceptMap.setId(source.getMnemonic());
-        // identifier
-        getIdentifier(source.getUri().replace("sources", "ConceptMap"))
-                .ifPresent(conceptMap::setIdentifier);
         // version
         conceptMap.setVersion(source.getVersion());
         // name
@@ -83,10 +80,14 @@ public class ConceptMapConverter extends BaseConverter {
         // publisher
         if (isValid(source.getPublisher()))
             conceptMap.setPublisher(source.getPublisher());
-        // override default identifier with database value
         // identifier, contact, jurisdiction
         addJsonFields(conceptMap, isValid(source.getIdentifier()) && !EMPTY_JSON.equals(source.getIdentifier()) ?
                         source.getIdentifier() : EMPTY, source.getContact(), source.getJurisdiction());
+        // add accession identifier if not present
+        if (conceptMap.getIdentifier().isEmpty() || !conceptMap.getIdentifier().getType().hasCoding(ACSN_SYSTEM, ACSN)) {
+            getIdentifier(source.getUri().replace(SOURCES, CONCEPTMAP))
+                    .ifPresent(conceptMap::setIdentifier);
+        }
         // purpose
         if (isValid(source.getPurpose()))
             conceptMap.setPurpose(source.getPurpose());

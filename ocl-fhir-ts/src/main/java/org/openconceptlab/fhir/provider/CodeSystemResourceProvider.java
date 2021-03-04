@@ -81,19 +81,9 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
         if (sources.isEmpty()) {
             throw new InvalidRequestException("CodeSystem is not found.");
         }
-        String accessionId = buildAccessionId(idType, owner);
+        String accessionId = buildAccessionId(CODESYSTEM, idType, owner);
         codeSystemConverter.updateCodeSystem(codeSystem, sources.get(0), accessionId, requestDetails.getHeader(AUTHORIZATION));
         return new MethodOutcome();
-    }
-
-    private String buildAccessionId(IdType idType, StringType owner) {
-        String ownerType = getOwnerType(owner.getValue());
-        String value = getOwner(owner.getValue());
-        return FS + (ORG.equals(ownerType) ? ORGS : USERS) +
-                FS + value +
-                FS + CODESYSTEM +
-                FS + idType.getIdPart() +
-                FS + (isValid(idType.getVersionIdPart()) ? idType.getVersionIdPart() + FS : EMPTY);
     }
 
     /**

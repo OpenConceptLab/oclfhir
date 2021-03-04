@@ -29,8 +29,7 @@ import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.*;
-import static org.openconceptlab.fhir.util.OclFhirConstants.ACSN;
-import static org.openconceptlab.fhir.util.OclFhirConstants.ACSN_SYSTEM;
+import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 
 public class TestValueSetResourceProvider extends OclFhirTest {
 
@@ -773,14 +772,65 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         verify(insertCollectionReference, times(1)).executeAndReturnKeyHolder(anyMap());
     }
 
+    @Test
+    public void testUpdateValueSet() throws SQLException {
+        ValueSetResourceProvider provider = valueSetProvider();
+        ValueSet valueSet = valueSet();
+        valueSet.setName("Updated Name");
+        when(requestDetails.getHeader(AUTHORIZATION)).thenReturn("Token  12345");
+        when(requestDetails.getHeader(OWNER)).thenReturn("org:OCL");
+        when(organizationRepository.findByMnemonic(anyString())).thenReturn(newOrganization());
+        when(authtokenRepository.findByKey(anyString())).thenReturn(newToken(test_user));
+        when(userProfilesOrganizationRepository.findByOrganizationMnemonic(anyString()))
+                .thenReturn(Collections.singletonList(newUserOrg(test_user)));
+        when(collectionRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(
+                anyString(), anyString(), anyString(), anyList()
+        )).thenReturn(collection1);
+        doAnswer(new Answer() {
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+                Object[] args = invocation.getArguments();
+                ((Collection)args[0]).setId(123L);
+                return args[0];
+            }
+        }).when(collectionRepository).saveAndFlush(any(Collection.class));
+
+        when(insertCollectionReference.executeAndReturnKeyHolder(anyMap())).thenReturn(newKey());
+
+        doAnswer(new Answer() {
+            @Override
+            public Object answer(InvocationOnMock invocation) throws Throwable {
+                return null;
+            }
+        }).when(jdbcTemplate).batchUpdate(anyString(), any(BatchPreparedStatementSetter.class));
+        populateSource1(source1);
+        source1.setOrganization(newOrganization());
+        when(sourceRepository.findFirstByCanonicalUrlAndReleasedAndPublicAccessInOrderByCreatedAtDesc(anyString(), anyBoolean(), anyList()))
+                .thenReturn(source1);
+
+        IdType type = new IdType();
+        type.setParts("", "ValueSet", "testcollection", "2.0");
+        provider.updateValueSet(type, valueSet, requestDetails);
+
+        assertEquals("Updated Name", collection1.getName());
+
+        verify(requestDetails, times(1)).getHeader(AUTHORIZATION);
+        verify(requestDetails, times(1)).getHeader(OWNER);
+        verify(organizationRepository, times(1)).findByMnemonic(anyString());
+        verify(authtokenRepository, times(1)).findByKey(anyString());
+        verify(userProfilesOrganizationRepository, times(1)).findByOrganizationMnemonic(anyString());
+        verify(collectionRepository, times(1)).saveAndFlush(any(Collection.class));
+        verify(insertCollectionReference, times(1)).executeAndReturnKeyHolder(anyMap());
+    }
+
     private ValueSet valueSet() {
         ValueSet valueSet = new ValueSet();
         valueSet.setUrl(URL_COLLECTION_1);
         Identifier identifier = valueSet.getIdentifierFirstRep();
         identifier.getType().getCodingFirstRep().setSystem(ACSN_SYSTEM).setCode(ACSN);
         identifier.setSystem("http://test.org");
-        identifier.setValue("/orgs/OCL/ValueSet/testsource/2.0");
-        valueSet.setName("Test Code System");
+        identifier.setValue("/orgs/OCL/ValueSet/testcollection/2.0");
+        valueSet.setName("Test Value Set");
         valueSet.setStatus(Enumerations.PublicationStatus.DRAFT);
         valueSet.setCopyright("Test copy right");
         valueSet.setPurpose("Test purpose");
@@ -795,12 +845,17 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         valueSet.getJurisdictionFirstRep().getCodingFirstRep().setSystem("http://unstats.un.org/unsd/methods/m49/m49.htm")
                 .setCode("USA").setDisplay("United States of America");
 
+        addCodes(valueSet, URL_SOURCE_1, "TEST");
+        return valueSet;
+    }
+
+    private void addCodes(ValueSet valueSet, String system, String code) {
         ValueSet.ValueSetComposeComponent compose = valueSet.getCompose();
         ValueSet.ConceptSetComponent conceptSetComponent = compose.getIncludeFirstRep();
-        conceptSetComponent.setSystem(URL_SOURCE_1);
-        ValueSet.ConceptReferenceComponent referenceComponent = conceptSetComponent.getConceptFirstRep();
-        referenceComponent.setCode("TEST");
-        return valueSet;
+        conceptSetComponent.setSystem(system);
+        ValueSet.ConceptReferenceComponent referenceComponent = new ValueSet.ConceptReferenceComponent();
+        referenceComponent.setCode(code);
+        conceptSetComponent.getConcept().add(referenceComponent);
     }
 
     private void assertContains(ValueSet valueSet, int index, String system, String version, String code, String display) {

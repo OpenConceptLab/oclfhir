@@ -88,9 +88,6 @@ public class ValueSetConverter extends BaseConverter {
         ValueSet valueSet = new ValueSet();
         // set id
         valueSet.setId(collection.getMnemonic());
-        // set identifier
-        getIdentifier(collection.getUri())
-                .ifPresent(i -> valueSet.getIdentifier().add(i));
         // set Url
         if(isValid(collection.getCanonicalUrl()))
             valueSet.setUrl(collection.getCanonicalUrl());
@@ -110,10 +107,17 @@ public class ValueSetConverter extends BaseConverter {
         // publisher
         if (isValid(collection.getPublisher()))
             valueSet.setPublisher(collection.getPublisher());
-        // override default identifier with database value
         // identifier, contact, jurisdiction
         addJsonFields(valueSet, isValid(collection.getIdentifier()) && !EMPTY_JSON.equals(collection.getIdentifier())
                 ? collection.getIdentifier() : EMPTY, collection.getContact(), collection.getJurisdiction());
+        // add accession identifier if not present
+        Optional<Identifier> identifierOpt = valueSet.getIdentifier().stream()
+                .filter(i -> i.getType().hasCoding(ACSN_SYSTEM, ACSN)).findAny();
+        if (valueSet.getIdentifier().isEmpty() || identifierOpt.isEmpty()) {
+            getIdentifier(collection.getUri())
+                    .ifPresent(i -> valueSet.getIdentifier().add(i));
+        }
+
         // purpose
         if (isValid(collection.getPurpose()))
             valueSet.setPurpose(collection.getPurpose());
@@ -240,7 +244,8 @@ public class ValueSetConverter extends BaseConverter {
                     String [] ar = formatExpression(e).split(FS);
                     String conceptId = getConceptId(ar);
                     if (isValid(conceptId))
-                        map.put(conceptId + getConceptVersion(ar) + getSourceId(ar) + getSourceVersion(ar), e);
+                        map.put(conceptId + getConceptVersion(ar) + getSourceId(ar) + getSourceVersion(ar),
+                                formatExpression(e));
                 });
 
         return new ArrayList<>(map.values());
@@ -593,20 +598,13 @@ public class ValueSetConverter extends BaseConverter {
             expressions.addAll(toExpression(ownerType, owner, source.getMnemonic(), source.getVersion(), validated.values()));
         });
         // save collection
-        collectionRepository.saveAndFlush(collection);
-        // save collection reference
-        List<Integer> referenceIds = expressions.stream().map(m -> insert(insertCollectionReference, toMap(m)))
-                .map(Long::intValue)
-                .collect(Collectors.toList());
-        // save collections references
-        batchInsert(insertCollectionsReferences, collection.getId().intValue(), referenceIds);
-        // save collections concepts
-        batchInsert(insertCollectionsConcepts, collection.getId().intValue(),
-                validatedConceptIds.keySet().stream().map(Long::intValue).collect(Collectors.toList()));
+        saveCollection(collection, validatedConceptIds, expressions);
         // clear data
         sourceToConceptMap.clear();
         validatedConceptIds.clear();
         expressions.clear();
+        // populate index
+        oclFhirUtil.populateIndex(getToken(), COLLECTIONS);
     }
 
     private Map<Source,List<String>> toConcepts(ValueSet.ValueSetComposeComponent component, String defaultLocale) {
@@ -701,35 +699,17 @@ public class ValueSetConverter extends BaseConverter {
         }
         // version
         collection.setVersion(valueSet.getVersion());
-        // default locale
-        collection.setDefaultLocale(isValid(valueSet.getLanguage()) ? valueSet.getLanguage() : EN_LOCALE);
         // uri
         collection.setUri(toOclUri(uri));
         // name
         String name = isValid(valueSet.getName()) ? valueSet.getName() : valueSet.getId();
         collection.setName(name);
-        // copyright
-        if (isValid(valueSet.getCopyright()))
-            collection.setCopyright(valueSet.getCopyright());
-        // description
-        if (isValid(valueSet.getDescription()))
-            collection.setDescription(valueSet.getDescription());
-        // title
-        if (isValid(valueSet.getTitle()))
-            collection.setFullName(valueSet.getTitle());
-        // publisher
-        if (isValid(valueSet.getPublisher()))
-            collection.setPublisher(valueSet.getPublisher());
-        // purpose
-        if (isValid(valueSet.getPurpose()))
-            collection.setPurpose(valueSet.getPurpose());
-        // revision date
-        if (valueSet.getDate() != null)
-            collection.setRevisionDate(valueSet.getDate());
+        // default locale
+        collection.setDefaultLocale(isValid(valueSet.getLanguage()) ? valueSet.getLanguage() : EN_LOCALE);
+        // common fields
+        addCommonFields(valueSet, collection);
         // extras
         collection.setExtras(EMPTY_JSON);
-        // immutable
-        collection.setImmutable(valueSet.getImmutable());
         return collection;
     }
 
@@ -764,4 +744,121 @@ public class ValueSetConverter extends BaseConverter {
             }
         });
     }
+
+    private void addCommonFields(final ValueSet valueSet, final Collection collection) {
+        // title
+        if (isValid(valueSet.getTitle()))
+            collection.setFullName(valueSet.getTitle());
+        // description
+        if (isValid(valueSet.getDescription()))
+            collection.setDescription(valueSet.getDescription());
+        // copyright
+        if (isValid(valueSet.getCopyright()))
+            collection.setCopyright(valueSet.getCopyright());
+        // publisher
+        if (isValid(valueSet.getPublisher()))
+            collection.setPublisher(valueSet.getPublisher());
+        // purpose
+        if (isValid(valueSet.getPurpose()))
+            collection.setPurpose(valueSet.getPurpose());
+        // revision date
+        if (valueSet.getDate() != null)
+            collection.setRevisionDate(valueSet.getDate());
+        // immutable
+        collection.setImmutable(valueSet.getImmutable());
+    }
+
+    public void updateValueSet(final ValueSet valueSet, final Collection collection, final String accessionId, final String authToken) {
+        final OclEntity oclEntity = new OclEntity(valueSet, accessionId, authToken, false);
+        // update status
+        if (valueSet.getStatus() != null) {
+            if (PublicationStatus.DRAFT.toCode().equals(valueSet.getStatus().toCode()) || PublicationStatus.UNKNOWN.toCode().equals(valueSet.getStatus().toCode())) {
+                collection.setReleased(False);
+                collection.setRetired(False);
+            } else if (PublicationStatus.ACTIVE.toCode().equals(valueSet.getStatus().toCode())) {
+                collection.setReleased(True);
+                collection.setRetired(False);
+            } else if (PublicationStatus.RETIRED.toCode().equals(valueSet.getStatus().toCode())) {
+                collection.setRetired(True);
+                collection.setReleased(False);
+            }
+        }
+        // update canonical url
+        if (isValid(valueSet.getUrl()))
+            collection.setCanonicalUrl(valueSet.getUrl());
+        // update name
+        if (isValid(valueSet.getName()))
+            collection.setName(valueSet.getName());
+        // update language
+        if (isValid(valueSet.getLanguage()))
+            collection.setDefaultLocale(valueSet.getLanguage());
+        // update common fields
+        addCommonFields(valueSet, collection);
+        // updated by
+        collection.setUpdatedBy(oclEntity.getUserProfile());
+        // updated at
+        collection.setUpdatedAt(new Timestamp(System.currentTimeMillis()));
+        // we won't allow to update accession identifier, so let's remove it if its present
+        removeAccessionIdentifier(valueSet.getIdentifier());
+        // update identifier, contact and jurisdiction
+        addJsonStrings(valueSet, collection);
+
+        // existing references
+        List<String> existing = getAllExpressions(collection);
+        // source to all concepts
+        Map<Source, List<String>> sourceToConceptMap = toConcepts(valueSet.getCompose(), valueSet.getLanguage());
+        // conceptId to mnemonic
+        Map<Long, String> validatedConceptIds = new HashMap<>();
+        // new expressions
+        Set<String> newExpressions = new HashSet<>();
+        sourceToConceptMap.forEach((source, conceptIds) -> {
+            // validate source-concept relationship and build reference expressions
+            String ownerType = source.getOrganization() != null ? ORGS : USERS;
+            String owner = source.getOrganization() != null ? source.getOrganization().getMnemonic() :
+                    source.getUserId().getUsername();
+            // let's find out any new concept codes added in ValueSet
+            List<String> newConceptIds = new ArrayList<>();
+            for (String conceptId : conceptIds) {
+                String expression = toExpression(ownerType, owner, source.getMnemonic(), source.getVersion(), conceptId);
+                if (!existing.contains(expression)) {
+                    newConceptIds.add(conceptId);
+                }
+            }
+            // only save new concepts and references
+            if (!newConceptIds.isEmpty()) {
+                // conceptId to mnemonic
+                Map<Long, String> validated = getValidatedConceptIds(source.getId(), newConceptIds);
+                validatedConceptIds.putAll(validated);
+                newExpressions.addAll(toExpression(ownerType, owner, source.getMnemonic(), source.getVersion(), validated.values()));
+            }
+        });
+
+        // save collection
+        saveCollection(collection, validatedConceptIds, newExpressions);
+
+        // clear data
+        sourceToConceptMap.clear();
+        validatedConceptIds.clear();
+        newExpressions.clear();
+
+        // update index
+        oclFhirUtil.updateIndex(getToken(), COLLECTIONS, collection.getMnemonic());
+    }
+
+    private void saveCollection(Collection collection, Map<Long, String> validatedConceptIds, Set<String> expressions) {
+        // save base collection
+        collectionRepository.saveAndFlush(collection);
+        // save collection reference
+        List<Integer> referenceIds = expressions.stream().map(m -> insert(insertCollectionReference, toMap(m)))
+                .map(Long::intValue)
+                .collect(Collectors.toList());
+        // save collections references
+        batchInsert(insertCollectionsReferences, collection.getId().intValue(), referenceIds);
+        // save collections concepts
+        batchInsert(insertCollectionsConcepts, collection.getId().intValue(),
+                validatedConceptIds.keySet().stream().map(Long::intValue).collect(Collectors.toList()));
+    }
+
 }
+
+

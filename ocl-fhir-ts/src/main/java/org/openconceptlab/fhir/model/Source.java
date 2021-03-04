@@ -101,10 +101,6 @@ public class Source extends BaseOclEntity implements Serializable {
 	@Column(name="source_type")
 	private String sourceType;
 
-	@Type(type = "jsonb")
-	@Column(name="supported_locales", columnDefinition = "jsonb")
-	private String supportedLocales;
-
 	@Column(name="updated_at")
 	private Timestamp updatedAt = new Timestamp(System.currentTimeMillis());
 
@@ -352,14 +348,6 @@ public class Source extends BaseOclEntity implements Serializable {
 
 	public void setSourceType(String sourceType) {
 		this.sourceType = sourceType;
-	}
-
-	public String getSupportedLocales() {
-		return this.supportedLocales;
-	}
-
-	public void setSupportedLocales(String supportedLocales) {
-		this.supportedLocales = supportedLocales;
 	}
 
 	public Timestamp getUpdatedAt() {

@@ -23,11 +23,14 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
@@ -62,6 +65,9 @@ public class OclFhirUtil {
     private SourceRepository sourceRepository;
     private ConceptRepository conceptRepository;
     private ConceptsSourceRepository conceptsSourceRepository;
+
+    @Autowired
+    RestTemplate restTemplate;
 
     @Autowired
     public OclFhirUtil(SourceRepository sourceRepository, ConceptRepository conceptRepository, ConceptsSourceRepository conceptsSourceRepository) {
@@ -642,6 +648,56 @@ public class OclFhirUtil {
             return COLLECTIONS;
         } else {
             throw new InvalidRequestException("Invalid resource type - " + resourceType);
+        }
+    }
+
+    @Async
+    public void updateIndex(Optional<String> token, String resource, String... ids) {
+        // Update indexes for given resource and ids
+        // Use for existing resource
+        java.net.URI url = null;
+        try {
+            url = new URI(oclApiBaseUrl() + "/indexes/resources/" + resource + FS);
+            log.info(String.format("Updating index. Url - %s. Parameters - Key:ids, Value:%s",
+                    url, Arrays.toString(ids)));
+            restTemplate.postForEntity(url, getRequest(token, "ids", ids), String.class);
+        } catch (Exception e) {
+            String msg = String.format("Could not update index. Url - %s. Parameters - Key:ids, Value:%s. \n %s",
+                    url, Arrays.toString(ids), e.getMessage());
+            log.error(msg);
+        }
+    }
+
+    @Async
+    public void populateIndex(Optional<String> token, String... apps) {
+        // populate index for new app
+        // Use for new resource
+        URI url = null;
+        try {
+            url = new URI(oclApiBaseUrl() + "/indexes/apps/populate/");
+            log.info(String.format("Populating index. Url - %s. Parameters - Key:apps, Value:%s",
+                    url, Arrays.toString(apps)));
+            new RestTemplate().postForEntity(url, getRequest(token, "apps", apps), String.class);
+        } catch (Exception e) {
+            String msg = String.format("Could not populate index. Url - %s. Parameters - Key:apps, Value:%s. \n %s",
+                    url, Arrays.toString(apps), e.getMessage());
+            log.error(msg);
+        }
+    }
+
+    @Async
+    protected void rebuildIndex(Optional<String> token, String... apps) {
+        // rebuild index for given app
+        URI url = null;
+        try {
+            url = new URI(oclApiBaseUrl() + "/indexes/apps/rebuild/");
+            log.info(String.format("Rebuilding index. Url - %s. Parameters - Key:apps, Value:%s",
+                    url, Arrays.toString(apps)));
+            new RestTemplate().postForEntity(url, getRequest(token, "apps", apps), String.class);
+        } catch (Exception e) {
+            String msg = String.format("Could not rebuild index. Url - %s. Parameters - Key:apps, Value:%s. \n %s",
+                    url, Arrays.toString(apps), e.getMessage());
+            log.error(msg);
         }
     }
 }

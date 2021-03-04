@@ -19,6 +19,7 @@ import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -184,7 +185,8 @@ public class BaseConverter {
     }
 
     protected void addJsonStrings(final CodeSystem codeSystem, final Source source) {
-        source.setIdentifier(convertToJsonString(getResIdentifierString(codeSystem), IDENTIFIER));
+        if (!codeSystem.getIdentifier().isEmpty())
+            source.setIdentifier(convertToJsonString(getResIdentifierString(codeSystem), IDENTIFIER));
         if (!codeSystem.getContact().isEmpty())
             source.setContact(convertToJsonString(getResContactString(codeSystem), CONTACT));
         if (!codeSystem.getJurisdiction().isEmpty())
@@ -192,7 +194,8 @@ public class BaseConverter {
     }
 
     protected void addJsonStrings(final ValueSet valueSet, final Collection collection) {
-        collection.setIdentifier(convertToJsonString(getResIdentifierString(valueSet), IDENTIFIER));
+        if (!valueSet.getIdentifier().isEmpty())
+            collection.setIdentifier(convertToJsonString(getResIdentifierString(valueSet), IDENTIFIER));
         if (!valueSet.getContact().isEmpty())
             collection.setContact(convertToJsonString(getResContactString(valueSet), CONTACT));
         if (!valueSet.getJurisdiction().isEmpty())
@@ -473,52 +476,15 @@ public class BaseConverter {
         return resources;
     }
 
-    protected void updateIndex(String resource, String... ids) {
-        // Update indexes for given resource and ids
-        // Use for existing resource
-        URI url = null;
-        try {
-            url = new URI(oclFhirUtil.oclApiBaseUrl() + "/indexes/resources/" + resource + FS);
-            new RestTemplate().postForEntity(url, oclFhirUtil.getRequest(getToken(), "ids", ids), String.class);
-        } catch (Exception e) {
-            String msg = String.format("Could not update index. Url - %s. Parameters - Key:ids, Value:%s. \n %s",
-                    url, Arrays.toString(ids), e.getMessage());
-            log.error(msg);
-        }
-    }
-
-    protected void populateIndex(String... apps) {
-        // populate index for new app
-        // Use for new resource
-        URI url = null;
-        try {
-            url = new URI(oclFhirUtil.oclApiBaseUrl() + "/indexes/apps/populate/");
-            new RestTemplate().postForEntity(url, oclFhirUtil.getRequest(getToken(), "apps", apps), String.class);
-        } catch (Exception e) {
-            String msg = String.format("Could not populate index. Url - %s. Parameters - Key:apps, Value:%s. \n %s",
-                    url, Arrays.toString(apps), e.getMessage());
-            log.error(msg);
-        }
-    }
-
-    protected void rebuildIndex(String... apps) {
-        // rebuild index for given app
-        URI url = null;
-        try {
-            url = new URI(oclFhirUtil.oclApiBaseUrl() + "/indexes/apps/rebuild/");
-            new RestTemplate().postForEntity(url, oclFhirUtil.getRequest(getToken(), "apps", apps), String.class);
-        } catch (Exception e) {
-            String msg = String.format("Could not rebuild index. Url - %s. Parameters - Key:apps, Value:%s. \n %s",
-                    url, Arrays.toString(apps), e.getMessage());
-            log.error(msg);
-        }
-    }
-
-    private Optional<String> getToken() {
+    protected Optional<String> getToken() {
         return oclUser.getAuthtokenTokens().stream()
                 .filter(f -> isValid(f.getKey()))
                 .map(m -> "Token " + m.getKey())
                 .findFirst();
+    }
+
+    protected void removeAccessionIdentifier(List<Identifier> identifiers) {
+        identifiers.removeIf(i -> i.getType().hasCoding(ACSN_SYSTEM, ACSN));
     }
 }
 
