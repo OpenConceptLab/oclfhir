@@ -34,7 +34,7 @@ RUN cd /code \
 #Stage 2: Runtime  
 FROM openjdk:14-jdk-alpine as runtime
 
-RUN apk add --update bash && rm -rf /var/cache/apk/*
+RUN apk add --update bash curl && rm -rf /var/cache/apk/*
 
 RUN addgroup -S spring && adduser -S spring -G spring
 USER spring:spring
