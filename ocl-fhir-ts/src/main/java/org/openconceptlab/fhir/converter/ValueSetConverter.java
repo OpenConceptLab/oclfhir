@@ -47,7 +47,7 @@ public class ValueSetConverter extends BaseConverter {
 
     private static final Map<String,Object> collReferenceParamMap = new HashMap<>();
     private static final String insertCollectionsReferences = "insert into collections_references (collection_id,collectionreference_id) values (?,?)";
-    private static final String insertCollectionsConcepts = "insert into collections_concepts (collection_id,concept_id) values (?,?)";
+    private static final String insertCollectionsConcepts = "insert into collections_concepts (collection_id,concept_id) values (?,?) on conflict do nothing";
 
     public ValueSetConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil,
                              UserProfile oclUser, ConceptsSourceRepository conceptsSourceRepository, DataSource dataSource,
@@ -595,7 +595,7 @@ public class ValueSetConverter extends BaseConverter {
                     source.getUserId().getUsername();
             Map<Long,String> validated = getValidatedConceptIds(source.getId(), conceptIds);
             validatedConceptIds.putAll(validated);
-            expressions.addAll(toExpression(ownerType, owner, source.getMnemonic(), source.getVersion(), validated.values()));
+            expressions.addAll(toExpression(ownerType, owner, source.getMnemonic(), source.getVersion(), validated));
         });
         // save collection
         saveCollection(collection, validatedConceptIds, expressions);
@@ -655,18 +655,20 @@ public class ValueSetConverter extends BaseConverter {
         });
         return map;
     }
-
+    
     private List<String> toExpression(String ownerType, String owner, String sourceId, String sourceVersion,
-                                      java.util.Collection<String> conceptIds) {
-        return conceptIds.parallelStream().map(m -> toExpression(ownerType, owner, sourceId, sourceVersion, m))
+                                      Map<Long, String> conceptIdMap) {
+        return conceptIdMap.entrySet().parallelStream()
+                .map(m -> toExpression(ownerType, owner, sourceId, sourceVersion, m.getValue(), m.getKey()))
                 .collect(Collectors.toList());
     }
 
-    private String toExpression(String ownerType, String owner, String sourceId, String sourceVersion, String conceptId) {
+    private String toExpression(String ownerType, String owner, String sourceId, String sourceVersion, String conceptId,
+                                Long conceptVersionId) {
         String pre = FS + ownerType + FS + owner + FS + SOURCES + FS + sourceId + FS;
         if (isValid(sourceVersion) && !HEAD.equals(sourceVersion))
             pre = pre + sourceVersion + FS;
-        return pre + CONCEPTS + FS + conceptId + FS;
+        return pre + CONCEPTS + FS + conceptId + FS + conceptVersionId + FS;
     }
 
     private Collection toBaseCollection(final ValueSet valueSet, final UserProfile user, final String uri) {
@@ -812,24 +814,29 @@ public class ValueSetConverter extends BaseConverter {
         // new expressions
         Set<String> newExpressions = new HashSet<>();
         sourceToConceptMap.forEach((source, conceptIds) -> {
-            // validate source-concept relationship and build reference expressions
+            // all valid concepts for given source
+            Map<Long, String> conceptIdMap = getValidatedConceptIds(source.getId(), conceptIds);
             String ownerType = source.getOrganization() != null ? ORGS : USERS;
             String owner = source.getOrganization() != null ? source.getOrganization().getMnemonic() :
                     source.getUserId().getUsername();
-            // let's find out any new concept codes added in ValueSet
-            List<String> newConceptIds = new ArrayList<>();
             for (String conceptId : conceptIds) {
-                String expression = toExpression(ownerType, owner, source.getMnemonic(), source.getVersion(), conceptId);
-                if (!existing.contains(expression)) {
-                    newConceptIds.add(conceptId);
+                // check if concept code is valid
+                Optional<Long> conceptVersionId = conceptIdMap.entrySet().stream()
+                        .filter(e -> e.getValue().equals(conceptId)).map(Map.Entry::getKey).findFirst();
+                if (conceptVersionId.isPresent()) {
+                    String expression = toExpression(ownerType, owner, source.getMnemonic(), source.getVersion(), conceptId, conceptVersionId.get());
+                    // check if the expression already exists
+                    if (existing.contains(expression)) {
+                        // remove existing concept from the validated list of concepts
+                        conceptIdMap.remove(conceptVersionId.get());
+                    }
                 }
             }
             // only save new concepts and references
-            if (!newConceptIds.isEmpty()) {
+            if (!conceptIdMap.isEmpty()) {
                 // conceptId to mnemonic
-                Map<Long, String> validated = getValidatedConceptIds(source.getId(), newConceptIds);
-                validatedConceptIds.putAll(validated);
-                newExpressions.addAll(toExpression(ownerType, owner, source.getMnemonic(), source.getVersion(), validated.values()));
+                validatedConceptIds.putAll(conceptIdMap);
+                newExpressions.addAll(toExpression(ownerType, owner, source.getMnemonic(), source.getVersion(), conceptIdMap));
             }
         });
 
