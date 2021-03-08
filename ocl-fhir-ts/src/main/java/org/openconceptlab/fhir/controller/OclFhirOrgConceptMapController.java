@@ -15,8 +15,7 @@ import java.util.Optional;
 
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 import static org.openconceptlab.fhir.util.OclFhirConstants.TRANSLATE;
-import static org.openconceptlab.fhir.util.OclFhirUtil.getResource;
-import static org.openconceptlab.fhir.util.OclFhirUtil.newStringType;
+import static org.openconceptlab.fhir.util.OclFhirUtil.*;
 
 @RestController
 @RequestMapping({"/orgs/{org}/ConceptMap"})
@@ -26,6 +25,25 @@ public class OclFhirOrgConceptMapController extends BaseOclFhirController {
                                           ValueSetResourceProvider valueSetResourceProvider,
                                           OclFhirUtil oclFhirUtil) {
         super(codeSystemResourceProvider, valueSetResourceProvider, oclFhirUtil);
+    }
+
+    /**
+     * Delete {@link ConceptMap} version.
+     *
+     * @param id      - the {@link ConceptMap} id
+     * @param version - the {@link ConceptMap} version
+     * @param org     - the organization id
+     * @return ResponseEntity
+     */
+    @DeleteMapping(path = {"/{id}/version/{version}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> deleteConceptMapByOrg(@PathVariable(name = ID) String id,
+                                                        @PathVariable(name = VERSION) String version,
+                                                        @PathVariable(name = ORG) String org,
+                                                        @RequestHeader(name = AUTHORIZATION) String auth) {
+        if (!validateIfEditable(CONCEPTMAP, id, version, ORG, org))
+            return badRequest("The ConceptMap can not be deleted.");
+        String url = oclFhirUtil.oclApiBaseUrl() + FS + ORGS + FS + org + FS + SOURCES + FS + id + FS + version + FS;
+        return performDeleteOclApi(url, auth);
     }
 
     /**
