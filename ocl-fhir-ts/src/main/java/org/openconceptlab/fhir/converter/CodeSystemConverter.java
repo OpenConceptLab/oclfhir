@@ -9,24 +9,23 @@ import org.apache.commons.logging.LogFactory;
 import org.hl7.fhir.r4.model.*;
 import org.hl7.fhir.r4.model.CodeSystem.ConceptPropertyComponent;
 import org.hl7.fhir.r4.model.codesystems.PublicationStatus;
-import org.openconceptlab.fhir.model.Organization;
 import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.repository.*;
 import org.openconceptlab.fhir.util.OclFhirConstants;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -41,8 +40,16 @@ import static org.openconceptlab.fhir.util.OclFhirUtil.*;
 @Component
 public class CodeSystemConverter extends BaseConverter {
 
-	public static final String DEFAULT_RES_VERSION = "0.1";
 	private static final Log log = LogFactory.getLog(CodeSystemConverter.class);
+	private static final String insertConceptsSources = "insert into concepts_sources (concept_id,source_id) values (?,?) on conflict do nothing";
+	private static final String insertConceptNamesSql = "insert into concepts_names (localizedtext_id,concept_id) values (?,?) on conflict do nothing";
+	private static final String insertConceptDescSql = "insert into concepts_descriptions (localizedtext_id,concept_id) values (?,?) on conflict do nothing";
+	private static final String updateConceptSql = "update concepts set " +
+			" version = ?, " +
+			" versioned_object_id = ?, " +
+			" uri = (select substring(c2.uri, 1 ,length(c2.uri) - 2) || c2.id || '/' from concepts c2 where c2.id = ?) " +
+			" where id = ?";
+
 	public CodeSystemConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil,
 							   UserProfile oclUser, ConceptsSourceRepository conceptsSourceRepository, DataSource dataSource,
 							   AuthtokenRepository authtokenRepository, UserProfilesOrganizationRepository userProfilesOrganizationRepository,
@@ -289,27 +296,27 @@ public class CodeSystemConverter extends BaseConverter {
 		addJsonStrings(codeSystem, source);
 		// add concepts
 		List<Concept> concepts = toConcepts(codeSystem.getConcept(), codeSystem.getLanguage());
-		populateBaseConceptField(concepts, source, oclEntity.getUserProfile());
+		populateBaseConceptField(concepts, source, user);
 
 		// save source
 		sourceRepository.saveAndFlush(source);
 		log.info("saved source - " + source.getMnemonic());
 
 		// save concepts
-		saveConcepts(source.getId(), concepts);
+		saveConcepts(source, concepts);
 
 		// populate index
 		oclFhirUtil.populateIndex(getToken(), SOURCES, CONCEPTS);
 	}
 
-	private void saveConcepts(Long sourceId, List<Concept> concepts) {
+	private void saveConcepts(Source source, List<Concept> concepts) {
 		List<Integer> conceptIds = new CopyOnWriteArrayList<>();
 		// save concept
 		persistConcepts(concepts, conceptIds);
 		// update concept version
-		List<List<Integer>> conceptIdBatches = updateConceptsVersion(conceptIds);
+		List<List<Integer>> conceptIdBatches = updateConcepts(conceptIds);
 		// save concepts sources
-		saveConceptsSources(sourceId, conceptIds, conceptIdBatches);
+		saveConceptsSources(source.getId(), conceptIds, conceptIdBatches);
 	}
 
 	private void persistConcepts(List<Concept> concepts, List<Integer> conceptIds) {
@@ -323,11 +330,26 @@ public class CodeSystemConverter extends BaseConverter {
 		}
 	}
 
-	private List<List<Integer>> updateConceptsVersion(List<Integer> conceptIds) {
+	private List<List<Integer>> updateConcepts(List<Integer> conceptIds) {
 		// update concept version = concept id
 		List<List<Integer>> conceptIdBatches = ListUtils.partition(conceptIds, 1000);
-		conceptIdBatches.forEach(this::batchUpdateConceptVersion);
+		conceptIdBatches.forEach(this::batchUpdateConcept);
 		return conceptIdBatches;
+	}
+
+	protected void batchUpdateConcept(List<Integer> conceptIds) {
+		this.jdbcTemplate.batchUpdate(updateConceptSql, new BatchPreparedStatementSetter() {
+			public void setValues(PreparedStatement ps, int i)
+					throws SQLException {
+				ps.setInt(1, conceptIds.get(i));
+				ps.setInt(2, conceptIds.get(i));
+				ps.setInt(3, conceptIds.get(i));
+				ps.setInt(4, conceptIds.get(i));
+			}
+			public int getBatchSize() {
+				return conceptIds.size();
+			}
+		});
 	}
 
 	private void saveConceptsSources(Long sourceId, List<Integer> conceptIds, List<List<Integer>> conceptIdBatches) {
@@ -368,7 +390,7 @@ public class CodeSystemConverter extends BaseConverter {
 			// -- data type
 			concept.setDatatype(getStringProperty(properties, OclFhirConstants.DATATYPE));
 			// -- inactive
-			concept.setIsActive(!getBooleanProperty(properties, INACTIVE));
+			concept.setRetired(getBooleanProperty(properties, INACTIVE));
 			return concept;
 		}
 		return null;
@@ -416,79 +438,6 @@ public class CodeSystemConverter extends BaseConverter {
 			}
 		}
 		return texts;
-	}
-
-	private Source toBaseSource(final CodeSystem codeSystem, final UserProfile user, final String uri) {
-		Source source = new Source();
-		// mnemonic
-		source.setMnemonic(codeSystem.getId());
-		// canonical url
-		source.setCanonicalUrl(codeSystem.getUrl());
-		// created by
-		source.setCreatedBy(user);
-		// updated by
-		source.setUpdatedBy(user);
-
-		// draft or unknown or empty
-		source.setIsActive(True);
-		source.setIsLatestVersion(True);
-		source.setRetired(False);
-		source.setReleased(False);
-		if (codeSystem.getStatus() != null) {
-			// active
-			if (PublicationStatus.ACTIVE.toCode().equals(codeSystem.getStatus().toCode())) {
-				source.setReleased(True);
-				// retired
-			} else if (PublicationStatus.RETIRED.toCode().equals(codeSystem.getStatus().toCode())) {
-				source.setRetired(True);
-				source.setReleased(False);
-				source.setIsActive(False);
-				source.setIsLatestVersion(False);
-			}
-		}
-		// version
-		source.setVersion(codeSystem.getVersion());
-		// default locale
-		source.setDefaultLocale(isValid(codeSystem.getLanguage()) ? codeSystem.getLanguage() : EN_LOCALE);
-		// uri
-		source.setUri(toOclUri(uri));
-		// name
-		String name = isValid(codeSystem.getName()) ? codeSystem.getName() : codeSystem.getId();
-		source.setName(name);
-		// content type
-		if (codeSystem.getContent() != null && !codeSystem.getContent().toCode().equals(CodeSystem.CodeSystemContentMode.NULL.toCode()))
-			source.setContentType(codeSystem.getContent().toCode());
-		// copyright
-		if (isValid(codeSystem.getCopyright()))
-			source.setCopyright(codeSystem.getCopyright());
-		// description
-		if (isValid(codeSystem.getDescription()))
-			source.setDescription(codeSystem.getDescription());
-		// title
-		if (isValid(codeSystem.getTitle()))
-			source.setFullName(codeSystem.getTitle());
-		// publisher
-		if (isValid(codeSystem.getPublisher()))
-			source.setPublisher(codeSystem.getPublisher());
-		// purpose
-		if (isValid(codeSystem.getPurpose()))
-			source.setPurpose(codeSystem.getPurpose());
-		// revision date
-		if (codeSystem.getDate() != null)
-			source.setRevisionDate(codeSystem.getDate());
-		// extras
-		source.setExtras(EMPTY_JSON);
-		return source;
-	}
-
-	private void addParent(final Source source, final BaseOclEntity owner) {
-		if (owner instanceof Organization) {
-			Organization organization = (Organization) owner;
-			source.setOrganization(organization);
-			source.setPublicAccess(organization.getPublicAccess());
-		} else if (owner instanceof UserProfile){
-			source.setUserId((UserProfile) owner);
-		}
 	}
 
 	@Deprecated
@@ -602,29 +551,26 @@ public class CodeSystemConverter extends BaseConverter {
 			List<Concept> newConcepts = batch.stream().filter(f -> !existingConcepts.contains(f.getMnemonic())).collect(Collectors.toList());
 			if (!newConcepts.isEmpty()) {
 				populateBaseConceptField(newConcepts, source, oclEntity.getUserProfile());
-				saveConcepts(source.getId(), newConcepts);
+				saveConcepts(source, newConcepts);
 				oclFhirUtil.populateIndex(getToken(), CONCEPTS);
 			}
 		}
 	}
 
 	private void populateBaseConceptField(List<Concept> concepts, Source source, UserProfile user) {
-		// version-less source uri
-		String value = source.getUri().substring(0, source.getUri().lastIndexOf(FS));
-		String versionLessSourceUri = value.substring(0, value.lastIndexOf(FS)) + FS;
-
 		concepts.forEach(c -> {
 			c.setParent(source);
 			c.setPublicAccess(source.getPublicAccess());
+			// will be replaced with generated id, DO NOT CHANGE THE VALUE
 			c.setVersion("1");
 			c.setIsLatestVersion(True);
-			c.setReleased(c.getIsActive());
-			c.setRetired(c.getIsActive());
+			c.setIsActive(True);
+			c.setReleased(!c.getRetired());
 			c.setDefaultLocale(source.getDefaultLocale());
 			c.setCreatedBy(user);
 			c.setUpdatedBy(user);
 			c.setVersionedObject(c);
-			c.setUri(versionLessSourceUri + CONCEPTS + FS + c.getMnemonic() + FS + c.getVersion() + FS);
+			c.setUri(getVersionLessSourceUri(source) + CONCEPTS + FS + c.getMnemonic() + FS + c.getVersion() + FS);
 			c.setExtras(EMPTY_JSON);
 		});
 	}
@@ -640,6 +586,94 @@ public class CodeSystemConverter extends BaseConverter {
 				return rs.getString(1);
 			}
 		});
+	}
+
+	private void batchUpdateConceptSources(List<Integer> conceptIds, Long sourceId) {
+		this.jdbcTemplate.batchUpdate(insertConceptsSources, new BatchPreparedStatementSetter() {
+			public void setValues(PreparedStatement ps, int i)
+					throws SQLException {
+				ps.setInt(1, conceptIds.get(i));
+				ps.setLong(2, sourceId);
+			}
+			public int getBatchSize() {
+				return conceptIds.size();
+			}
+		});
+	}
+
+	private void batchInsertConceptNames(String sql, List<Long> nameIds, Integer conceptId) {
+		this.jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
+			public void setValues(PreparedStatement ps, int i)
+					throws SQLException {
+				ps.setInt(1, nameIds.get(i).intValue());
+				ps.setInt(2, conceptId);
+			}
+			public int getBatchSize() {
+				return nameIds.size();
+			}
+		});
+	}
+
+	private void batchConcepts(List<Concept> concepts, List<Integer> conceptIds) {
+		concepts.forEach(c -> {
+			Integer conceptId = insert(insertConcept, toMap(c)).intValue();
+			if (!c.getConceptsNames().isEmpty()) {
+				List<Long> nameIds = insertRows(
+						c.getConceptsNames().stream().filter(Objects::nonNull).filter(f -> f.getLocalizedText() != null).map(ConceptsName::getLocalizedText).collect(Collectors.toList())
+				);
+				batchInsertConceptNames(insertConceptNamesSql, nameIds, conceptId);
+			}
+			if (!c.getConceptsDescriptions().isEmpty()) {
+				List<Long> descIds = insertRows(
+						c.getConceptsDescriptions().stream().filter(Objects::nonNull).filter(f -> f.getLocalizedText() != null).map(ConceptsDescription::getLocalizedText).collect(Collectors.toList())
+				);
+				batchInsertConceptNames(insertConceptDescSql, descIds, conceptId);
+			}
+			conceptIds.add(conceptId);
+		});
+	}
+
+	private Map<String, Object> toMap(LocalizedText text) {
+		Map<String, Object> map = new HashMap<>();
+		map.put(NAME, text.getName());
+		map.put(TYPE, text.getType());
+		map.put(LOCALE, text.getLocale());
+		map.put(LOCALE_PREFERRED, text.getLocalePreferred());
+		map.put(CREATED_AT, text.getCreatedAt());
+		return map;
+	}
+
+	private Map<String, Object> toMap(Concept obj) {
+		Map<String, Object> map = new HashMap<>();
+		map.put(PUBLIC_ACCESS, obj.getPublicAccess());
+		map.put(IS_ACTIVE, obj.getIsActive());
+		map.put(EXTRAS, obj.getExtras());
+		map.put(URI, obj.getUri());
+		map.put(MNEMONIC, obj.getMnemonic());
+		map.put(VERSION, obj.getVersion());
+		map.put(RELEASED, obj.getReleased());
+		map.put(RETIRED, obj.getRetired());
+		map.put(IS_LATEST_VERSION, obj.getIsLatestVersion());
+		map.put(NAME, obj.getName());
+		map.put(FULL_NAME, obj.getFullName());
+		map.put(DEFAULT_LOCALE, obj.getDefaultLocale());
+		map.put(CONCEPT_CLASS, obj.getConceptClass());
+		map.put(DATATYPE, obj.getDatatype());
+		map.put(COMMENT, obj.getComment());
+		map.put(CREATED_BY_ID, obj.getCreatedBy().getId());
+		map.put(UPDATED_BY_ID, obj.getUpdatedBy().getId());
+		map.put(PARENT_ID, obj.getParent().getId());
+		map.put(CREATED_AT, obj.getParent().getCreatedAt());
+		map.put(UPDATED_AT, obj.getParent().getUpdatedAt());
+		return map;
+	}
+
+	private List<Long> insertRows(List<LocalizedText> texts) {
+		List<Long> keys = new ArrayList<>();
+		texts.forEach(t -> {
+			keys.add(insert(insertLocalizedText, toMap(t)));
+		});
+		return keys;
 	}
 
 }

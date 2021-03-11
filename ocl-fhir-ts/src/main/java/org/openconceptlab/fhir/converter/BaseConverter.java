@@ -9,29 +9,22 @@ import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hl7.fhir.r4.model.*;
+import org.hl7.fhir.r4.model.codesystems.PublicationStatus;
 import org.openconceptlab.fhir.model.Collection;
 import org.openconceptlab.fhir.model.Organization;
 import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.repository.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.PostConstruct;
 import javax.sql.DataSource;
-import java.net.URI;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
 import java.util.*;
-import java.util.stream.Collectors;
 
-import static org.openconceptlab.fhir.converter.CodeSystemConverter.DEFAULT_RES_VERSION;
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 import static org.openconceptlab.fhir.util.OclFhirUtil.*;
 
@@ -49,6 +42,7 @@ public class BaseConverter {
     protected UserRepository userRepository;
     protected SimpleJdbcInsert insertLocalizedText;
     protected SimpleJdbcInsert insertConcept;
+    protected SimpleJdbcInsert insertMapping;
     protected DataSource dataSource;
     protected JdbcTemplate jdbcTemplate;
     protected CollectionRepository collectionRepository;
@@ -56,11 +50,8 @@ public class BaseConverter {
     protected NamedParameterJdbcTemplate namedParameterJdbcTemplate;
     protected MappingRepository mappingRepository;
 
-    protected static final String insertConceptNamesSql = "insert into concepts_names (localizedtext_id,concept_id) values (?,?)";
-    protected static final String insertConceptDescSql = "insert into concepts_descriptions (localizedtext_id,concept_id) values (?,?)";
-    protected static final String updateConceptVersionSql = "update concepts set version = ? where id = ?";
-    protected static final String insertConceptsSources = "insert into concepts_sources (concept_id,source_id) values (?,?)";
     private static final Log log = LogFactory.getLog(BaseConverter.class);
+    protected static final String DEFAULT_RES_VERSION = "0.1";
 
     @Autowired
     public BaseConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil,
@@ -88,6 +79,7 @@ public class BaseConverter {
         this.namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(dataSource);
         insertLocalizedText = new SimpleJdbcInsert(jdbcTemplate).withTableName("localized_texts");
         insertConcept = new SimpleJdbcInsert(jdbcTemplate).withTableName("concepts");
+        insertMapping = new SimpleJdbcInsert(jdbcTemplate).withTableName("mappings");
     }
 
     protected BaseOclEntity validateOwner(String org, String username) {
@@ -149,7 +141,7 @@ public class BaseConverter {
     }
 
     protected void validateId(String username, String org, String id, String version, String resourceType) {
-        if (CODESYSTEM.equals(resourceType)) {
+        if (CODESYSTEM.equals(resourceType) || CONCEPTMAP.equals(resourceType)) {
             Source userSource = sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsername(id, version, username);
             Source orgSource = sourceRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonic(id, version, org);
             if (userSource != null || orgSource != null) {
@@ -167,7 +159,7 @@ public class BaseConverter {
     }
 
     protected void validateCanonicalUrl(String username, String org, String url, String version, String resourceType) {
-        if (CODESYSTEM.equals(resourceType)) {
+        if (CODESYSTEM.equals(resourceType) || CONCEPTMAP.equals(resourceType)) {
             Source userSource = sourceRepository.findFirstByCanonicalUrlAndVersionAndUserIdUsername(url, version, username);
             Source orgSource = sourceRepository.findFirstByCanonicalUrlAndVersionAndOrganizationMnemonic(url, version, org);
             if (userSource != null || orgSource != null) {
@@ -202,105 +194,13 @@ public class BaseConverter {
             collection.setJurisdiction(convertToJsonString(getResJurisdictionString(valueSet), JURISDICTION));
     }
 
-    protected void batchUpdateConceptVersion(List<Integer> conceptIds) {
-        this.jdbcTemplate.batchUpdate(updateConceptVersionSql, new BatchPreparedStatementSetter() {
-            public void setValues(PreparedStatement ps, int i)
-                    throws SQLException {
-                ps.setInt(1, conceptIds.get(i));
-                ps.setInt(2, conceptIds.get(i));
-            }
-            public int getBatchSize() {
-                return conceptIds.size();
-            }
-        });
-    }
-
-    protected void batchUpdateConceptSources(List<Integer> conceptIds, Long sourceId) {
-        this.jdbcTemplate.batchUpdate(insertConceptsSources, new BatchPreparedStatementSetter() {
-            public void setValues(PreparedStatement ps, int i)
-                    throws SQLException {
-                ps.setInt(1, conceptIds.get(i));
-                ps.setLong(2, sourceId);
-            }
-            public int getBatchSize() {
-                return conceptIds.size();
-            }
-        });
-    }
-
-    protected void batchInsertConceptNames(String sql, List<Long> nameIds, Integer conceptId) {
-        this.jdbcTemplate.batchUpdate(sql, new BatchPreparedStatementSetter() {
-            public void setValues(PreparedStatement ps, int i)
-                    throws SQLException {
-                ps.setInt(1, nameIds.get(i).intValue());
-                ps.setInt(2, conceptId);
-            }
-            public int getBatchSize() {
-                return nameIds.size();
-            }
-        });
-    }
-
-    protected void batchConcepts(List<Concept> concepts, List<Integer> conceptIds) {
-        concepts.forEach(c -> {
-            Integer conceptId = insert(insertConcept, toMap(c)).intValue();
-            if (!c.getConceptsNames().isEmpty()) {
-                List<Long> nameIds = insertRows(
-                        c.getConceptsNames().stream().filter(Objects::nonNull).filter(f -> f.getLocalizedText() != null).map(ConceptsName::getLocalizedText).collect(Collectors.toList())
-                );
-                batchInsertConceptNames(insertConceptNamesSql, nameIds, conceptId);
-            }
-            if (!c.getConceptsDescriptions().isEmpty()) {
-                List<Long> descIds = insertRows(
-                        c.getConceptsDescriptions().stream().filter(Objects::nonNull).filter(f -> f.getLocalizedText() != null).map(ConceptsDescription::getLocalizedText).collect(Collectors.toList())
-                );
-                batchInsertConceptNames(insertConceptDescSql, descIds, conceptId);
-            }
-            conceptIds.add(conceptId);
-        });
-    }
-
-    protected List<Long> insertRows(List<LocalizedText> texts) {
-        List<Long> keys = new ArrayList<>();
-        texts.forEach(t -> {
-            keys.add(insert(insertLocalizedText, toMap(t)));
-        });
-        return keys;
-    }
-
-    private Map<String, Object> toMap(LocalizedText text) {
-        Map<String, Object> map = new HashMap<>();
-        map.put(NAME, text.getName());
-        map.put(TYPE, text.getType());
-        map.put(LOCALE, text.getLocale());
-        map.put(LOCALE_PREFERRED, text.getLocalePreferred());
-        map.put(CREATED_AT, text.getCreatedAt());
-        return map;
-    }
-
-    private Map<String, Object> toMap(Concept obj) {
-        Map<String, Object> map = new HashMap<>();
-        map.put(PUBLIC_ACCESS, obj.getPublicAccess());
-        map.put(IS_ACTIVE, obj.getIsActive());
-        map.put(EXTRAS, obj.getExtras());
-        map.put(URI, obj.getUri());
-        map.put(MNEMONIC, obj.getMnemonic());
-        map.put(VERSION, obj.getVersion());
-        map.put(RELEASED, obj.getReleased());
-        map.put(RETIRED, obj.getRetired());
-        map.put(IS_LATEST_VERSION, obj.getIsLatestVersion());
-        map.put(NAME, obj.getName());
-        map.put(FULL_NAME, obj.getFullName());
-        map.put(DEFAULT_LOCALE, obj.getDefaultLocale());
-        map.put(CONCEPT_CLASS, obj.getConceptClass());
-        map.put(DATATYPE, obj.getDatatype());
-        map.put(COMMENT, obj.getComment());
-        map.put(CREATED_BY_ID, obj.getCreatedBy().getId());
-        map.put(UPDATED_BY_ID, obj.getUpdatedBy().getId());
-        map.put(PARENT_ID, obj.getParent().getId());
-        map.put(CREATED_AT, obj.getParent().getCreatedAt());
-        map.put(UPDATED_AT, obj.getParent().getUpdatedAt());
-        return map;
+    protected void addJsonStrings(final ConceptMap conceptMap, final Source source) {
+        if (!conceptMap.getIdentifier().isEmpty())
+            source.setIdentifier(convertToJsonString(getResIdentifierString(conceptMap), IDENTIFIER));
+        if (!conceptMap.getContact().isEmpty())
+            source.setContact(convertToJsonString(getResContactString(conceptMap), CONTACT));
+        if (!conceptMap.getJurisdiction().isEmpty())
+            source.setJurisdiction(convertToJsonString(getResJurisdictionString(conceptMap), JURISDICTION));
     }
 
     protected Long insert(SimpleJdbcInsert insert, Map<String, Object> parameters) {
@@ -314,33 +214,15 @@ public class BaseConverter {
         return (Long) insert.executeAndReturnKeyHolder(parameters).getKey();
     }
 
-    private String getResContactString(final CodeSystem codeSystem) {
-        CodeSystem system = new CodeSystem();
-        system.setContact(codeSystem.getContact());
-        return getFhirContext().newJsonParser().encodeResourceToString(system);
-    }
-
     private String getResIdentifierString(final CodeSystem codeSystem) {
         CodeSystem system = new CodeSystem();
         system.setIdentifier(codeSystem.getIdentifier());
         return getFhirContext().newJsonParser().encodeResourceToString(system);
     }
 
-    private String getResJurisdictionString(final ValueSet valueSet) {
+    private String getResContactString(final CodeSystem codeSystem) {
         CodeSystem system = new CodeSystem();
-        system.setJurisdiction(valueSet.getJurisdiction());
-        return getFhirContext().newJsonParser().encodeResourceToString(system);
-    }
-
-    private String getResContactString(final ValueSet valueSet) {
-        CodeSystem system = new CodeSystem();
-        system.setContact(valueSet.getContact());
-        return getFhirContext().newJsonParser().encodeResourceToString(system);
-    }
-
-    private String getResIdentifierString(final ValueSet valueSet) {
-        CodeSystem system = new CodeSystem();
-        system.setIdentifier(valueSet.getIdentifier());
+        system.setContact(codeSystem.getContact());
         return getFhirContext().newJsonParser().encodeResourceToString(system);
     }
 
@@ -348,6 +230,42 @@ public class BaseConverter {
         CodeSystem system = new CodeSystem();
         system.setJurisdiction(codeSystem.getJurisdiction());
         return getFhirContext().newJsonParser().encodeResourceToString(system);
+    }
+
+    private String getResIdentifierString(final ValueSet valueSet) {
+        ValueSet set = new ValueSet();
+        set.setIdentifier(valueSet.getIdentifier());
+        return getFhirContext().newJsonParser().encodeResourceToString(set);
+    }
+
+    private String getResContactString(final ValueSet valueSet) {
+        ValueSet set = new ValueSet();
+        set.setContact(valueSet.getContact());
+        return getFhirContext().newJsonParser().encodeResourceToString(set);
+    }
+
+    private String getResJurisdictionString(final ValueSet valueSet) {
+        ValueSet set = new ValueSet();
+        set.setJurisdiction(valueSet.getJurisdiction());
+        return getFhirContext().newJsonParser().encodeResourceToString(set);
+    }
+
+    private String getResIdentifierString(final ConceptMap conceptMap) {
+        ConceptMap map = new ConceptMap();
+        map.setIdentifier(conceptMap.getIdentifier());
+        return getFhirContext().newJsonParser().encodeResourceToString(map);
+    }
+
+    private String getResContactString(final ConceptMap conceptMap) {
+        ConceptMap map = new ConceptMap();
+        map.setContact(conceptMap.getContact());
+        return getFhirContext().newJsonParser().encodeResourceToString(map);
+    }
+
+    private String getResJurisdictionString(final ConceptMap conceptMap) {
+        ConceptMap map = new ConceptMap();
+        map.setJurisdiction(conceptMap.getJurisdiction());
+        return getFhirContext().newJsonParser().encodeResourceToString(map);
     }
 
     private String convertToJsonString(String fhirResourceStr, String key) {
@@ -486,5 +404,96 @@ public class BaseConverter {
     protected void removeAccessionIdentifier(List<Identifier> identifiers) {
         identifiers.removeIf(i -> i.getType().hasCoding(ACSN_SYSTEM, ACSN));
     }
+
+    protected Source toBaseSource(final MetadataResource resource, final UserProfile user, final String uri) {
+        Source source = new Source();
+        // mnemonic
+        source.setMnemonic(resource.getId());
+        // canonical url
+        source.setCanonicalUrl(resource.getUrl());
+        // created by
+        source.setCreatedBy(user);
+        // updated by
+        source.setUpdatedBy(user);
+
+        // draft or unknown or empty
+        source.setIsActive(True);
+        source.setIsLatestVersion(True);
+        source.setRetired(False);
+        source.setReleased(False);
+        if (resource.getStatus() != null) {
+            // active
+            if (PublicationStatus.ACTIVE.toCode().equals(resource.getStatus().toCode())) {
+                source.setReleased(True);
+                // retired
+            } else if (PublicationStatus.RETIRED.toCode().equals(resource.getStatus().toCode())) {
+                source.setRetired(True);
+                source.setReleased(False);
+                source.setIsActive(False);
+                source.setIsLatestVersion(False);
+            }
+        }
+        // version
+        source.setVersion(resource.getVersion());
+        // default locale
+        source.setDefaultLocale(isValid(resource.getLanguage()) ? resource.getLanguage() : EN_LOCALE);
+        // uri
+        source.setUri(toOclUri(uri));
+        // name
+        String name = isValid(resource.getName()) ? resource.getName() : resource.getId();
+        source.setName(name);
+        // description
+        if (isValid(resource.getDescription()))
+            source.setDescription(resource.getDescription());
+        // title
+        if (isValid(resource.getTitle()))
+            source.setFullName(resource.getTitle());
+        // publisher
+        if (isValid(resource.getPublisher()))
+            source.setPublisher(resource.getPublisher());
+        // revision date
+        if (resource.getDate() != null)
+            source.setRevisionDate(resource.getDate());
+        // extras
+        source.setExtras(EMPTY_JSON);
+        if (resource instanceof CodeSystem) {
+            CodeSystem codeSystem = (CodeSystem) resource;
+            // content type
+            if (codeSystem.getContent() != null && !codeSystem.getContent().toCode().equals(CodeSystem.CodeSystemContentMode.NULL.toCode()))
+                source.setContentType(codeSystem.getContent().toCode());
+            // copyright
+            if (isValid(codeSystem.getCopyright()))
+                source.setCopyright(codeSystem.getCopyright());
+            // purpose
+            if (isValid(codeSystem.getPurpose()))
+                source.setPurpose(codeSystem.getPurpose());
+        }
+        if (resource instanceof ConceptMap) {
+            ConceptMap conceptMap = (ConceptMap) resource;
+            // copyright
+            if (isValid(conceptMap.getCopyright()))
+                source.setCopyright(conceptMap.getCopyright());
+            // purpose
+            if (isValid(conceptMap.getPurpose()))
+                source.setPurpose(conceptMap.getPurpose());
+        }
+        return source;
+    }
+
+    protected void addParent(final Source source, final BaseOclEntity owner) {
+        if (owner instanceof Organization) {
+            Organization organization = (Organization) owner;
+            source.setOrganization(organization);
+            source.setPublicAccess(organization.getPublicAccess());
+        } else if (owner instanceof UserProfile){
+            source.setUserId((UserProfile) owner);
+        }
+    }
+
+    protected String getVersionLessSourceUri(Source source) {
+        String value = source.getUri().substring(0, source.getUri().lastIndexOf(FS));
+        return value.substring(0, value.lastIndexOf(FS)) + FS;
+    }
+
 }
 
