@@ -270,9 +270,13 @@ public class BaseOclFhirController {
 
     protected void addIdentifier(List<Identifier> identifiers, String ownerType, String ownerId, String resType,
                                  String resId, String version) {
+        identifiers.add(getIdentifier(ownerType, ownerId, resType, resId, version));
+    }
+
+    protected Identifier getIdentifier(String ownerType, String ownerId, String resType, String resId, String version) {
         String uri = FS + ownerType + FS + ownerId + FS + resType + FS + resId + FS +
                 (isValid(version) ? ( VERSION + FS + version + FS ) : EMPTY);
-        identifiers.add(getIdentifier(uri).get());
+        return OclFhirUtil.getIdentifier(uri).get();
     }
 
     protected static String getRequestUrl(HttpServletRequest request) {

@@ -1,16 +1,18 @@
 package org.openconceptlab.fhir.controller;
 
-import org.hl7.fhir.r4.model.CodeSystem;
 import org.hl7.fhir.r4.model.ConceptMap;
+import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Parameters;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
 import org.openconceptlab.fhir.util.OclFhirUtil;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.Collections;
 import java.util.Optional;
 
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
@@ -25,6 +27,29 @@ public class OclFhirOrgConceptMapController extends BaseOclFhirController {
                                           ValueSetResourceProvider valueSetResourceProvider,
                                           OclFhirUtil oclFhirUtil) {
         super(codeSystemResourceProvider, valueSetResourceProvider, oclFhirUtil);
+    }
+
+    /**
+     * Create {@link ConceptMap}
+     *
+     * @param org       - the username
+     * @param conceptMap - the {@link ConceptMap} resource
+     * @return ResponseEntity
+     */
+    @PostMapping(path = {"/"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> createConceptMapForOrg(@PathVariable(name = ORG) String org,
+                                                         @RequestBody String conceptMap,
+                                                         @RequestHeader(name = AUTHORIZATION) String auth) {
+        ConceptMap map = (ConceptMap) parser.parseResource(conceptMap);
+        Optional<Identifier> acsnOpt = hasAccessionIdentifier(Collections.singletonList(map.getIdentifier()));
+        ResponseEntity<String> response = validate(map.getIdElement().getIdPart(), acsnOpt, ORGS, org);
+        if (response != null) return response;
+        if (acsnOpt.isEmpty()) map.setIdentifier(
+                getIdentifier(ORGS, org, CONCEPTMAP, map.getIdElement().getIdPart(), map.getVersion())
+        );
+
+        performCreate(map, auth);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 
     /**
@@ -104,10 +129,10 @@ public class OclFhirOrgConceptMapController extends BaseOclFhirController {
      * @param org               - the organization id
      * @param conceptMapUrl     - the {@link ConceptMap} url
      * @param conceptMapVersion - the {@link ConceptMap} version
-     * @param system            - the source {@link CodeSystem} url
-     * @param version           - the source {@link CodeSystem} version
+     * @param system            - the source {@link ConceptMap} url
+     * @param version           - the source {@link ConceptMap} version
      * @param code              - the concept code that needs to be translated
-     * @param targetSystem      - the target {@link CodeSystem} url
+     * @param targetSystem      - the target {@link ConceptMap} url
      * @return ResponseEntity
      */
     @GetMapping(path = {"/$translate"}, produces = {MediaType.APPLICATION_JSON_VALUE})

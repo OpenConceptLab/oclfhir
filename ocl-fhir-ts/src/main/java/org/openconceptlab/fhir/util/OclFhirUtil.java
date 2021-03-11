@@ -2,7 +2,6 @@ package org.openconceptlab.fhir.util;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.parser.IParser;
-import ca.uhn.fhir.rest.annotation.OptionalParam;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
@@ -540,9 +539,7 @@ public class OclFhirUtil {
 
     public static String getAccessionIdentifier(List<Identifier> identifiers) {
         Optional<Identifier> hasIdentifier = hasAccessionIdentifier(identifiers);
-        if (hasIdentifier.isPresent())
-            return hasIdentifier.get().getValue().trim();
-        return EMPTY;
+        return hasIdentifier.map(identifier -> identifier.getValue().trim()).orElse(EMPTY);
     }
 
     public static Optional<Identifier> hasAccessionIdentifier(List<Identifier> identifiers) {
@@ -556,6 +553,8 @@ public class OclFhirUtil {
                         && oclSystem().equals(identifier.getSystem())
                         && isValid(identifier.getValue())) {
                     return validateAccessionId(Optional.of(identifier));
+                } else {
+                    throw new RuntimeException("The accession identifier is invalid.");
                 }
             }
         }
@@ -699,6 +698,28 @@ public class OclFhirUtil {
                     url, Arrays.toString(apps), e.getMessage());
             log.error(msg);
         }
+    }
+
+    public List<Source> getSourceByUrl(StringType url, StringType version, List<String> access) {
+        List<Source> sources = new ArrayList<>();
+        if (isVersionAll(version)) {
+            // get all versions
+            sources.addAll(sourceRepository.findByCanonicalUrlAndPublicAccessIn(url.getValue(), access).stream()
+                    .sorted(Comparator.comparing(Source::getCreatedAt).reversed()).collect(Collectors.toList()));
+        } else {
+            final Source source;
+            if (!isValid(version)) {
+                // get most recent released version
+                source = getMostRecentReleasedSourceByUrl(url, access);
+            } else {
+                // get a given version
+                source = sourceRepository.findFirstByCanonicalUrlAndVersionAndPublicAccessIn(url.getValue(), version.getValue(), access);
+            }
+            if (source != null) sources.add(source);
+        }
+        if (sources.isEmpty())
+            throw new ResourceNotFoundException(notFound(CodeSystem.class, url, version));
+        return sources;
     }
 }
 
