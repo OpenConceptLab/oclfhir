@@ -122,6 +122,7 @@ public final class OclFhirConstants {
 	public static final String CONCEPTS = "concepts";
 	public static final String COLLECTIONS = "collections";
 	public static final String SOURCES = "sources";
+	public static final String MAPPINGS = "mappings";
 	public static final String EXPRESSION = "expression";
 	public static final String LAST_RESOLVED_AT = "last_resolved_at";
 	public static final boolean True = true;
@@ -131,4 +132,17 @@ public final class OclFhirConstants {
 	public static final String TRANSLATE = "$translate";
 
 	public static final String OWNER_URL = "ownerUrl";
+	public static final String FROM_SOURCE_URL = "from_source_url";
+	public static final String FROM_SOURCE_VERSION = "from_source_version";
+	public static final String FROM_SOURCE_ID = "from_source_id";
+	public static final String FROM_CONCEPT_CODE = "from_concept_code";
+	public static final String FROM_CONCEPT_NAME = "from_concept_name";
+	public static final String FROM_CONCEPT_ID = "from_concept_id";
+	public static final String TO_SOURCE_URL = "to_source_url";
+	public static final String TO_SOURCE_VERSION = "to_source_version";
+	public static final String TO_SOURCE_ID = "to_source_id";
+	public static final String TO_CONCEPT_CODE = "to_concept_code";
+	public static final String TO_CONCEPT_NAME = "to_concept_name";
+	public static final String TO_CONCEPT_ID = "to_concept_id";
+	public static final String MAP_TYPE = "map_type";
 }

@@ -28,6 +28,15 @@ public interface ConceptRepository extends BaseOclRepository<Concept>{
             ") order by c2.mnemonic asc")
     Page<Concept> findConcepts(@Param("sourceId") Long sourceId, Pageable pageable);
 
+    @Query(nativeQuery = true, value = "select c2.id, c2.mnemonic from concepts c2 where c2.id in (" +
+            "select concept_id from (\n" +
+            "select max(cs.concept_id) as concept_id , c1.mnemonic from concepts_sources cs \n" +
+            "inner join concepts c1 on c1.id = cs.concept_id \n" +
+            "where cs.source_id = :sourceId\n" +
+            "group by c1.mnemonic) as val \n" +
+            ") order by c2.mnemonic asc")
+    List<ConceptIdMnemonic> findConceptIds(@Param("sourceId") Long sourceId);
+
     @Query(nativeQuery = true, value = "select count(*) from (select max(cs.concept_id) as concept_id , c1.mnemonic from concepts_sources cs \n" +
             "inner join concepts c1 on c1.id = cs.concept_id \n" +
             "where cs.source_id = :sourceId\n" +

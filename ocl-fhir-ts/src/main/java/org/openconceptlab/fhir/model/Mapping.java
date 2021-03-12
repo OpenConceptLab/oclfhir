@@ -28,6 +28,9 @@ public class Mapping extends BaseOclEntity implements Serializable {
 	private Long id;
 
 	@Column
+	private String mnemonic;
+
+	@Column
 	private String comment;
 
 	@Column(name="created_at")
@@ -144,6 +147,14 @@ public class Mapping extends BaseOclEntity implements Serializable {
 
 	public void setId(Long id) {
 		this.id = id;
+	}
+
+	public String getMnemonic() {
+		return this.mnemonic;
+	}
+
+	public void setMnemonic(String mnemonic) {
+		this.mnemonic = mnemonic;
 	}
 
 	public String getComment() {

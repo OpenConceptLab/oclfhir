@@ -1,6 +1,11 @@
 package org.openconceptlab.fhir.converter;
 
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
+import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.model.Concept;
 import org.openconceptlab.fhir.model.Mapping;
@@ -10,10 +15,14 @@ import org.openconceptlab.fhir.repository.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
@@ -21,6 +30,10 @@ import static org.openconceptlab.fhir.util.OclFhirUtil.*;
 
 @Component
 public class ConceptMapConverter extends BaseConverter {
+
+    private static final Log log = LogFactory.getLog(ConceptMapConverter.class);
+    private static final String updateMappingSql = "update mappings set version = ?, mnemonic = ?, versioned_object_id = ?, uri = ? where id = ?";
+    private static final String insertMappingsSources = "insert into mappings_sources (mapping_id,source_id) values (?,?) on conflict do nothing";
 
     public ConceptMapConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil,
                                UserProfile oclUser, ConceptsSourceRepository conceptsSourceRepository, DataSource dataSource,
@@ -340,6 +353,297 @@ public class ConceptMapConverter extends BaseConverter {
         coding.setSystem(toSystemUrl).setVersion(version).setCode(toCode).setDisplay(toName);
         componentList.add(getParameter("concept", coding));
         return componentList;
+    }
+
+    public void createConceptMap(ConceptMap conceptMap, String accessionId, String authToken) {
+        // validate and authenticate
+        OclEntity oclEntity = new OclEntity(conceptMap, accessionId, authToken, true);
+        UserProfile user = oclEntity.getUserProfile();
+        // base source
+        Source source = toBaseSource(conceptMap, user, oclEntity.getAccessionId());
+        // add parent and access
+        addParent(source, oclEntity.getOwner());
+        // add identifier, contact and jurisdiction
+        addJsonStrings(conceptMap, source);
+
+        // add mappings
+        List<Mapping> mappings = toMappings(conceptMap.getGroup());
+        populateBaseMappingField(mappings, source, user);
+
+        // validate mappings
+        long uniqueMapping = mappings.parallelStream().map(m -> m.getFromSourceUrl()+"|"+m.getFromSourceVersion()+"|"+m.getFromConceptCode()
+                +"|"+m.getFromSourceUrl()+"|"+m.getToSourceVersion()+"|"+m.getToConceptCode()+"|"+m.getMapType())
+                .distinct().count();
+        if (mappings.size() != uniqueMapping) throw new InvalidRequestException("The combination of source_url,source_version," +
+                "source_code,target_url,target_version,target_code,equivalence should be unique.");
+
+        // save source
+        sourceRepository.saveAndFlush(source);
+        log.info("saved source - " + source.getMnemonic());
+
+        // save mappings
+        saveMappings(source, mappings);
+
+        // populate index
+        oclFhirUtil.populateIndex(getToken(), SOURCES, MAPPINGS);
+    }
+
+    private List<Mapping> toMappings(List<ConceptMap.ConceptMapGroupComponent> components) {
+        List<Mapping> mappings = new CopyOnWriteArrayList<>();
+        for (ConceptMap.ConceptMapGroupComponent component : components) {
+            String sourceUrl = component.getSource();
+            String sourceVersion = sourceUrl.split("\\|").length == 2 ?
+                    sourceUrl.split("\\|")[1] : component.getSourceVersion();
+            if (!isValid(sourceUrl))
+                throw new InvalidRequestException("ConceptMap.group.source can not be empty.");
+            Long sourceId = null;
+            List<ConceptIdMnemonic> sourceConcepts = new ArrayList<>();
+            try {
+                List<Source> sourceSrc = oclFhirUtil.getSourceByUrl(newStringType(sourceUrl), newStringType(sourceVersion),
+                        publicAccess);
+                sourceId = sourceSrc.get(0).getId();
+                sourceConcepts.addAll(conceptRepository.findConceptIds(sourceId));
+            } catch (ResourceNotFoundException e) {
+                // skip if source is not hosted in OCL
+            }
+
+            String targetUrl = component.getTarget();
+            String targetVersion = targetUrl.split("\\|").length == 2 ?
+                    targetUrl.split("\\|")[1] : component.getTargetVersion();
+            if (!isValid(targetUrl))
+                throw new InvalidRequestException("ConceptMap.group.target can not be empty.");
+            Long targetId = null;
+            List<ConceptIdMnemonic> targetConcepts = new ArrayList<>();
+            try {
+                List<Source> targetSrc = oclFhirUtil.getSourceByUrl(newStringType(targetUrl), newStringType(targetVersion),
+                        publicAccess);
+                targetId = targetSrc.get(0).getId();
+                targetConcepts.addAll(conceptRepository.findConceptIds(targetId));
+            } catch (ResourceNotFoundException e) {
+                // skip if source is not hosted in OCL
+            }
+
+            List<ConceptMap.SourceElementComponent> elements = component.getElement();
+            for (ConceptMap.SourceElementComponent element : elements) {
+                String sourceCode = element.getCode();
+                String sourceDisplay = element.getDisplay();
+                Long sourceCodeId = null;
+                if (!isValid(sourceCode))
+                    throw new InvalidRequestException("ConceptMap.group.element.code can not be empty.");
+                if (sourceId != null) {
+                    Optional<ConceptIdMnemonic> sourceConcept = getConcept(sourceConcepts, sourceCode);
+                    if (sourceConcept.isPresent()) sourceCodeId = sourceConcept.get().getId();
+                }
+
+                List<ConceptMap.TargetElementComponent> targetElements = element.getTarget();
+                for (ConceptMap.TargetElementComponent targetElement : targetElements) {
+                    String targetCode = targetElement.getCode();
+                    String targetDisplay = targetElement.getDisplay();
+                    String equivalence = targetElement.getEquivalence() != null ? targetElement.getEquivalence().toCode()
+                            : targetElement.getExtensionString("http://fhir.openconceptlab.org/ConceptMap/equivalence");
+                    if (!isValid(targetCode))
+                        throw new InvalidRequestException("ConceptMap.group.element.target.code can not be empty.");
+                    if (!isValid(equivalence))
+                        throw new InvalidRequestException("ConceptMap.group.element.target.equivalence can not be empty.");
+                    Long targetCodeId = null;
+                    if (targetId != null) {
+                        Optional<ConceptIdMnemonic> targetConcept = getConcept(targetConcepts, targetCode);
+                        if (targetConcept.isPresent()) targetCodeId = targetConcept.get().getId();
+                    }
+                    mappings.add(toMapping(sourceUrl, sourceVersion, sourceCode, sourceDisplay, targetUrl, targetVersion, targetCode,
+                            targetDisplay, equivalence, sourceId, sourceCodeId, targetId, targetCodeId));
+                }
+            }
+        }
+        return mappings;
+    }
+
+    private Optional<ConceptIdMnemonic> getConcept(List<ConceptIdMnemonic> concepts, String code) {
+        return concepts.parallelStream().filter(c -> c.getMnemonic().equals(code)).findAny();
+    }
+
+    private Mapping toMapping(String fromSourceUrl, String fromSourceVersion, String fromConcept, String fromDisplay,
+                              String toSourceUrl, String toSourceVersion, String toCode, String toDisplay,
+                              String equivalence, Long fromSourceId, Long fromSourceCodeId, Long toSourceId,
+                              Long toSourceCodeId) {
+        final Mapping mapping = new Mapping();
+        mapping.setFromSourceUrl(fromSourceUrl);
+        if (isValid(fromSourceVersion)) mapping.setFromSourceVersion(fromSourceVersion);
+        mapping.setFromConceptCode(fromConcept);
+        if (isValid(fromDisplay)) mapping.setFromConceptName(fromDisplay);
+        mapping.setToSourceUrl(toSourceUrl);
+        if (isValid(toSourceVersion)) mapping.setToSourceVersion(toSourceVersion);
+        mapping.setToConceptCode(toCode);
+        if (isValid(toDisplay)) mapping.setToConceptName(toDisplay);
+        mapping.setMapType(equivalence);
+        if (fromSourceId != null) mapping.setFromSource(getSource(fromSourceId));
+        if (fromSourceCodeId != null) mapping.setFromConcept(getConcept(fromSourceCodeId));
+        if (toSourceId != null) mapping.setToSource(getSource(toSourceId));
+        if (toSourceCodeId != null) mapping.setToConcept(getConcept(toSourceCodeId));
+        return mapping;
+    }
+
+    private Source getSource(Long id) {
+        final Source source = new Source();
+        source.setId(id);
+        return source;
+    }
+
+    private Concept getConcept(Long id) {
+        final Concept concept = new Concept();
+        concept.setId(id);
+        return concept;
+    }
+
+    private void populateBaseMappingField(List<Mapping> mappings, Source source, UserProfile user) {
+        //(mnemonic, version, parent_id) is unique in db
+        mappings.forEach(c -> {
+            c.setParent(source);
+            c.setPublicAccess(source.getPublicAccess());
+            c.setIsLatestVersion(True);
+            c.setReleased(false);
+            c.setRetired(false);
+            c.setIsActive(true);
+            c.setIsLatestVersion(true);
+            c.setCreatedBy(user);
+            c.setUpdatedBy(user);
+            c.setVersionedObject(c);
+            // will be replaced with generated id
+            c.setVersion(UUID.randomUUID().toString());
+            // will be replaced with generated id
+            c.setMnemonic(UUID.randomUUID().toString());
+            c.setExtras(EMPTY_JSON);
+        });
+    }
+
+    private Map<String, Object> toMap(Mapping obj) {
+        Map<String, Object> map = new HashMap<>();
+        map.put(FROM_SOURCE_URL, obj.getFromSourceUrl());
+        map.put(FROM_SOURCE_VERSION, obj.getFromSourceVersion());
+        if (obj.getFromSource() != null)
+            map.put(FROM_SOURCE_ID, obj.getFromSource().getId());
+        map.put(FROM_CONCEPT_CODE, obj.getFromConceptCode());
+        map.put(FROM_CONCEPT_NAME, obj.getFromConceptName());
+        if (obj.getFromConcept() != null)
+            map.put(FROM_CONCEPT_ID, obj.getFromConcept().getId());
+        map.put(TO_SOURCE_URL, obj.getToSourceUrl());
+        map.put(TO_SOURCE_VERSION, obj.getToSourceVersion());
+        if (obj.getToSource() != null)
+            map.put(TO_SOURCE_ID, obj.getToSource().getId());
+        map.put(TO_CONCEPT_CODE, obj.getToConceptCode());
+        map.put(TO_CONCEPT_NAME, obj.getToConceptName());
+        if (obj.getToConcept() != null)
+            map.put(TO_CONCEPT_ID, obj.getToConcept().getId());
+        map.put(MAP_TYPE, obj.getMapType());
+        map.put(VERSION, obj.getVersion());
+        map.put(MNEMONIC, obj.getMnemonic());
+        map.put(PUBLIC_ACCESS, obj.getPublicAccess());
+        map.put(IS_ACTIVE, obj.getIsActive());
+        map.put(EXTRAS, obj.getExtras());
+        map.put(RELEASED, obj.getReleased());
+        map.put(RETIRED, obj.getRetired());
+        map.put(IS_LATEST_VERSION, obj.getIsLatestVersion());
+        if (isValid(obj.getComment()))
+            map.put(COMMENT, obj.getComment());
+        map.put(CREATED_BY_ID, obj.getCreatedBy().getId());
+        map.put(UPDATED_BY_ID, obj.getUpdatedBy().getId());
+        map.put(PARENT_ID, obj.getParent().getId());
+        map.put(CREATED_AT, obj.getParent().getCreatedAt());
+        map.put(UPDATED_AT, obj.getParent().getUpdatedAt());
+        return map;
+    }
+
+    private void saveMappingsAlternate(Source source, List<Mapping> mappings) {
+        String versionLessSourceUri = getVersionLessSourceUri(source);
+        List<Integer> mappingIdVersions = new ArrayList<>();
+        mappings.forEach(m -> {
+            Map<String, Object> map = toMap(m);
+
+            map.put(IS_LATEST_VERSION, false);
+            map.put(IS_ACTIVE, true);
+            Integer mappingId = insert(insertMapping, map).intValue();
+            jdbcTemplate.update(updateMappingSql, mappingId, mappingId, mappingId,
+                    versionLessSourceUri + MAPPINGS + FS + mappingId + FS, mappingId);
+
+            map.put(IS_LATEST_VERSION, true);
+            Integer mappingIdVersion = insert(insertMapping, map).intValue();
+            jdbcTemplate.update(updateMappingSql, mappingIdVersion, mappingIdVersion, mappingIdVersion,
+                    versionLessSourceUri + MAPPINGS + FS + mappingId + FS + mappingIdVersion + FS, mappingIdVersion);
+            mappingIdVersions.add(mappingIdVersion);
+        });
+        List<List<Integer>> batches = ListUtils.partition(mappingIdVersions, 1000);
+        saveMappingsSources(source.getId(), batches);
+        log.info("saved " + mappingIdVersions.size() + " mappings");
+    }
+
+    private void saveMappings(Source source, List<Mapping> mappings) {
+        String versionLessSourceUri = getVersionLessSourceUri(source);
+        Long sourceId = source.getId();
+        List<Integer> mappingIds = new CopyOnWriteArrayList<>();
+        // save initial mapping and populate mappingIds
+        persistMappings(mappings, mappingIds);
+        // update mappings in batch; updates version, uri, mnemonic, version_object_id
+        List<List<Integer>> mappingIdBatches = updateMappings(mappingIds, versionLessSourceUri);
+        // save mappings sources in batch
+        saveMappingsSources(sourceId, mappingIdBatches);
+        log.info("saved " + mappingIds.size() + " mappings");
+    }
+
+    private void persistMappings(List<Mapping> mappings, List<Integer> mappingIds) {
+        List<List<Mapping>> mappingBatches = ListUtils.partition(mappings, 1000);
+        int i = 1;
+        for (List<Mapping> mb: mappingBatches) {
+            log.info("Saving " + mb.size() + " mappings, batch " + i + " of " + mappingBatches.size());
+            batchMappings(mb, mappingIds);
+            i++;
+        }
+    }
+
+    private void batchMappings(List<Mapping> mappings, List<Integer> mappingIds) {
+        mappings.forEach(m -> {
+            Integer mappingId = insert(insertMapping, toMap(m)).intValue();
+            mappingIds.add(mappingId);
+        });
+    }
+
+    private List<List<Integer>> updateMappings(List<Integer> mappingsIds, String versionLessSourceUri) {
+        List<List<Integer>> mappingIdBatches = ListUtils.partition(mappingsIds, 1000);
+        mappingIdBatches.forEach(b -> batchUpdateMapping(b, versionLessSourceUri));
+        return mappingIdBatches;
+    }
+
+    private void batchUpdateMapping(List<Integer> mappingsIds, String versionLessSourceUri) {
+        this.jdbcTemplate.batchUpdate(updateMappingSql, new BatchPreparedStatementSetter() {
+            public void setValues(PreparedStatement ps, int i)
+                    throws SQLException {
+                ps.setInt(1, mappingsIds.get(i));
+                ps.setInt(2, mappingsIds.get(i));
+                ps.setInt(3, mappingsIds.get(i));
+                ps.setString(4, versionLessSourceUri + MAPPINGS + FS + mappingsIds.get(i) + FS);
+                ps.setInt(5, mappingsIds.get(i));
+            }
+            public int getBatchSize() {
+                return mappingsIds.size();
+            }
+        });
+    }
+
+    private void saveMappingsSources(Long sourceId, List<List<Integer>> mappingIdBatches) {
+        // save mappings sources
+        mappingIdBatches.forEach(b -> batchUpdateMappingsSources(b, sourceId));
+    }
+
+    private void batchUpdateMappingsSources(List<Integer> mappingIds, Long sourceId) {
+        this.jdbcTemplate.batchUpdate(insertMappingsSources, new BatchPreparedStatementSetter() {
+            public void setValues(PreparedStatement ps, int i)
+                    throws SQLException {
+                ps.setInt(1, mappingIds.get(i));
+                ps.setLong(2, sourceId);
+            }
+            public int getBatchSize() {
+                return mappingIds.size();
+            }
+        });
     }
 
 }

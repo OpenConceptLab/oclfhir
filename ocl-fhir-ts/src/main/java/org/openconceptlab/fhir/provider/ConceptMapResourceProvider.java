@@ -1,6 +1,7 @@
 package org.openconceptlab.fhir.provider;
 
 import ca.uhn.fhir.rest.annotation.*;
+import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
@@ -18,6 +19,7 @@ import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.stereotype.Component;
 
 import javax.transaction.Transactional;
+import java.util.Collections;
 import java.util.List;
 
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
@@ -41,6 +43,23 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
     @Override
     public Class<? extends IBaseResource> getResourceType() {
         return ConceptMap.class;
+    }
+
+    @Create
+    @Transactional
+    public MethodOutcome createConceptMap(@ResourceParam ConceptMap conceptMap, RequestDetails requestDetails) {
+        if (conceptMap == null) {
+            throw new InvalidRequestException("The ConceptMap can not be empty");
+        }
+        String accessionId = getAccessionIdentifier(Collections.singletonList(conceptMap.getIdentifier()));
+        if (!isValid(accessionId)) {
+            throw new InvalidRequestException("The ConceptMap.identifier is empty or identifier of type ACSN is empty.");
+        }
+        if (!isValid(conceptMap.getUrl())) {
+            throw new InvalidRequestException("The ConceptMap.url can not be empty. Please provide canonical url.");
+        }
+        conceptMapConverter.createConceptMap(conceptMap, accessionId, requestDetails.getHeader(AUTHORIZATION));
+        return new MethodOutcome();
     }
 
     /**

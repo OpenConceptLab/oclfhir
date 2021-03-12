@@ -46,7 +46,7 @@ public class ValueSetConverter extends BaseConverter {
                     "on c1.mnemonic = c3.mnemonic and c1.created_at = c3.created_at";
 
     private static final Map<String,Object> collReferenceParamMap = new HashMap<>();
-    private static final String insertCollectionsReferences = "insert into collections_references (collection_id,collectionreference_id) values (?,?)";
+    private static final String insertCollectionsReferences = "insert into collections_references (collection_id,collectionreference_id) values (?,?) on conflict do nothing";
     private static final String insertCollectionsConcepts = "insert into collections_concepts (collection_id,concept_id) values (?,?) on conflict do nothing";
 
     public ValueSetConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil,

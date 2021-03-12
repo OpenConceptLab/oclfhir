@@ -52,25 +52,7 @@ public class BaseProvider {
     }
 
     protected List<Source> getSourceByUrl(StringType url, StringType version, List<String> access) {
-        List<Source> sources = new ArrayList<>();
-        if (isVersionAll(version)) {
-            // get all versions
-            sources.addAll(sourceRepository.findByCanonicalUrlAndPublicAccessIn(url.getValue(), access).stream()
-                    .sorted(Comparator.comparing(Source::getVersion).reversed()).collect(Collectors.toList()));
-        } else {
-            final Source source;
-            if (!isValid(version)) {
-                // get most recent released version
-                source = oclFhirUtil.getMostRecentReleasedSourceByUrl(url, access);
-            } else {
-                // get a given version
-                source = sourceRepository.findFirstByCanonicalUrlAndVersionAndPublicAccessIn(url.getValue(), version.getValue(), access);
-            }
-            if (source != null) sources.add(source);
-        }
-        if (sources.isEmpty())
-            throw new ResourceNotFoundException(notFound(CodeSystem.class, url, version));
-        return sources;
+        return oclFhirUtil.getSourceByUrl(url, version, access);
     }
 
     protected List<Source> getSourceByOwner(StringType owner, List<String> access) {

@@ -5,6 +5,7 @@ import ca.uhn.fhir.rest.server.interceptor.auth.AuthorizationInterceptor;
 import ca.uhn.fhir.rest.server.interceptor.auth.IAuthRule;
 import ca.uhn.fhir.rest.server.interceptor.auth.RuleBuilder;
 import org.hl7.fhir.r4.model.CodeSystem;
+import org.hl7.fhir.r4.model.ConceptMap;
 import org.hl7.fhir.r4.model.ValueSet;
 import org.springframework.stereotype.Component;
 
@@ -31,7 +32,9 @@ public class OclFhirAuthorizationInterceptor extends AuthorizationInterceptor {
               .allow().write().resourcesOfType(CodeSystem.class).withAnyId().andThen()
               .allow().delete().resourcesOfType(CodeSystem.class).withAnyId().andThen()
               .allow().write().resourcesOfType(ValueSet.class).withAnyId().andThen()
-              //.allow().write().resourcesOfType(ConceptMap.class).withAnyId().andThen()
+              .allow().delete().resourcesOfType(ValueSet.class).withAnyId().andThen()
+              .allow().write().resourcesOfType(ConceptMap.class).withAnyId().andThen()
+              .allow().delete().resourcesOfType(ConceptMap.class).withAnyId().andThen()
               .allow().operation().withAnyName().atAnyLevel().andAllowAllResponses();
       return ruleBuilder;
    }
