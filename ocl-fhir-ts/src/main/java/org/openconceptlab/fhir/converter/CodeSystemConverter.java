@@ -21,6 +21,7 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
+import javax.transaction.Transactional;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -485,6 +486,17 @@ public class CodeSystemConverter extends BaseConverter {
 	}
 
 	public void updateCodeSystem(final CodeSystem codeSystem, final Source source, final String accessionId, final String authToken) {
+		// update and save in database
+		boolean newConcepts = update(codeSystem, source, accessionId, authToken);
+		// update index
+		oclFhirUtil.updateIndex(getToken(), SOURCES, source.getMnemonic());
+		if (newConcepts) {
+			oclFhirUtil.populateIndex(getToken(), CONCEPTS);
+		}
+	}
+
+	@Transactional
+	 boolean update(final CodeSystem codeSystem, final Source source, final String accessionId, final String authToken) {
 		final OclEntity oclEntity = new OclEntity(codeSystem, accessionId, authToken, false);
 		// update status
 		if (codeSystem.getStatus() != null) {
@@ -539,7 +551,7 @@ public class CodeSystemConverter extends BaseConverter {
 		addJsonStrings(codeSystem, source);
 		// update base source resource
 		sourceRepository.saveAndFlush(source);
-		oclFhirUtil.updateIndex(getToken(), SOURCES, source.getMnemonic());
+		log.info("updated codesystem - " + source.getMnemonic());
 
 		// We create new concepts if provided
 		List<Concept> concepts = toConcepts(codeSystem.getConcept(), codeSystem.getLanguage());
@@ -552,9 +564,10 @@ public class CodeSystemConverter extends BaseConverter {
 			if (!newConcepts.isEmpty()) {
 				populateBaseConceptField(newConcepts, source, oclEntity.getUserProfile());
 				saveConcepts(source, newConcepts);
-				oclFhirUtil.populateIndex(getToken(), CONCEPTS);
+				return true;
 			}
 		}
+		return false;
 	}
 
 	private void populateBaseConceptField(List<Concept> concepts, Source source, UserProfile user) {

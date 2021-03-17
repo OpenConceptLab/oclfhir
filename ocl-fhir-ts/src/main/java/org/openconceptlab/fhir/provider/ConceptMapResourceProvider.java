@@ -62,6 +62,30 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
         return new MethodOutcome();
     }
 
+    @Update
+    public MethodOutcome updateConceptMap(@IdParam IdType idType,
+                                          @ResourceParam ConceptMap conceptMap,
+                                          RequestDetails requestDetails) {
+        if (conceptMap == null) {
+            throw new InvalidRequestException("The ConceptMap can not be empty");
+        }
+        if (idType == null || !isValid(idType.getIdPart()) || !isValid(idType.getVersionIdPart()) ||
+                isVersionAll(newStringType(idType.getVersionIdPart()))) {
+            throw new InvalidRequestException("Invalid ConceptMap.id or ConceptMap.version provided. Both parameters are required.");
+        }
+        StringType owner = newStringType(requestDetails.getHeader(OWNER));
+        if (!isValid(owner))
+            throw new InvalidRequestException("Owner can not be empty.");
+        List<Source> sources = filterSourceHead(
+                getSourceByOwnerAndIdAndVersion(idType.getIdPart(), owner.getValue(), idType.getVersionIdPart(), publicAccess));
+        if (sources.isEmpty()) {
+            throw new InvalidRequestException("ConceptMap is not found.");
+        }
+        String accessionId = buildAccessionId(CONCEPTMAP, idType, owner);
+        conceptMapConverter.updateConceptMap(conceptMap, sources.get(0), accessionId, requestDetails.getHeader(AUTHORIZATION));
+        return new MethodOutcome();
+    }
+
     /**
      * Returns all public {@link ConceptMap}.
      *

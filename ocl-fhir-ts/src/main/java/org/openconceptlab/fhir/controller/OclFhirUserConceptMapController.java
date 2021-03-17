@@ -1,6 +1,7 @@
 package org.openconceptlab.fhir.controller;
 
 import org.hl7.fhir.r4.model.ConceptMap;
+import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Parameters;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
@@ -50,6 +51,29 @@ public class OclFhirUserConceptMapController extends BaseOclFhirController {
 
         performCreate(map, auth);
         return ResponseEntity.status(HttpStatus.CREATED).build();
+    }
+
+    /**
+     * Update {@link ConceptMap} version.
+     *
+     * @param id         - the {@link ConceptMap} id
+     * @param version    - the {@link ConceptMap} version
+     * @param user        - the username
+     * @param conceptMap - the {@link ConceptMap} resource
+     * @return ResponseEntity
+     */
+    @PutMapping(path = {"/{id}/version/{version}"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> updateConceptMapForUser(@PathVariable(name = ID) String id,
+                                                          @PathVariable(name = VERSION) String version,
+                                                          @PathVariable(name = USER) String user,
+                                                          @RequestBody String conceptMap,
+                                                          @RequestHeader(name = AUTHORIZATION) String auth) {
+        if (!validateIfEditable(CONCEPTMAP, id, version, USER, user))
+            return badRequest("The ConceptMap can not be edited.");
+        ConceptMap map = (ConceptMap) parser.parseResource(conceptMap);
+        IdType idType = new IdType(CONCEPTMAP, id, version);
+        performUpdate(map, auth, idType, formatUser(user));
+        return ResponseEntity.status(HttpStatus.OK).build();
     }
 
     /**

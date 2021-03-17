@@ -1,6 +1,8 @@
 package org.openconceptlab.fhir.converter;
 
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.hl7.fhir.r4.model.*;
 import org.hl7.fhir.r4.model.codesystems.PublicationStatus;
 import org.openconceptlab.fhir.model.Collection;
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
 import javax.sql.DataSource;
+import javax.transaction.Transactional;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -48,6 +51,7 @@ public class ValueSetConverter extends BaseConverter {
     private static final Map<String,Object> collReferenceParamMap = new HashMap<>();
     private static final String insertCollectionsReferences = "insert into collections_references (collection_id,collectionreference_id) values (?,?) on conflict do nothing";
     private static final String insertCollectionsConcepts = "insert into collections_concepts (collection_id,concept_id) values (?,?) on conflict do nothing";
+    private static final Log log = LogFactory.getLog(ValueSetConverter.class);
 
     public ValueSetConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil,
                              UserProfile oclUser, ConceptsSourceRepository conceptsSourceRepository, DataSource dataSource,
@@ -771,6 +775,14 @@ public class ValueSetConverter extends BaseConverter {
     }
 
     public void updateValueSet(final ValueSet valueSet, final Collection collection, final String accessionId, final String authToken) {
+        // update and save in database
+        update(valueSet, collection, accessionId, authToken);
+        // update index
+        oclFhirUtil.updateIndex(getToken(), COLLECTIONS, collection.getMnemonic());
+    }
+
+    @Transactional
+     void update(final ValueSet valueSet, final Collection collection, final String accessionId, final String authToken) {
         final OclEntity oclEntity = new OclEntity(valueSet, accessionId, authToken, false);
         // update status
         if (valueSet.getStatus() != null) {
@@ -842,14 +854,12 @@ public class ValueSetConverter extends BaseConverter {
 
         // save collection
         saveCollection(collection, validatedConceptIds, newExpressions);
+        log.info("updated valueset - " + collection.getMnemonic());
 
         // clear data
         sourceToConceptMap.clear();
         validatedConceptIds.clear();
         newExpressions.clear();
-
-        // update index
-        oclFhirUtil.updateIndex(getToken(), COLLECTIONS, collection.getMnemonic());
     }
 
     private void saveCollection(Collection collection, Map<Long, String> validatedConceptIds, Set<String> expressions) {
