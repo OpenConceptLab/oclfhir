@@ -91,6 +91,21 @@ public class BaseOclFhirController {
         }
     }
 
+    protected ResponseEntity<String> handleFhirOperation(Parameters parameters, Class<? extends Resource> type,
+                                                         String operation, String id) {
+        try {
+            return ResponseEntity.ok(oclFhirUtil.getResourceAsString(performFhirOperation(parameters, type, operation, id)));
+        } catch (BaseServerResponseException e) {
+            log.error("BaseServerResponseException - " + e.getMessage());
+            log.error("BaseServerResponseException - " + e);
+            return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBody());
+        } catch (Exception e) {
+            log.error("Exception - " + e.getMessage());
+            log.error("Exception - " + e);
+            return badRequest(e.getMessage());
+        }
+    }
+
     protected String searchResource(final Class<? extends MetadataResource> resourceClass, final String... filters) {
         IQuery q = oclFhirUtil.getClient().search().forResource(resourceClass);
         if (filters.length % 2 == 0) {
@@ -106,6 +121,17 @@ public class BaseOclFhirController {
         Bundle bundle = (Bundle) q.execute();
         log.info("Request executed successfully.");
         return oclFhirUtil.getResourceAsString(bundle);
+    }
+
+    protected Parameters performFhirOperation(Parameters parameters, Class<? extends Resource> type, String operation,
+                                              String resourceId) {
+        return oclFhirUtil.getClient()
+                .operation()
+                .onType(type)
+                .named(operation)
+                .withParameters(parameters)
+                .withAdditionalHeader(RESOURCE_ID, resourceId)
+                .execute();
     }
 
     protected Parameters performFhirOperation(Parameters parameters, Class<? extends Resource> type, String operation) {

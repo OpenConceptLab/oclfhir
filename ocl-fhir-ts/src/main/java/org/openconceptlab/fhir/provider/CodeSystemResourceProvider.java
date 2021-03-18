@@ -5,6 +5,7 @@ import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
+import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hl7.fhir.instance.model.api.IBaseResource;
@@ -176,31 +177,6 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
 
     /**
      * CodeSystem $lookup operation.
-     * GET request example:
-     * <HOST>/fhir/CodeSystem/$lookup?code=#&system=#&version=#&displayLanguage=#
-     *
-     * POST request example:
-     * {
-     *     "resourceType":"Parameters",
-     *     "parameter": [
-     *          {
-     *             "name":"system",
-     *             "valueUri":""
-     *         },
-     *         {
-     *             "name":"code",
-     *             "valueCode":""
-     *         },
-     *         {
-     *             "name":"version",
-     *             "valueString":""
-     *         },
-     *         {
-     *             "name":"displayLanguage",
-     *             "valueCode":""
-     *         }
-     *     ]
-     * }
      *
      * @param code - (Mandatory) Code that is to be located
      * @param system - (Mandatory) System for the code that is to be located
@@ -214,9 +190,18 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
                                        @OperationParam(name = SYSTEM, type = UriType.class, min = 1) UriType system,
                                        @OperationParam(name = VERSION, type = StringType.class) StringType version,
                                        @OperationParam(name = DISP_LANG, type = CodeType.class) CodeType displayLanguage,
-                                       @OperationParam(name = OWNER, type = StringType.class) StringType owner) {
-
-        validateOperation(code, system, LOOKUP);
+                                       @OperationParam(name = OWNER, type = StringType.class) StringType owner,
+                                       RequestDetails requestDetails) {
+        // $lookup by id
+        String id = requestDetails.getHeader(RESOURCE_ID);
+        if (isValid(id)) {
+            validateOperation(code, id, LOOKUP, version);
+            List<Source> sources = getSourceByOwnerAndIdAndVersion(newStringType(id), owner, version, publicAccess);
+            if (sources.isEmpty()) throw new ResourceNotFoundException(notFound(CodeSystem.class, owner, newStringType(id), version));
+            return codeSystemConverter.getLookupParameters(sources.get(0), code, displayLanguage);
+        }
+        // $lookup by url
+        validateOperation(code, system, LOOKUP, version);
         Source source = isValid(owner) ? oclFhirUtil.getSourceByOwnerAndUrl(owner, newStringType(system), version, publicAccess) :
                 getSourceByUrl(newStringType(system), version, publicAccess).get(0);
         return codeSystemConverter.getLookupParameters(source, code, displayLanguage);
@@ -230,24 +215,63 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
                                              @OperationParam(name = DISPLAY, type = StringType.class) StringType display,
                                              @OperationParam(name = DISP_LANG, type = CodeType.class) CodeType displayLanguage,
                                              @OperationParam(name = CODING, type = Coding.class) Coding coding,
-                                             @OperationParam(name = OWNER, type = StringType.class) StringType owner) {
-
+                                             @OperationParam(name = OWNER, type = StringType.class) StringType owner,
+                                             RequestDetails requestDetails) {
+        // $validate-code by id
+        String id = requestDetails.getHeader(RESOURCE_ID);
+        if (isValid(id)) {
+            /*
+             * Valid for POST call since you can't user Coding in GET call.
+             * Scenario : coding != null
+             * code = coding.code (override code parameter)
+             * display = coding.display (override display parameter)
+             *
+             * Version preference order:
+             * 1. Path version (Ignore coding.version)
+             * 2. Parameter version (Ignore coding.version)
+             * 3. Coding.version (use coding.version)
+             *
+             */
+            if (coding != null) {
+                code = new CodeType(coding.getCode());
+                display = new StringType(coding.getDisplay());
+                if (!isValid(version))
+                    version = new StringType(coding.getVersion());
+            }
+            validateOperation(code, id, VALIDATE_CODE, version);
+            List<Source> sources = getSourceByOwnerAndIdAndVersion(newStringType(id), owner, version, publicAccess);
+            if (sources.isEmpty()) throw new ResourceNotFoundException(notFound(CodeSystem.class, owner, newStringType(id), version));
+            return codeSystemConverter.validateCode(sources.get(0), getCode(code), display, displayLanguage);
+        }
+        // $validate-code by url
         if (coding != null) {
             url = new UriType(coding.getSystem());
             code = new CodeType(coding.getCode());
             version = new StringType(coding.getVersion());
             display = new StringType(coding.getDisplay());
         }
-        validateOperation(code, url, VALIDATE_CODE);
+        validateOperation(code, url, VALIDATE_CODE, version);
         Source source = isValid(owner) ? oclFhirUtil.getSourceByOwnerAndUrl(owner, newStringType(url), version, publicAccess) :
                 getSourceByUrl(newStringType(url), version, publicAccess).get(0);
         return codeSystemConverter.validateCode(source, getCode(code), display, displayLanguage);
     }
 
-    private void validateOperation(CodeType code, UriType system, String operation) {
+    private void validateOperation(CodeType code, UriType system, String operation, StringType version) {
         if (!isValid(code) || !isValid(system)) {
             String msg = "Could not perform CodeSystem %s operation, both code and %s parameters are required.";
                 throw new InvalidRequestException(String.format(msg, operation, LOOKUP.equals(operation) ? SYSTEM : URL));
         }
+        if (isVersionAll(version)) throw new InvalidRequestException("Invalid version provided.");
     }
+
+    protected void validateOperation(CodeType code, String id, String operation, StringType version) {
+        if (!isValid(code) || !isValid(id)) {
+            String msg = "Could not perform CodeSystem %s operation, both code and %s parameters are required.";
+            throw new InvalidRequestException(String.format(msg, operation, id));
+        }
+        if (isVersionAll(version)) throw new InvalidRequestException("Invalid version provided.");
+    }
+
 }
+
+

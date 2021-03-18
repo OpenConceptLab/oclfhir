@@ -356,25 +356,29 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
     @Test(expected = InvalidRequestException.class)
     public void testCodeSystemLookup_code_null() {
         CodeSystemResourceProvider provider = codeSystemProvider();
-        provider.codeSystemLookUp(null, newUrl(URL_SOURCE_1), null, null, null);
+        provider.codeSystemLookUp(null, newUrl(URL_SOURCE_1), null, null, null,
+                requestDetails);
     }
 
     @Test(expected = InvalidRequestException.class)
     public void testCodeSystemLookup_code_empty() {
         CodeSystemResourceProvider provider = codeSystemProvider();
-        provider.codeSystemLookUp(newCode(""), newUrl(URL_SOURCE_1), null, null, null);
+        provider.codeSystemLookUp(newCode(""), newUrl(URL_SOURCE_1), null, null, null,
+                requestDetails);
     }
 
     @Test(expected = InvalidRequestException.class)
     public void testCodeSystemLookup_url_null() {
         CodeSystemResourceProvider provider = codeSystemProvider();
-        provider.codeSystemLookUp(newCode(AD), null, null, null, null);
+        provider.codeSystemLookUp(newCode(AD), null, null, null, null,
+                requestDetails);
     }
 
     @Test(expected = InvalidRequestException.class)
     public void testCodeSystemLookup_url_empty() {
         CodeSystemResourceProvider provider = codeSystemProvider();
-        provider.codeSystemLookUp(newCode(AD), newUrl(""), null, null, null);
+        provider.codeSystemLookUp(newCode(AD), newUrl(""), null, null, null,
+                requestDetails);
     }
 
     @Test
@@ -384,7 +388,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(eq(123L), anyList()))
                 .thenReturn(Collections.singletonList(cs11));
         CodeSystemResourceProvider provider = codeSystemProvider();
-        Parameters parameters = provider.codeSystemLookUp(newCode(AD), newUrl(URL_SOURCE_1), null, null, null);
+        Parameters parameters = provider.codeSystemLookUp(newCode(AD), newUrl(URL_SOURCE_1), null, null, null, requestDetails);
         assertEquals(SOURCE_1_NAME, parameters.getParameter("name").toString());
         assertEquals(V_1_0, parameters.getParameter("version").toString());
         assertEquals(ALLERGIC_DISORDER, parameters.getParameter("display").toString());
@@ -397,7 +401,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(eq(123L), anyList()))
                 .thenReturn(Collections.singletonList(cs11));
         CodeSystemResourceProvider provider = codeSystemProvider();
-        Parameters parameters = provider.codeSystemLookUp(newCode(AD), newUrl(URL_SOURCE_1), null, newCode(ES), null);
+        Parameters parameters = provider.codeSystemLookUp(newCode(AD), newUrl(URL_SOURCE_1), null, newCode(ES), null, requestDetails);
         assertEquals(SOURCE_1_NAME, parameters.getParameter("name").toString());
         assertEquals(V_1_0, parameters.getParameter("version").toString());
         assertEquals(TRASTORNO_ALERGICO, parameters.getParameter("display").toString());
@@ -408,7 +412,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         when(sourceRepository.findFirstByCanonicalUrlAndReleasedAndPublicAccessInOrderByCreatedAtDesc(
                 anyString(), anyBoolean(), anyList())).thenReturn(source1);
         CodeSystemResourceProvider provider = codeSystemProvider();
-        provider.codeSystemLookUp(newCode("BLOB"), newUrl(URL_SOURCE_1), null, null, null);
+        provider.codeSystemLookUp(newCode("BLOB"), newUrl(URL_SOURCE_1), null, null, null, requestDetails);
     }
 
     @Test
@@ -418,7 +422,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(eq(123L), anyList()))
                 .thenReturn(Collections.singletonList(cs11));
         CodeSystemResourceProvider provider = codeSystemProvider();
-        Parameters parameters = provider.codeSystemLookUp(newCode(AD), newUrl(URL_SOURCE_1), null, newCode("fr"), null);
+        Parameters parameters = provider.codeSystemLookUp(newCode(AD), newUrl(URL_SOURCE_1), null, newCode("fr"), null, requestDetails);
         assertEquals(SOURCE_1_NAME, parameters.getParameter("name").toString());
         assertEquals(V_1_0, parameters.getParameter("version").toString());
         assertNull(parameters.getParameter("display"));
@@ -427,25 +431,25 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
     @Test(expected = InvalidRequestException.class)
     public void testCodeSystemValidateCode_url_null() {
         CodeSystemResourceProvider provider = codeSystemProvider();
-        provider.codeSystemValidateCode(null, newCode(AD), null, null, null, null, null);
+        provider.codeSystemValidateCode(null, newCode(AD), null, null, null, null, null, requestDetails);
     }
 
     @Test(expected = InvalidRequestException.class)
     public void testCodeSystemValidateCode_url_empty() {
         CodeSystemResourceProvider provider = codeSystemProvider();
-        provider.codeSystemValidateCode(newUrl(""), newCode(AD), null, null, null, null, null);
+        provider.codeSystemValidateCode(newUrl(""), newCode(AD), null, null, null, null, null, requestDetails);
     }
 
     @Test(expected = InvalidRequestException.class)
     public void testCodeSystemValidateCode_code_null() {
         CodeSystemResourceProvider provider = codeSystemProvider();
-        provider.codeSystemValidateCode(newUrl(URL_SOURCE_1), null, null, null, null, null, null);
+        provider.codeSystemValidateCode(newUrl(URL_SOURCE_1), null, null, null, null, null, null, requestDetails);
     }
 
     @Test(expected = InvalidRequestException.class)
     public void testCodeSystemValidateCode_code_empty() {
         CodeSystemResourceProvider provider = codeSystemProvider();
-        provider.codeSystemValidateCode(newUrl(URL_SOURCE_1), newCode(""), null, null, null, null, null);
+        provider.codeSystemValidateCode(newUrl(URL_SOURCE_1), newCode(""), null, null, null, null, null, requestDetails);
     }
 
     @Test
@@ -455,7 +459,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(eq(123L), anyList()))
                 .thenReturn(Collections.singletonList(cs11));
         CodeSystemResourceProvider provider = codeSystemProvider();
-        Parameters parameters = provider.codeSystemValidateCode(newUrl(URL_SOURCE_1), newCode(AD), null, null, null, null, null);
+        Parameters parameters = provider.codeSystemValidateCode(newUrl(URL_SOURCE_1), newCode(AD), null, null, null, null, null, requestDetails);
         assertTrue(parameters);
     }
 
@@ -466,7 +470,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(eq(123L), anyList()))
                 .thenReturn(Collections.singletonList(cs11));
         CodeSystemResourceProvider provider = codeSystemProvider();
-        Parameters parameters = provider.codeSystemValidateCode(newUrl(URL_SOURCE_1), newCode(AD), null, newString(ALLERGIC_DISORDER), null, null, null);
+        Parameters parameters = provider.codeSystemValidateCode(newUrl(URL_SOURCE_1), newCode(AD), null, newString(ALLERGIC_DISORDER), null, null, null, requestDetails);
         assertTrue(parameters);
     }
 
@@ -477,7 +481,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(eq(123L), anyList()))
                 .thenReturn(Collections.singletonList(cs11));
         CodeSystemResourceProvider provider = codeSystemProvider();
-        Parameters parameters = provider.codeSystemValidateCode(newUrl(URL_SOURCE_1), newCode(AD), null, newString("ABC"), null, null, null);
+        Parameters parameters = provider.codeSystemValidateCode(newUrl(URL_SOURCE_1), newCode(AD), null, newString("ABC"), null, null, null, requestDetails);
         assertFalse(parameters);
     }
 
@@ -488,7 +492,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(eq(123L), anyList()))
                 .thenReturn(Collections.singletonList(cs11));
         CodeSystemResourceProvider provider = codeSystemProvider();
-        Parameters parameters = provider.codeSystemValidateCode(newUrl(URL_SOURCE_1), newCode(AD), null, newString(ALLERGIC_DISORDER), newCode(EN), null, null);
+        Parameters parameters = provider.codeSystemValidateCode(newUrl(URL_SOURCE_1), newCode(AD), null, newString(ALLERGIC_DISORDER), newCode(EN), null, null, requestDetails);
         assertTrue(parameters);
     }
 
@@ -500,7 +504,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
                 .thenReturn(Collections.singletonList(cs11));
         CodeSystemResourceProvider provider = codeSystemProvider();
         provider.getResourceType();
-        Parameters parameters = provider.codeSystemValidateCode(newUrl(URL_SOURCE_1), newCode(AD), null, newString(ALLERGIC_DISORDER), newCode(ES), null, null);
+        Parameters parameters = provider.codeSystemValidateCode(newUrl(URL_SOURCE_1), newCode(AD), null, newString(ALLERGIC_DISORDER), newCode(ES), null, null, requestDetails);
         assertFalse(parameters);
     }
 
@@ -516,7 +520,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         coding.setCode(AD);
         coding.setDisplay(ALLERGIC_DISORDER);
         coding.setVersion(V_1_0);
-        Parameters parameters = provider.codeSystemValidateCode(null, null, null, null, null, coding, newString("user:test"));
+        Parameters parameters = provider.codeSystemValidateCode(null, null, null, null, null, coding, newString("user:test"), requestDetails);
         assertTrue(parameters);
     }
 

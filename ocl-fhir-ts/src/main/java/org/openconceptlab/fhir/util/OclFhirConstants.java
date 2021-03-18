@@ -5,6 +5,7 @@ import org.hl7.fhir.r4.model.ConceptMap;
 import org.hl7.fhir.r4.model.ValueSet;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 public final class OclFhirConstants {
@@ -65,7 +66,7 @@ public final class OclFhirConstants {
 	public static final String ORGS = "orgs";
 	public static final String USERS = "users";
 	public static final String SEP = ":";
-	public static final List<String> publicAccess = Arrays.asList("View", "Edit");
+	public static final List<String> publicAccess = Collections.singletonList("View");
 	public static final String OWNER = "owner";
 	public static final String ID = "id";
 	public static final String ALL = "*";
@@ -145,4 +146,6 @@ public final class OclFhirConstants {
 	public static final String TO_CONCEPT_NAME = "to_concept_name";
 	public static final String TO_CONCEPT_ID = "to_concept_id";
 	public static final String MAP_TYPE = "map_type";
+
+	public static final String RESOURCE_ID = "resourceId";
 }

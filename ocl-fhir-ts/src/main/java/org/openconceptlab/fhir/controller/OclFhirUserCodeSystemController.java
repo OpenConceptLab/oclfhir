@@ -235,5 +235,93 @@ public class OclFhirUserCodeSystemController extends BaseOclFhirController {
         return handleFhirOperation(params, CodeSystem.class, VALIDATE_CODE);
     }
 
+    /**
+     * Perform {@link CodeSystem} $lookup.
+     *
+     * @param user            - the username
+     * @param id              - the {@link CodeSystem} id
+     * @param system          - the {@link CodeSystem} url
+     * @param code            - the concept code
+     * @param version         - the {@link CodeSystem} version
+     * @param displayLanguage - the display language
+     * @return ResponseEntity
+     */
+    @GetMapping(path = {"/{id}/$lookup", "/{id}/version/{version}/$lookup"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> lookUpCodeSystemsByUserAndId(@PathVariable String user,
+                                                              @PathVariable(name = ID) String id,
+                                                              @PathVariable(name = VERSION, required = false) String pathVersion,
+                                                              @RequestParam(name = SYSTEM, required = false) String system,
+                                                              @RequestParam(name = CODE) String code,
+                                                              @RequestParam(name = VERSION, required = false) String version,
+                                                              @RequestParam(name = DISP_LANG, required = false) String displayLanguage) {
+        Parameters parameters = lookupParameters(system, code, isValid(pathVersion) ? pathVersion : version, displayLanguage, formatUser(user));
+        return handleFhirOperation(parameters, CodeSystem.class, LOOKUP, id);
+    }
+
+    /**
+     * Perform {@link CodeSystem} $lookup.
+     *
+     * @param user        - the username
+     * @param id         - the {@link CodeSystem} id
+     * @param parameters - the input parameters
+     * @return ResponseEntity
+     */
+    @PostMapping(path = {"/{id}/$lookup", "/{id}/version/{version}/$lookup"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> lookUpCodeSystemsByUserAndId(@PathVariable String user,
+                                                              @PathVariable(name = ID) String id,
+                                                              @PathVariable(name = VERSION, required = false) String pathVersion,
+                                                              @RequestBody String parameters) {
+        Parameters params = (Parameters) getResource(parameters);
+        params.addParameter().setName(OWNER).setValue(newStringType(formatUser(user)));
+        if (isValid(pathVersion))
+            params.setParameter(VERSION, pathVersion);
+        return handleFhirOperation(params, CodeSystem.class, LOOKUP, id);
+    }
+
+    /**
+     * Perform {@link CodeSystem} $validate-code.
+     *
+     * @param user            - the username
+     * @param id              - the {@link CodeSystem} id
+     * @param url             - the {@link CodeSystem} url
+     * @param code            - the concept code
+     * @param version         - the {@link CodeSystem} version
+     * @param display         - the concept display
+     * @param displayLanguage - the display language
+     * @return ResponseEntity
+     */
+    @GetMapping(path = {"/{id}/$validate-code", "/{id}/version/{version}/$validate-code"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> validateCodeSystemsByUserAndId(@PathVariable String user,
+                                                                @PathVariable(name = ID) String id,
+                                                                @PathVariable(name = VERSION) String pathVersion,
+                                                                @RequestParam(name = URL, required = false) String url,
+                                                                @RequestParam(name = CODE) String code,
+                                                                @RequestParam(name = VERSION, required = false) String version,
+                                                                @RequestParam(name = DISPLAY, required = false) String display,
+                                                                @RequestParam(name = DISP_LANG, required = false) String displayLanguage) {
+        Parameters parameters = codeSystemVCParameters(url, code, isValid(pathVersion) ? pathVersion : version, display, displayLanguage, formatUser(user));
+        return handleFhirOperation(parameters, CodeSystem.class, VALIDATE_CODE, id);
+    }
+
+    /**
+     * Perform {@link CodeSystem} $validate-code.
+     *
+     * @param user       - the username
+     * @param id         - the {@link CodeSystem} id
+     * @param parameters - the input parameters
+     * @return ResponseEntity
+     */
+    @PostMapping(path = {"/{id}/$validate-code", "/{id}/version/{version}/$validate-code"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> validateCodeSystemsByUserAndId(@PathVariable String user,
+                                                                @PathVariable(name = ID) String id,
+                                                                @PathVariable(name = VERSION) String pathVersion,
+                                                                @RequestBody String parameters) {
+        Parameters params = (Parameters) getResource(parameters);
+        params.addParameter().setName(OWNER).setValue(newStringType(formatUser(user)));
+        if (isValid(pathVersion))
+            params.setParameter(VERSION, pathVersion);
+        return handleFhirOperation(params, CodeSystem.class, VALIDATE_CODE, id);
+    }
+
 }
 
