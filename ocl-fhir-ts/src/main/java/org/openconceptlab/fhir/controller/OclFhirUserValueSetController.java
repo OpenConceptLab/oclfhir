@@ -189,7 +189,7 @@ public class OclFhirUserValueSetController extends BaseOclFhirController {
      *
      * @param user       - the username
      * @param parameters - the input parameters
-     * @return
+     * @return ResponseEntity
      */
     @PostMapping(path = {"/$validate-code"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> validateValueSetByUser(@PathVariable String user, @RequestBody String parameters) {
@@ -211,7 +211,7 @@ public class OclFhirUserValueSetController extends BaseOclFhirController {
      * @param activeOnly          - flag to include/exclude active concepts
      * @param displayLanguage     - the display language
      * @param filter              - the concept code filter
-     * @return
+     * @return ResponseEntity
      */
     @GetMapping(path = {"/$expand"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> expandValueSetByUser(@PathVariable String user,
@@ -234,13 +234,117 @@ public class OclFhirUserValueSetController extends BaseOclFhirController {
      *
      * @param user       - the username
      * @param parameters - the input paramters
-     * @return
+     * @return ResponseEntity
      */
     @PostMapping(path = {"/$expand"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> expandValueSetByUser(@PathVariable String user, @RequestBody String parameters) {
         Parameters params = (Parameters) getResource(parameters);
         params.addParameter().setName(OWNER).setValue(newStringType(formatUser(user)));
         return handleFhirOperation(params, ValueSet.class, EXPAND);
+    }
+
+    /**
+     * Perform {@link ValueSet} $validate-code.
+     *
+     * @param user             - the username
+     * @param id              - the {@link ValueSet} id
+     * @param url             - the {@link ValueSet} url
+     * @param valueSetVersion - the {@link ValueSet} version
+     * @param code            - the concept code
+     * @param system          - the {@link CodeSystem} url
+     * @param systemVersion   - the {@link CodeSystem} version
+     * @param display         - the display
+     * @param displayLanguage - the display language
+     * @return ResponseEntity
+     */
+    @GetMapping(path = {"/{id}/$validate-code", "/{id}/version/{version}/$validate-code"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> validateValueSetByUserAndId(@PathVariable String user,
+                                                              @PathVariable(name = ID) String id,
+                                                              @PathVariable(name = VERSION, required = false) String pathVersion,
+                                                              @RequestParam(name = URL, required = false) String url,
+                                                              @RequestParam(name = VALUESET_VERSION, required = false) String valueSetVersion,
+                                                              @RequestParam(name = CODE) String code,
+                                                              @RequestParam(name = SYSTEM) String system,
+                                                              @RequestParam(name = SYSTEM_VERSION, required = false) String systemVersion,
+                                                              @RequestParam(name = DISPLAY, required = false) String display,
+                                                              @RequestParam(name = DISP_LANG, required = false) String displayLanguage) {
+        Parameters parameters = valueSetVCParameters(url, EMPTY, isValid(pathVersion) ? pathVersion : valueSetVersion, code, system, systemVersion, display,
+                displayLanguage, formatUser(user));
+        return handleFhirOperation(parameters, ValueSet.class, VALIDATE_CODE, id);
+    }
+
+    /**
+     * Perform {@link ValueSet} $validate-code.
+     *
+     * @param user        - the username
+     * @param id         - the {@link CodeSystem} id
+     * @param parameters - the input parameters
+     * @return ResponseEntity
+     */
+    @PostMapping(path = {"/{id}/$validate-code", "/{id}/version/{version}/$validate-code"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> validateValueSetByUserAndId(@PathVariable String user,
+                                                              @PathVariable(name = ID) String id,
+                                                              @PathVariable(name = VERSION, required = false) String pathVersion,
+                                                              @RequestBody String parameters) {
+        Parameters params = (Parameters) getResource(parameters);
+        params.addParameter().setName(OWNER).setValue(newStringType(formatUser(user)));
+        if (isValid(pathVersion))
+            params.setParameter(VALUESET_VERSION, pathVersion);
+        return handleFhirOperation(params, ValueSet.class, VALIDATE_CODE, id);
+    }
+
+    /**
+     * Perform {@link ValueSet} $expand.
+     *
+     * @param user                 - the username
+     * @param id                  - the {@link ValueSet} id
+     * @param url                 - the {@link ValueSet} url
+     * @param valueSetVersion     - the {@link ValueSet} version
+     * @param offset              - the offset (for partial output)
+     * @param count               - the count (for partial output)
+     * @param includeDesignations - flag to include/exclude designations
+     * @param includeDefinition   - flag to include/exclude definition
+     * @param activeOnly          - flag to include/exclude active concepts
+     * @param displayLanguage     - the display language
+     * @param filter              - the concept code filter
+     * @return ResponseEntity
+     */
+    @GetMapping(path = {"/{id}/$expand", "/{id}/version/{version}/$expand"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> expandValueSetByUserAndId(@PathVariable String user,
+                                                            @PathVariable(name = ID) String id,
+                                                            @PathVariable(name = VERSION, required = false) String pathVersion,
+                                                            @RequestParam(name = URL, required = false) String url,
+                                                            @RequestParam(name = VALUESET_VERSION, required = false) String valueSetVersion,
+                                                            @RequestParam(name = OFFSET, required = false, defaultValue = "0") Integer offset,
+                                                            @RequestParam(name = COUNT, required = false, defaultValue = "100") Integer count,
+                                                            @RequestParam(name = INCLUDE_DESIGNATIONS, defaultValue = "true") Boolean includeDesignations,
+                                                            @RequestParam(name = INCLUDE_DEFINITION, defaultValue = "false") Boolean includeDefinition,
+                                                            @RequestParam(name = ACTIVE_ONLY, defaultValue = "true") Boolean activeOnly,
+                                                            @RequestParam(name = DISPLAY_LANGUAGE, required = false) String displayLanguage,
+                                                            @RequestParam(name = FILTER, required = false) String filter) {
+        Parameters parameters = valueSetExpandParameters(url, isValid(pathVersion) ? pathVersion : valueSetVersion, offset, count, includeDesignations,
+                includeDefinition, activeOnly, displayLanguage, filter, formatUser(user));
+        return handleFhirOperation(parameters, ValueSet.class, EXPAND, id);
+    }
+
+    /**
+     * Perform {@link ValueSet} $expand.
+     *
+     * @param user        - the username
+     * @param id         - the {@link ValueSet} id
+     * @param parameters - the input paramters
+     * @return ResponseEntity
+     */
+    @PostMapping(path = {"/{id}/$expand", "/{id}/version/{version}/$expand"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> expandValueSetByUserAndId(@PathVariable String user,
+                                                            @PathVariable(name = ID) String id,
+                                                            @PathVariable(name = VERSION, required = false) String pathVersion,
+                                                            @RequestBody String parameters) {
+        Parameters params = (Parameters) getResource(parameters);
+        params.addParameter().setName(OWNER).setValue(newStringType(formatUser(user)));
+        if (isValid(pathVersion))
+            params.setParameter(VALUESET_VERSION, pathVersion);
+        return handleFhirOperation(params, ValueSet.class, EXPAND, id);
     }
 
 }

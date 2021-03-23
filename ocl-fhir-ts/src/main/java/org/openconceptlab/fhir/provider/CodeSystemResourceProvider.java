@@ -194,7 +194,7 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
                                        RequestDetails requestDetails) {
         // $lookup by id
         String id = requestDetails.getHeader(RESOURCE_ID);
-        if (isValid(id)) {
+        if (isValid(id) && isValid(owner)) {
             validateOperation(code, id, LOOKUP, version);
             List<Source> sources = getSourceByOwnerAndIdAndVersion(newStringType(id), owner, version, publicAccess);
             if (sources.isEmpty()) throw new ResourceNotFoundException(notFound(CodeSystem.class, owner, newStringType(id), version));
@@ -219,7 +219,7 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
                                              RequestDetails requestDetails) {
         // $validate-code by id
         String id = requestDetails.getHeader(RESOURCE_ID);
-        if (isValid(id)) {
+        if (isValid(id) && isValid(owner)) {
             /*
              * Valid for POST call since you can't user Coding in GET call.
              * Scenario : coding != null

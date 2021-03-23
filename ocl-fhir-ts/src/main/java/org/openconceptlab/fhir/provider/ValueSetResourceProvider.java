@@ -186,7 +186,8 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
                                            @OperationParam(name = DISPLAY, type = StringType.class) StringType display,
                                            @OperationParam(name = DISP_LANG, type = CodeType.class) CodeType displayLanguage,
                                            @OperationParam(name = CODING, type = Coding.class) Coding coding,
-                                           @OperationParam(name = OWNER, type = StringType.class) StringType owner) {
+                                           @OperationParam(name = OWNER, type = StringType.class) StringType owner,
+                                           RequestDetails requestDetails) {
 
         if (isValid(code) && coding != null)
             throw new InvalidRequestException("Either code or coding should be provided, can not accept both.");
@@ -196,12 +197,24 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
             systemVersion = new StringType(coding.getVersion());
             display = new StringType(coding.getDisplay());
         }
-        // validate input values
-        validate(url, system, code, coding);
+
+        // $validate-code by id
+        String id = requestDetails.getHeader(RESOURCE_ID);
+        if (isValid(id) && isValid(owner)) {
+            validate(system, code, coding, valueSetVersion, systemVersion);
+            List<Collection> collections = getCollectionByOwnerAndId(newStringType(id), owner, valueSetVersion, publicAccess);
+            if (collections.isEmpty())
+                throw new ResourceNotFoundException(notFound(ValueSet.class, owner, newStringType(id), valueSetVersion));
+            return valueSetConverter.validateCode(collections.get(0), system, systemVersion, newString(code), display,
+                    displayLanguage, owner, publicAccess);
+        }
+
+        // $validate-code by url
+        validate(url, system, code, coding, valueSetVersion, systemVersion);
         Collection collection = isValid(owner) ? getCollectionByOwnerAndUrl(owner, newStringType(url), valueSetVersion, publicAccess) :
                     getCollectionByUrl(newStringType(url), valueSetVersion, publicAccess).get(0);
-        return valueSetConverter.validateCode(collection, system, systemVersion
-                , newString(code), display, displayLanguage, owner, publicAccess);
+        return valueSetConverter.validateCode(collection, system, systemVersion, newString(code), display, displayLanguage,
+                owner, publicAccess);
     }
 
     @Operation(name = EXPAND, idempotent = true)
@@ -217,10 +230,23 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
                                    @OperationParam(name = EXCLUDE_SYSTEM, type = CanonicalType.class, max = OperationParam.MAX_UNLIMITED) Set<CanonicalType> excludeSystems,
                                    @OperationParam(name = SYSTEMVERSION, type = CanonicalType.class, max = OperationParam.MAX_UNLIMITED) Set<CanonicalType> systemVersions,
                                    @OperationParam(name = FILTER, type = StringType.class) StringType filter,
-                                   @OperationParam(name = OWNER, type = StringType.class) StringType owner) {
-        validate(url, offset, count);
-        Collection collection = isValid(owner) ? getCollectionByOwnerAndUrl(owner, newStringType(url), valueSetVersion, publicAccess) :
-                getCollectionByUrl(newStringType(url), valueSetVersion, publicAccess).get(0);
+                                   @OperationParam(name = OWNER, type = StringType.class) StringType owner,
+                                   RequestDetails requestDetails) {
+        validate(url, offset, count, valueSetVersion);
+        String id = requestDetails.getHeader(RESOURCE_ID);
+        // $expand by id
+        Collection collection = null;
+        if (isValid(id)) {
+            List<Collection> collections = getCollectionByOwnerAndId(newStringType(id), owner, valueSetVersion, publicAccess);
+            if (collections.isEmpty())
+                throw new ResourceNotFoundException(notFound(ValueSet.class, owner, newStringType(id), valueSetVersion));
+            collection = collections.get(0);
+        // $expand by url
+        } else {
+            collection = isValid(owner) ? getCollectionByOwnerAndUrl(owner, newStringType(url), valueSetVersion, publicAccess) :
+                    getCollectionByUrl(newStringType(url), valueSetVersion, publicAccess).get(0);
+        }
+
         if (!isValid(offset)) offset = new IntegerType(0);
         if (!isValid(count)) count = new IntegerType(100);
         if (count.getValue() > 100) count.setValue(100);
@@ -381,22 +407,41 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
         return collectionRepository.findFirstByCanonicalUrlAndVersionAndUserIdUsernameAndPublicAccessIn(url.getValue(), version.getValue(), owner, access);
     }
 
-    private void validate(UriType url, UriType system, CodeType code, Coding coding) {
+    private void validate(UriType url, UriType system, CodeType code, Coding coding, StringType... versions) {
         if (!isValid(url) || !isValid(system))
             throw new InvalidRequestException("Both url and system must be provided.");
+        for (StringType version : versions) {
+            if (isVersionAll(version)) throw new InvalidRequestException("Invalid version provided.");
+        }
+        validateCode(code, coding);
+    }
+
+    private void validate(UriType system, CodeType code, Coding coding, StringType... versions) {
+        if (!isValid(system))
+            throw new InvalidRequestException("The system must be provided.");
+        for (StringType version : versions) {
+            if (isVersionAll(version)) throw new InvalidRequestException("Invalid version provided.");
+        }
+        validateCode(code, coding);
+    }
+
+    private void validateCode(CodeType code, Coding coding) {
         if (!isValid(code) && coding == null)
             throw new InvalidRequestException("Either of code or coding must be provided.");
         if (coding != null && (!isValid(coding.getSystem()) || !isValid(coding.getCode())))
             throw new InvalidRequestException("Both system and code of coding must be provided.");
     }
 
-    private void validate(UriType url, IntegerType offset, IntegerType count) {
+    private void validate(UriType url, IntegerType offset, IntegerType count, StringType... versions) {
         if (!isValid(url))
             throw new InvalidRequestException("Url parameter of $expand operation must be provided.");
         if (isValid(offset) && offset.getValue() < 0)
             throw new InvalidRequestException("Offset parameter of $expand operation can not be negative.");
         if (isValid(count) && count.getValue() < 0)
             throw new InvalidRequestException("Count parameter of $expand operation can not be negative.");
+        for (StringType version : versions) {
+            if (isVersionAll(version)) throw new InvalidRequestException("Invalid version provided.");
+        }
     }
 
     private void validateSystemVersion(List<String> systemVersions) {

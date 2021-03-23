@@ -562,7 +562,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
     public void testExpand_missing_url() {
         ValueSetResourceProvider provider = valueSetProvider();
         provider.valueSetExpand(null, null, new IntegerType(0), new IntegerType(10),
-                null, null, null, null, null, null, null, newString(OWNER_VAL));
+                null, null, null, null, null, null, null, newString(OWNER_VAL), requestDetails);
     }
 
     @Test(expected = InvalidRequestException.class)
@@ -893,7 +893,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
                 anyString(), anyBoolean(), anyString(), anyList())).thenReturn(collection);
 
         return provider.valueSetExpand(newUrl(VS_URL), null, new IntegerType(offset), new IntegerType(count),
-                null, null, null, null, null, Sets.newHashSet(new CanonicalType(systemVersion)), null, newString(OWNER_VAL));
+                null, null, null, null, null, Sets.newHashSet(new CanonicalType(systemVersion)), null, newString(OWNER_VAL), requestDetails);
     }
 
 
@@ -937,7 +937,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
 
         // call to test method
         Parameters output = provider.valueSetValidateCode(newUrl(url), newString(version), newCode(code), newUrl(system), newString(systemVersion),
-                newString(display), newCode(language), coding, newString(owner));
+                newString(display), newCode(language), coding, newString(owner), requestDetails);
 
         // verify
         if (StringUtils.isNotBlank(version)) {

@@ -294,7 +294,7 @@ public class OclFhirOrgCodeSystemController extends BaseOclFhirController {
     @GetMapping(path = {"/{id}/$validate-code", "/{id}/version/{version}/$validate-code"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> validateCodeSystemsByOrgAndId(@PathVariable String org,
                                                                 @PathVariable(name = ID) String id,
-                                                                @PathVariable(name = VERSION) String pathVersion,
+                                                                @PathVariable(name = VERSION, required = false) String pathVersion,
                                                                 @RequestParam(name = URL, required = false) String url,
                                                                 @RequestParam(name = CODE) String code,
                                                                 @RequestParam(name = VERSION, required = false) String version,
@@ -315,7 +315,7 @@ public class OclFhirOrgCodeSystemController extends BaseOclFhirController {
     @PostMapping(path = {"/{id}/$validate-code", "/{id}/version/{version}/$validate-code"}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> validateCodeSystemsByOrgAndId(@PathVariable String org,
                                                                 @PathVariable(name = ID) String id,
-                                                                @PathVariable(name = VERSION) String pathVersion,
+                                                                @PathVariable(name = VERSION, required = false) String pathVersion,
                                                                 @RequestBody String parameters) {
         Parameters params = (Parameters) getResource(parameters);
         params.addParameter().setName(OWNER).setValue(newStringType(formatOrg(org)));
