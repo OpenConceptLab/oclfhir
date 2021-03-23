@@ -186,5 +186,53 @@ public class OclFhirUserConceptMapController extends BaseOclFhirController {
         return handleFhirOperation(params, ConceptMap.class, TRANSLATE);
     }
 
+    /**
+     * Perform {@link ConceptMap} $translate.
+     *
+     * @param user               - the username
+     * @param id                - the {@link ConceptMap} id
+     * @param conceptMapUrl     - the {@link ConceptMap} url
+     * @param conceptMapVersion - the {@link ConceptMap} version
+     * @param system            - the source {@link ConceptMap} url
+     * @param version           - the source {@link ConceptMap} version
+     * @param code              - the concept code that needs to be translated
+     * @param targetSystem      - the target {@link ConceptMap} url
+     * @return ResponseEntity
+     */
+    @GetMapping(path = {"/{id}/$translate", "/{id}/version/{version}/$translate"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> translateConceptMapByUserAndId(@PathVariable(name = USER) String user,
+                                                                 @PathVariable(name = ID) String id,
+                                                                 @PathVariable(name = VERSION, required = false) String pathVersion,
+                                                                 @RequestParam(name = URL, required = false) String conceptMapUrl,
+                                                                 @RequestParam(name = CONCEPT_MAP_VERSION, required = false) String conceptMapVersion,
+                                                                 @RequestParam(name = SYSTEM) String system,
+                                                                 @RequestParam(name = VERSION, required = false) String version,
+                                                                 @RequestParam(name = CODE) String code,
+                                                                 @RequestParam(name = TARGET_SYSTEM, required = false) String targetSystem) {
+        Parameters parameters = conceptMapTranslateParameters(conceptMapUrl, isValid(pathVersion) ? pathVersion : conceptMapVersion, system, version, code,
+                targetSystem, formatUser(user));
+        return handleFhirOperation(parameters, ConceptMap.class, TRANSLATE, id);
+    }
+
+    /**
+     * Perform {@link ConceptMap} $translate.
+     *
+     * @param user        - the username
+     * @param id         - the {@link ConceptMap} id
+     * @param parameters - the input parameters
+     * @return ResponseEntity
+     */
+    @PostMapping(path = {"/{id}/$translate", "/{id}/version/{version}/$translate"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> translateConceptMapByUserAndId(@PathVariable(name = USER) String user,
+                                                                @PathVariable(name = ID) String id,
+                                                                @PathVariable(name = VERSION, required = false) String pathVersion,
+                                                                @RequestBody String parameters) {
+        Parameters params = (Parameters) getResource(parameters);
+        params.addParameter().setName(OWNER).setValue(newStringType(formatUser(user)));
+        if (isValid(pathVersion))
+            params.setParameter(CONCEPT_MAP_VERSION, pathVersion);
+        return handleFhirOperation(params, ConceptMap.class, TRANSLATE, id);
+    }
+
 }
 

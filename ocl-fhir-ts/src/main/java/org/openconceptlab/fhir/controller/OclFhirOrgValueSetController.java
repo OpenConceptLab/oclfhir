@@ -34,7 +34,7 @@ public class OclFhirOrgValueSetController extends BaseOclFhirController {
      * @param valueSet - the {@link ValueSet} resource
      * @return ResponseEntity
      */
-    @PostMapping(path = {"/"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    @PostMapping(path = {"/", ""}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> createValueSetForOrg(@PathVariable(name = ORG) String org,
                                                        @RequestBody String valueSet,
                                                        @RequestHeader(name = AUTHORIZATION) String auth) {
@@ -150,7 +150,7 @@ public class OclFhirOrgValueSetController extends BaseOclFhirController {
      * @param page - the page number
      * @return ResponseEntity
      */
-    @GetMapping(path = {"/"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    @GetMapping(path = {"/", ""}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> searchValueSetsByOrg(@PathVariable String org,
                                                        @RequestParam(name = PAGE, required = false) Optional<String> page,
                                                        HttpServletRequest request) {

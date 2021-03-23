@@ -1,7 +1,6 @@
 package org.openconceptlab.fhir.controller;
 
 import org.hl7.fhir.r4.model.*;
-import org.openconceptlab.fhir.model.Concept;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
 import org.openconceptlab.fhir.util.OclFhirUtil;
@@ -35,7 +34,7 @@ public class OclFhirOrgConceptMapController extends BaseOclFhirController {
      * @param conceptMap - the {@link ConceptMap} resource
      * @return ResponseEntity
      */
-    @PostMapping(path = {"/"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    @PostMapping(path = {"/", ""}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> createConceptMapForOrg(@PathVariable(name = ORG) String org,
                                                          @RequestBody String conceptMap,
                                                          @RequestHeader(name = AUTHORIZATION) String auth) {
@@ -137,7 +136,7 @@ public class OclFhirOrgConceptMapController extends BaseOclFhirController {
      * @param page - the page number
      * @return ResponseEntity
      */
-    @GetMapping(path = {"/"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    @GetMapping(path = {"/", ""}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> searchConceptMapsByOrg(@PathVariable String org,
                                                          @RequestParam(name = PAGE, required = false) Optional<String> page,
                                                          HttpServletRequest request) {
@@ -184,6 +183,55 @@ public class OclFhirOrgConceptMapController extends BaseOclFhirController {
         return handleFhirOperation(params, ConceptMap.class, TRANSLATE);
     }
 
+    /**
+     * Perform {@link ConceptMap} $translate.
+     *
+     * @param org               - the organization id
+     * @param id                - the {@link ConceptMap} id
+     * @param conceptMapUrl     - the {@link ConceptMap} url
+     * @param conceptMapVersion - the {@link ConceptMap} version
+     * @param system            - the source {@link ConceptMap} url
+     * @param version           - the source {@link ConceptMap} version
+     * @param code              - the concept code that needs to be translated
+     * @param targetSystem      - the target {@link ConceptMap} url
+     * @return ResponseEntity
+     */
+    @GetMapping(path = {"/{id}/$translate", "/{id}/version/{version}/$translate"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> translateConceptMapByOrgAndId(@PathVariable(name = ORG) String org,
+                                                                @PathVariable(name = ID) String id,
+                                                                @PathVariable(name = VERSION, required = false) String pathVersion,
+                                                                @RequestParam(name = URL, required = false) String conceptMapUrl,
+                                                                @RequestParam(name = CONCEPT_MAP_VERSION, required = false) String conceptMapVersion,
+                                                                @RequestParam(name = SYSTEM) String system,
+                                                                @RequestParam(name = VERSION, required = false) String version,
+                                                                @RequestParam(name = CODE) String code,
+                                                                @RequestParam(name = TARGET_SYSTEM, required = false) String targetSystem) {
+        Parameters parameters = conceptMapTranslateParameters(conceptMapUrl, isValid(pathVersion) ? pathVersion : conceptMapVersion, system, version, code,
+                targetSystem, formatOrg(org));
+        return handleFhirOperation(parameters, ConceptMap.class, TRANSLATE, id);
+    }
+
+    /**
+     * Perform {@link ConceptMap} $translate.
+     *
+     * @param org        - the organization id
+     * @param id         - the {@link ConceptMap} id
+     * @param parameters - the input parameters
+     * @return ResponseEntity
+     */
+    @PostMapping(path = {"/{id}/$translate", "/{id}/version/{version}/$translate"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    public ResponseEntity<String> translateConceptMapByOrgAndId(@PathVariable(name = ORG) String org,
+                                                                @PathVariable(name = ID) String id,
+                                                                @PathVariable(name = VERSION, required = false) String pathVersion,
+                                                                @RequestBody String parameters) {
+        Parameters params = (Parameters) getResource(parameters);
+        params.addParameter().setName(OWNER).setValue(newStringType(formatOrg(org)));
+        if (isValid(pathVersion))
+            params.setParameter(CONCEPT_MAP_VERSION, pathVersion);
+        return handleFhirOperation(params, ConceptMap.class, TRANSLATE, id);
+    }
+
 }
+
 
 

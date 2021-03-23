@@ -6,7 +6,6 @@ import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Parameters;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
-import org.openconceptlab.fhir.util.OclFhirConstants;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -38,7 +37,7 @@ public class OclFhirOrgCodeSystemController extends BaseOclFhirController {
      * @param codeSystem - the {@link CodeSystem} resource
      * @return ResponseEntity
      */
-    @PostMapping(path = {"/"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    @PostMapping(path = {"/", ""}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> createCodeSystemForOrg(@PathVariable(name = ORG) String org,
                                                          @RequestBody String codeSystem,
                                                          @RequestHeader(name = AUTHORIZATION) String auth) {
@@ -158,7 +157,7 @@ public class OclFhirOrgCodeSystemController extends BaseOclFhirController {
      * @param page - the page number
      * @return ResponseEntity
      */
-    @GetMapping(path = {"/"}, produces = {MediaType.APPLICATION_JSON_VALUE})
+    @GetMapping(path = {"/", ""}, produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> searchCodeSystemsByOrg(@PathVariable String org,
                                                          @RequestParam(name = PAGE, required = false) Optional<String> page,
                                                          HttpServletRequest request) {

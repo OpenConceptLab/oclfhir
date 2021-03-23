@@ -5,6 +5,7 @@ import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
+import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hl7.fhir.instance.model.api.IBaseResource;
@@ -183,20 +184,45 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
                                           @OperationParam(name = CODE, min = 1, type = CodeType.class) CodeType sourceCode,
                                           @OperationParam(name = CODING, type = Coding.class) Coding coding,
                                           @OperationParam(name = TARGET_SYSTEM, type = UriType.class) UriType targetSystem,
-                                          @OperationParam(name = OWNER, type = StringType.class) StringType owner) {
+                                          @OperationParam(name = OWNER, type = StringType.class) StringType owner,
+                                          RequestDetails requestDetails) {
 
+        // $translate by id
+        String id = requestDetails.getHeader(RESOURCE_ID);
+        if (isValid(id) && isValid(owner)) {
+            if (coding != null) {
+                sourceCode = new CodeType(coding.getCode());
+                if (!isValid(conceptMapVersion))
+                    sourceVersion = new StringType(coding.getVersion());
+            }
+            validate(sourceCode, sourceSystem);
+            List<Source> conceptMaps = getSourceByOwnerAndIdAndVersion(newStringType(id), owner, conceptMapVersion, publicAccess);
+            if (conceptMaps.isEmpty()) throw new ResourceNotFoundException(notFound(CodeSystem.class, owner, newStringType(id), conceptMapVersion));
+            return conceptMapConverter.translate(conceptMaps.get(0), sourceSystem, sourceVersion, sourceCode, targetSystem, publicAccess);
+        }
+        // $translate by url
         if (coding != null) {
             sourceSystem = new UriType(coding.getSystem());
             sourceCode = new CodeType(coding.getCode());
             sourceVersion = new StringType(coding.getVersion());
         }
-        if (!isValid(conceptMapUrl) || !isValid(sourceCode) || !isValid(sourceSystem)) {
-            String msg = "Could not perform ConceptMap $translate operation, the url, code and system parameters are required.";
-            throw new InvalidRequestException(msg);
-        }
+        validate(conceptMapUrl, sourceCode, sourceSystem);
         Source conceptMap = isValid(owner) ? oclFhirUtil.getSourceByOwnerAndUrl(owner, newStringType(conceptMapUrl), conceptMapVersion, publicAccess) :
                 getSourceByUrl(newStringType(conceptMapUrl), conceptMapVersion, publicAccess).get(0);
         return conceptMapConverter.translate(conceptMap, sourceSystem, sourceVersion, sourceCode, targetSystem, publicAccess);
+    }
+
+    private void validate(UriType conceptMapUrl, CodeType sourceCode, UriType sourceSystem) {
+        if (!isValid(conceptMapUrl))
+            throw new InvalidRequestException("Could not perform ConceptMap $translate operation, the url parameter is required.");
+        validate(sourceCode, sourceSystem);
+    }
+
+    private void validate(CodeType sourceCode, UriType sourceSystem) {
+        if (!isValid(sourceCode) || !isValid(sourceSystem)) {
+            String msg = "Could not perform ConceptMap $translate operation, the code and system parameters are required.";
+            throw new InvalidRequestException(msg);
+        }
     }
 
 }
