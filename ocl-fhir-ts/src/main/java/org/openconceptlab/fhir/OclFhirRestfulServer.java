@@ -2,6 +2,7 @@ package org.openconceptlab.fhir;
 
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.server.RestfulServer;
+import ca.uhn.fhir.rest.server.interceptor.CorsInterceptor;
 import ca.uhn.fhir.rest.server.interceptor.ResponseHighlighterInterceptor;
 import org.openconceptlab.fhir.interceptor.OclFhirAuthorizationInterceptor;
 import org.openconceptlab.fhir.interceptor.OclFhirLoggingInterceptor;
@@ -11,16 +12,18 @@ import org.openconceptlab.fhir.provider.OclCapabilityStatementProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.web.cors.CorsConfiguration;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
+import java.util.Arrays;
 
 /**
  * The OclFhirRestfulServer.
  * @author harpatel1
  */
 @Component
-@WebServlet(urlPatterns = "/fhir/*", loadOnStartup = 1)
+@WebServlet(urlPatterns = "/fhir/*", loadOnStartup = 1, displayName = "OCL FHIR Server", asyncSupported = true)
 public class OclFhirRestfulServer extends RestfulServer {
 
 	private CodeSystemResourceProvider codeSystemResourceProvider;
@@ -67,6 +70,22 @@ public class OclFhirRestfulServer extends RestfulServer {
 		registerInterceptor(new ResponseHighlighterInterceptor());
 		registerInterceptor(oclFhirAuthorizationInterceptor);
 		registerInterceptor(oclFhirLoggingInterceptor);
+
+		CorsConfiguration config = new CorsConfiguration();
+		config.addAllowedHeader("x-fhir-starter");
+		config.addAllowedHeader("Origin");
+		config.addAllowedHeader("Accept");
+		config.addAllowedHeader("X-Requested-With");
+		config.addAllowedHeader("Content-Type");
+		config.addAllowedHeader("Access-Control-Request-Method");
+		config.addAllowedHeader("Access-Control-Request-Headers");
+		config.addAllowedOrigin("*");
+
+		config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE"));
+
+		// Create the interceptor and register it
+		CorsInterceptor interceptor = new CorsInterceptor(config);
+		registerInterceptor(interceptor);
 	}
 
 }
