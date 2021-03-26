@@ -3,6 +3,12 @@ package org.openconceptlab.fhir.config;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.swagger.v3.oas.models.Components;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.info.License;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.hibernate.boot.model.naming.ImplicitNamingStrategy;
 import org.hibernate.boot.model.naming.ImplicitNamingStrategyLegacyJpaImpl;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,5 +70,29 @@ public class Config implements WebMvcConfigurer {
                 .allowCredentials(true);
     }
 
+    @Bean
+    public OpenAPI customOpenAPI() {
+        return new OpenAPI()
+                .addSecurityItem(new SecurityRequirement().addList("basicScheme"))
+                .components(
+                        new Components()
+                                .addSecuritySchemes("basicScheme",
+                                    new SecurityScheme()
+                                            .type(SecurityScheme.Type.APIKEY)
+                                            .scheme("basic")
+                                            .name("Authorization")
+                                            .in(SecurityScheme.In.HEADER)
+                                )
+                )
+                .info(
+                        new Info()
+                                .title("OCL FHIR API")
+                                .version("0.0.1-SNAPSHOT")
+                                .description("The FHIR terminology service for OpenConceptLab")
+                                .license(new License().name("MPL 2.0").url("https://github.com/OpenConceptLab/oclfhir/blob/master/LICENSE.md"))
+                );
+    }
+
 }
+
 
