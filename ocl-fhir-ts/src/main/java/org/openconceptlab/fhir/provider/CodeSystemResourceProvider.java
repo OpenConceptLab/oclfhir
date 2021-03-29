@@ -6,6 +6,7 @@ import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import com.sun.source.tree.LabeledStatementTree;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hl7.fhir.instance.model.api.IBaseResource;
@@ -20,7 +21,10 @@ import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.stereotype.Component;
 
 import javax.transaction.Transactional;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 import static org.openconceptlab.fhir.util.OclFhirUtil.*;
@@ -96,13 +100,18 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
     @Transactional
     public Bundle searchCodeSystems(@OptionalParam(name = PAGE) StringType page,
                                     @OptionalParam(name = OWNER_URL) StringType ownerUrl,
+                                    @OptionalParam(name = CodeSystem.SP_STATUS) StringType status,
+                                    @OptionalParam(name = CodeSystem.SP_CONTENT_MODE) StringType contentMode,
+                                    @OptionalParam(name = CodeSystem.SP_PUBLISHER) StringType publisher,
+                                    @OptionalParam(name = CodeSystem.SP_VERSION) StringType version,
                                     RequestDetails details) {
         List<Source> sources = filterSourceHead(getSources(publicAccess));
         StringBuilder hasNext = new StringBuilder();
         List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false,
                 getPage(page), hasNext);
-        log.info("Found " + codeSystems.size() + " CodeSystems.");
-        return OclFhirUtil.getBundle(codeSystems, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
+        List<CodeSystem> filtered = filter(codeSystems, getFilter(status, contentMode, publisher, version));
+        log.info("Found " + filtered.size() + " CodeSystems. ");
+        return OclFhirUtil.getBundle(filtered, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
                 getPrevPage(page), getNextPage(page, hasNext));
     }
 
@@ -115,17 +124,21 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
     @Search
     @Transactional
     public Bundle searchCodeSystemByUrl(@RequiredParam(name = CodeSystem.SP_URL) StringType url,
-                                        @OptionalParam(name = VERSION) StringType version,
+                                        @OptionalParam(name = CodeSystem.SP_VERSION) StringType version,
                                         @OptionalParam(name = PAGE) StringType page,
                                         @OptionalParam(name = OWNER_URL) StringType ownerUrl,
+                                        @OptionalParam(name = CodeSystem.SP_STATUS) StringType status,
+                                        @OptionalParam(name = CodeSystem.SP_CONTENT_MODE) StringType contentMode,
+                                        @OptionalParam(name = CodeSystem.SP_PUBLISHER) StringType publisher,
                                         RequestDetails details) {
         List<Source> sources = filterSourceHead(getSourceByUrl(url, version, publicAccess));
         boolean includeConcepts = !isValid(version) || !isVersionAll(version);
         StringBuilder hasNext = new StringBuilder();
         List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, includeConcepts,
                 getPage(page), hasNext);
-        log.info("Found " + codeSystems.size() + " CodeSystems.");
-        return OclFhirUtil.getBundle(codeSystems, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
+        List<CodeSystem> filtered = filter(codeSystems, getFilter(status, contentMode, publisher, version));
+        log.info("Found " + filtered.size() + " CodeSystems. ");
+        return OclFhirUtil.getBundle(filtered, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
                 getPrevPage(page), getNextPage(page, hasNext));
     }
 
@@ -139,13 +152,18 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
     public Bundle searchCodeSystemByOwner(@RequiredParam(name = OWNER) StringType owner,
                                           @OptionalParam(name = PAGE) StringType page,
                                           @OptionalParam(name = OWNER_URL) StringType ownerUrl,
+                                          @OptionalParam(name = CodeSystem.SP_STATUS) StringType status,
+                                          @OptionalParam(name = CodeSystem.SP_CONTENT_MODE) StringType contentMode,
+                                          @OptionalParam(name = CodeSystem.SP_PUBLISHER) StringType publisher,
+                                          @OptionalParam(name = CodeSystem.SP_VERSION) StringType version,
                                           RequestDetails details) {
         List<Source> sources = filterSourceHead(getSourceByOwner(owner, publicAccess));
         StringBuilder hasNext = new StringBuilder();
         List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false, getPage(page),
                 hasNext);
-        log.info("Found " + codeSystems.size() + " CodeSystems.");
-        return OclFhirUtil.getBundle(codeSystems, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
+        List<CodeSystem> filtered = filter(codeSystems, getFilter(status, contentMode, publisher, version));
+        log.info("Found " + filtered.size() + " CodeSystems.");
+        return OclFhirUtil.getBundle(filtered, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
                 getPrevPage(page), getNextPage(page, hasNext));
     }
 
@@ -161,17 +179,21 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
     @Transactional
     public Bundle searchCodeSystemByOwnerAndId(@RequiredParam(name = OWNER) StringType owner,
                                                @RequiredParam(name = ID) StringType id,
-                                               @OptionalParam(name = VERSION) StringType version,
+                                               @OptionalParam(name = CodeSystem.SP_VERSION) StringType version,
                                                @OptionalParam(name = PAGE) StringType page,
                                                @OptionalParam(name = OWNER_URL) StringType ownerUrl,
+                                               @OptionalParam(name = CodeSystem.SP_STATUS) StringType status,
+                                               @OptionalParam(name = CodeSystem.SP_CONTENT_MODE) StringType contentMode,
+                                               @OptionalParam(name = CodeSystem.SP_PUBLISHER) StringType publisher,
                                                RequestDetails details) {
         List<Source> sources = filterSourceHead(getSourceByOwnerAndIdAndVersion(id, owner, version, publicAccess));
         boolean includeConcepts = !isVersionAll(version);
         StringBuilder hasNext = new StringBuilder();
         List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, includeConcepts, getPage(page)
                 , hasNext);
-        log.info("Found " + codeSystems.size() + " CodeSystems.");
-        return OclFhirUtil.getBundle(codeSystems, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
+        List<CodeSystem> filtered = filter(codeSystems, getFilter(status, contentMode, publisher, version));
+        log.info("Found " + filtered.size() + " CodeSystems.");
+        return OclFhirUtil.getBundle(filtered, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
                 getPrevPage(page), getNextPage(page, hasNext));
     }
 
@@ -264,13 +286,28 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
         if (isVersionAll(version)) throw new InvalidRequestException("Invalid version provided.");
     }
 
-    protected void validateOperation(CodeType code, String id, String operation, StringType version) {
+    private void validateOperation(CodeType code, String id, String operation, StringType version) {
         if (!isValid(code) || !isValid(id)) {
             String msg = "Could not perform CodeSystem %s operation, both code and %s parameters are required.";
             throw new InvalidRequestException(String.format(msg, operation, id));
         }
         if (isVersionAll(version)) throw new InvalidRequestException("Invalid version provided.");
     }
+
+    private List<CodeSystem> filter(List<CodeSystem> codeSystems, Filter filter) {
+        log.info("CodeSystem filter - " + filter);
+        return codeSystems.stream()
+                .filter(c ->
+                        !isValid(filter.getStatus()) || (c.getStatus() != null && c.getStatus().toCode().equalsIgnoreCase(filter.getStatus())))
+                .filter(c ->
+                        !isValid(filter.getContentMode()) || (c.getContent() != null && c.getContent().toCode().equalsIgnoreCase(filter.getContentMode())))
+                .filter(c ->
+                        !isValid(filter.getPublisher()) || (isValid(c.getPublisher()) && c.getPublisher().equals(filter.getPublisher())))
+                .filter(c ->
+                        !isValid(filter.getVersion()) || isVersionAll(filter.getVersion()) || (isValid(c.getVersion()) && c.getVersion().equals(filter.getVersion())))
+                .collect(Collectors.toList());
+    }
+
 
 }
 

@@ -148,7 +148,7 @@ public class OclFhirOrgValueSetController extends BaseOclFhirController {
             produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> getValueSetVersionsByOrg(@PathVariable(name = ORG) @Parameter(description = THE_ORGANIZATION_ID) String org,
                                                            @PathVariable(name = ID) @Parameter(description = THE_VALUESET_ID) String id,
-                                                           @PathVariable(name = VERSION) @Parameter(description = THE_VALUESET_VERSION) Optional<String> version,
+                                                           @PathVariable(name = VERSION) @Parameter(description = THE_VALUESET_VERSION, allowEmptyValue = true) Optional<String> version,
                                                            @RequestParam(name = PAGE, required = false) Optional<String> page,
                                                            HttpServletRequest request) {
         return handleSearchResource(ValueSet.class, OWNER, formatOrg(org), ID, id, VERSION, version.orElse(ALL),

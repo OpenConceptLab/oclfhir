@@ -136,7 +136,7 @@ public class OclFhirUserConceptMapController extends BaseOclFhirController {
             produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> getConceptMapVersionsByUser(@PathVariable(name = USER) @Parameter(description = THE_USERNAME) String user,
                                                               @PathVariable(name = ID) @Parameter(description = THE_CONCEPTMAP_ID) String id,
-                                                              @PathVariable(name = VERSION) @Parameter(description = THE_CONCEPTMAP_VERSION) Optional<String> version,
+                                                              @PathVariable(name = VERSION) @Parameter(description = THE_CONCEPTMAP_VERSION, allowEmptyValue = true) Optional<String> version,
                                                               @RequestParam(name = PAGE, required = false) Optional<String> page,
                                                               HttpServletRequest request) {
         return handleSearchResource(ConceptMap.class, OWNER, formatUser(user), ID, id, VERSION, version.orElse(ALL),

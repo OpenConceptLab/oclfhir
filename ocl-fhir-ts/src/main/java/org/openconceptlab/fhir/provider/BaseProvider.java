@@ -16,10 +16,7 @@ import org.openconceptlab.fhir.repository.SourceRepository;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
@@ -138,4 +135,64 @@ public class BaseProvider {
                 FS + idType.getIdPart() +
                 FS + (isValid(idType.getVersionIdPart()) ? idType.getVersionIdPart() + FS : EMPTY);
     }
+
+     class Filter {
+
+        private String status;
+        private String contentMode;
+        private String publisher;
+        private String version;
+
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+
+        public String getContentMode() {
+            return contentMode;
+        }
+
+        public void setContentMode(String contentMode) {
+            this.contentMode = contentMode;
+        }
+
+         public String getPublisher() {
+             return publisher;
+         }
+
+         public void setPublisher(String publisher) {
+             this.publisher = publisher;
+         }
+
+         public String getVersion() {
+             return version;
+         }
+
+         public void setVersion(String version) {
+             this.version = version;
+         }
+
+         @Override
+         public String toString() {
+             return "Filter{" +
+                     "status='" + status + '\'' +
+                     ", contentMode='" + contentMode + '\'' +
+                     ", publisher='" + publisher + '\'' +
+                     ", version='" + version + '\'' +
+                     '}';
+         }
+     }
+
+    protected Filter getFilter(StringType status, StringType contentMode, StringType publisher, StringType version) {
+        final Filter filter = new Filter();
+        if (isValid(status)) filter.setStatus(status.getValue());
+        if (isValid(contentMode)) filter.setContentMode(contentMode.getValue());
+        if (isValid(publisher)) filter.setPublisher(publisher.getValue());
+        if (isValid(version)) filter.setVersion(version.getValue());
+        return filter;
+    }
+
 }

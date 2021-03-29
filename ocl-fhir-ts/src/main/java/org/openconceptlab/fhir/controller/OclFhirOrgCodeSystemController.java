@@ -18,6 +18,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
@@ -143,10 +147,13 @@ public class OclFhirOrgCodeSystemController extends BaseOclFhirController {
     /**
      * Read {@link CodeSystem} version.
      *
-     * @param org     - the organization id
-     * @param id      - the {@link CodeSystem} id
-     * @param version - the {@link CodeSystem} version
-     * @param page    - the page number
+     * @param org           - the organization id
+     * @param id            - the {@link CodeSystem} id
+     * @param version       - the {@link CodeSystem} version
+     * @param status        - the status
+     * @param contentMode   - the content mode
+     * @param publisher     - the publisher
+     * @param page          - the page number
      * @return ResponseEntity
      */
     @Operation(summary = GET_SEARCH_CODESYSTEM_VERSIONS)
@@ -154,27 +161,44 @@ public class OclFhirOrgCodeSystemController extends BaseOclFhirController {
             produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> getCodeSystemVersionsByOrg(@PathVariable(name = ORG) @Parameter(description = THE_ORGANIZATION_ID) String org,
                                                              @PathVariable(name = ID) @Parameter(description = THE_CODESYSTEM_ID) String id,
-                                                             @PathVariable(name = VERSION) @Parameter(description = THE_CODESYSTEM_VERSION) Optional<String> version,
+                                                             @PathVariable(name = VERSION) @Parameter(description = THE_CODESYSTEM_VERSION, allowEmptyValue = true) Optional<String> version,
+                                                             @RequestParam(name = CodeSystem.SP_STATUS) Optional<String> status,
+                                                             @RequestParam(name = CodeSystem.SP_CONTENT_MODE) Optional<String> contentMode,
+                                                             @RequestParam(name = CodeSystem.SP_PUBLISHER) Optional<String> publisher,
                                                              @RequestParam(name = PAGE, required = false) Optional<String> page,
                                                              HttpServletRequest request) {
         return handleSearchResource(CodeSystem.class, OWNER, formatOrg(org), ID, id, VERSION, version.orElse(ALL),
-                PAGE, page.orElse("1"), OWNER_URL, getRequestUrl(request));
+                PAGE, page.orElse("1"), OWNER_URL, getRequestUrl(request),
+                CodeSystem.SP_STATUS, status.orElse(EMPTY),
+                CodeSystem.SP_CONTENT_MODE, contentMode.orElse(EMPTY),
+                CodeSystem.SP_PUBLISHER, URLDecoder.decode(publisher.orElse(EMPTY), StandardCharsets.UTF_8));
     }
 
     /**
      * Read all {@link CodeSystem} of org.
      *
-     * @param org  - the organization id
-     * @param page - the page number
+     * @param org           - the organization id
+     * @param page          - the page number
+     * @param status        - the status
+     * @param contentMode   - the content mode
+     * @param publisher     - the publisher
+     * @param version       - the version
      * @return ResponseEntity
      */
     @Operation(summary = SEARCH_CODESYSTEMS_FOR_ORGANIZATION)
     @GetMapping(produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> searchCodeSystemsByOrg(@PathVariable @Parameter(description = THE_ORGANIZATION_ID) String org,
+                                                         @RequestParam(name = CodeSystem.SP_STATUS) Optional<String> status,
+                                                         @RequestParam(name = CodeSystem.SP_CONTENT_MODE) Optional<String> contentMode,
+                                                         @RequestParam(name = CodeSystem.SP_PUBLISHER) Optional<String> publisher,
+                                                         @RequestParam(name = CodeSystem.SP_VERSION) Optional<String> version,
                                                          @RequestParam(name = PAGE, required = false) Optional<String> page,
                                                          HttpServletRequest request) {
-        return handleSearchResource(CodeSystem.class, OWNER, formatOrg(org), PAGE, page.orElse("1"),
-                OWNER_URL, getRequestUrl(request));
+        return handleSearchResource(CodeSystem.class, OWNER, formatOrg(org), PAGE, page.orElse("1"), OWNER_URL, getRequestUrl(request),
+                CodeSystem.SP_STATUS, status.orElse(EMPTY),
+                CodeSystem.SP_CONTENT_MODE, contentMode.orElse(EMPTY),
+                CodeSystem.SP_PUBLISHER, URLDecoder.decode(publisher.orElse(EMPTY), StandardCharsets.UTF_8),
+                CodeSystem.SP_VERSION, URLDecoder.decode(version.orElse(EMPTY), StandardCharsets.UTF_8));
     }
 
     /**

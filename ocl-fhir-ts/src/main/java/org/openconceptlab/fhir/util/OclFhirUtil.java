@@ -431,6 +431,10 @@ public class OclFhirUtil {
         return isValid(version) && version.getValue().equals("*");
     }
 
+    public static boolean isVersionAll(String version) {
+        return isValid(version) && version.equals("*");
+    }
+
     public static ResponseEntity<String> badRequest() {
         return ResponseEntity.badRequest().body("{\"exception\":\"Could not process the request.\"}");
     }

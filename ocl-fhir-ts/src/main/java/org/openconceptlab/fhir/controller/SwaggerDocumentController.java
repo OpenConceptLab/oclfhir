@@ -50,6 +50,9 @@ public class SwaggerDocumentController extends BaseOclFhirController{
     public ResponseEntity<String> searchCodeSystemsByUrl(
             @RequestParam(name = CodeSystem.SP_URL, required = false) @Parameter(description = THE_CODESYSTEM_URL) String url,
             @RequestParam(name = VERSION, required = false) @Parameter(description = THE_CODESYSTEM_VERSION) String version,
+            @RequestParam(name = CodeSystem.SP_STATUS) Optional<String> status,
+            @RequestParam(name = CodeSystem.SP_CONTENT_MODE) Optional<String> contentMode,
+            @RequestParam(name = CodeSystem.SP_PUBLISHER) Optional<String> publisher,
             @RequestParam(name = PAGE, required = false) Optional<String> page) {
         return ResponseEntity.badRequest().body(DOCUMENTATION_CONTROLLER_CALLED);
     }
