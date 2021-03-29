@@ -195,7 +195,7 @@ public class OclFhirUserConceptMapController extends BaseOclFhirController {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(content = {
             @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, examples = {
                     @ExampleObject(name = "example1", value = CONCEPTMAP_TRANSLATE_REQ_BODY_EXAMPLE1),
-                    @ExampleObject(name = "example1", value = CONCEPTMAP_TRANSLATE_REQ_BODY_EXAMPLE2)
+                    @ExampleObject(name = "example2", value = CONCEPTMAP_TRANSLATE_REQ_BODY_EXAMPLE2)
             })
     })
     @Operation(description = PERFORM_TRANSLATE_BY_URL)
@@ -274,7 +274,7 @@ public class OclFhirUserConceptMapController extends BaseOclFhirController {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(content = {
             @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, examples = {
                     @ExampleObject(name = "example1", value = CONCEPTMAP_TRANSLATE_REQ_BODY_ID_EXAMPLE1),
-                    @ExampleObject(name = "example1", value = CONCEPTMAP_TRANSLATE_REQ_BODY_ID_EXAMPLE2)
+                    @ExampleObject(name = "example2", value = CONCEPTMAP_TRANSLATE_REQ_BODY_ID_EXAMPLE2)
             })
     })
     @Operation(description = PERFORM_TRANSLATE_BY_ID)
@@ -298,7 +298,7 @@ public class OclFhirUserConceptMapController extends BaseOclFhirController {
     @io.swagger.v3.oas.annotations.parameters.RequestBody(content = {
             @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, examples = {
                     @ExampleObject(name = "example1", value = CONCEPTMAP_TRANSLATE_REQ_BODY_ID_VERSION_EXAMPLE1),
-                    @ExampleObject(name = "example1", value = CONCEPTMAP_TRANSLATE_REQ_BODY_ID_VERSION_EXAMPLE2)
+                    @ExampleObject(name = "example2", value = CONCEPTMAP_TRANSLATE_REQ_BODY_ID_VERSION_EXAMPLE2)
             })
     })
     @Operation(description = PERFORM_TRANSLATE_BY_ID)

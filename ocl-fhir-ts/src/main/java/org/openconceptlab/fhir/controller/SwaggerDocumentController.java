@@ -211,7 +211,7 @@ public class SwaggerDocumentController extends BaseOclFhirController{
     @io.swagger.v3.oas.annotations.parameters.RequestBody(content = {
             @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, examples = {
                     @ExampleObject(name = "example1", value = CONCEPTMAP_TRANSLATE_REQ_BODY_EXAMPLE1),
-                    @ExampleObject(name = "example1", value = CONCEPTMAP_TRANSLATE_REQ_BODY_EXAMPLE2)
+                    @ExampleObject(name = "example2", value = CONCEPTMAP_TRANSLATE_REQ_BODY_EXAMPLE2)
             })
     })
     @Tag(name = CONCEPT_MAP_GLOBAL_NAMESPACE, description = "global namespace")
