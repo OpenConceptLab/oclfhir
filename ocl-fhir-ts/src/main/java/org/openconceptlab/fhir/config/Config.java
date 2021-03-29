@@ -69,8 +69,7 @@ public class Config implements WebMvcConfigurer {
                 .allowedOrigins("*")
                 .allowedMethods("GET", "POST", "DELETE", "PUT")
                 .allowedHeaders("Content-Type", "X-Requested-With", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers")
-                .exposedHeaders("Access-Control-Allow-Origin", "Access-Control-Allow-Credentials")
-                .allowCredentials(true);
+                .exposedHeaders("Access-Control-Allow-Origin");
     }
 
     @Bean
