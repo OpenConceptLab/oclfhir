@@ -108,8 +108,10 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
         StringBuilder hasNext = new StringBuilder();
         List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, false, getPage(page), hasNext);
         log.info("Found " + valueSets.size() + " ValueSets.");
-        return OclFhirUtil.getBundle(valueSets, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
+        Bundle bundle = OclFhirUtil.getBundle(valueSets, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
                 getPrevPage(page), getNextPage(page, hasNext));
+        bundle.setTotal(collections.size());
+        return bundle;
     }
 
     /**
@@ -129,8 +131,10 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
         StringBuilder hasNext = new StringBuilder();
         List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, !isVersionAll(version), getPage(page), hasNext);
         log.info("Found " + valueSets.size() + " ValueSets.");
-        return OclFhirUtil.getBundle(valueSets, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
+        Bundle bundle = OclFhirUtil.getBundle(valueSets, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
                 getPrevPage(page), getNextPage(page, hasNext));
+        bundle.setTotal(collections.size());
+        return bundle;
     }
 
     /**
@@ -148,8 +152,10 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
         StringBuilder hasNext = new StringBuilder();
         List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, false, getPage(page), hasNext);
         log.info("Found " + valueSets.size() + " ValueSets.");
-        return OclFhirUtil.getBundle(valueSets, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
+        Bundle bundle = OclFhirUtil.getBundle(valueSets, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
                 getPrevPage(page), getNextPage(page, hasNext));
+        bundle.setTotal(collections.size());
+        return bundle;
     }
 
     /**
@@ -172,8 +178,10 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
         StringBuilder hasNext = new StringBuilder();
         List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, !isVersionAll(version), getPage(page), hasNext);
         log.info("Found " + valueSets.size() + " ValueSets.");
-        return OclFhirUtil.getBundle(valueSets, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
+        Bundle bundle = OclFhirUtil.getBundle(valueSets, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
                 getPrevPage(page), getNextPage(page, hasNext));
+        bundle.setTotal(collections.size());
+        return bundle;
     }
 
     @Operation(name = VALIDATE_CODE, idempotent = true)

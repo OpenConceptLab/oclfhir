@@ -111,8 +111,10 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
                 getPage(page), hasNext);
         List<CodeSystem> filtered = filter(codeSystems, getFilter(status, contentMode, publisher, version));
         log.info("Found " + filtered.size() + " CodeSystems. ");
-        return OclFhirUtil.getBundle(filtered, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
+        Bundle bundle = OclFhirUtil.getBundle(filtered, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
                 getPrevPage(page), getNextPage(page, hasNext));
+        bundle.setTotal(sources.size());
+        return bundle;
     }
 
     /**
@@ -138,8 +140,10 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
                 getPage(page), hasNext);
         List<CodeSystem> filtered = filter(codeSystems, getFilter(status, contentMode, publisher, version));
         log.info("Found " + filtered.size() + " CodeSystems. ");
-        return OclFhirUtil.getBundle(filtered, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
+        Bundle bundle = OclFhirUtil.getBundle(filtered, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
                 getPrevPage(page), getNextPage(page, hasNext));
+        bundle.setTotal(sources.size());
+        return bundle;
     }
 
     /**
@@ -163,8 +167,10 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
                 hasNext);
         List<CodeSystem> filtered = filter(codeSystems, getFilter(status, contentMode, publisher, version));
         log.info("Found " + filtered.size() + " CodeSystems.");
-        return OclFhirUtil.getBundle(filtered, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
+        Bundle bundle = OclFhirUtil.getBundle(filtered, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
                 getPrevPage(page), getNextPage(page, hasNext));
+        bundle.setTotal(sources.size());
+        return bundle;
     }
 
     /**
@@ -193,8 +199,10 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
                 , hasNext);
         List<CodeSystem> filtered = filter(codeSystems, getFilter(status, contentMode, publisher, version));
         log.info("Found " + filtered.size() + " CodeSystems.");
-        return OclFhirUtil.getBundle(filtered, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
+        Bundle bundle = OclFhirUtil.getBundle(filtered, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
                 getPrevPage(page), getNextPage(page, hasNext));
+        bundle.setTotal(sources.size());
+        return bundle;
     }
 
     /**

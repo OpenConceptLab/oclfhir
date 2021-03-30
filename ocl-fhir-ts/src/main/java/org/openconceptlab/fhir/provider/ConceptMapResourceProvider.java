@@ -102,8 +102,10 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
         List<ConceptMap> conceptMaps = conceptMapConverter.convertToConceptMap(sources, false,
                 getPage(page), hasNext);
         log.info("Found " + conceptMaps.size() + " ConceptMaps.");
-        return OclFhirUtil.getBundle(conceptMaps, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
+        Bundle bundle = OclFhirUtil.getBundle(conceptMaps, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
                 getPrevPage(page), getNextPage(page, hasNext));
+        bundle.setTotal(sources.size());
+        return bundle;
     }
 
     /**
@@ -125,8 +127,10 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
         List<ConceptMap> conceptMaps = conceptMapConverter.convertToConceptMap(sources, includeMappings,
                 getPage(page), hasNext);
         log.info("Found " + conceptMaps.size() + " ConceptMaps.");
-        return OclFhirUtil.getBundle(conceptMaps, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
+        Bundle bundle = OclFhirUtil.getBundle(conceptMaps, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
                 getPrevPage(page), getNextPage(page, hasNext));
+        bundle.setTotal(sources.size());
+        return bundle;
     }
 
     /**
@@ -145,8 +149,10 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
         List<ConceptMap> conceptMaps = conceptMapConverter.convertToConceptMap(sources, false,
                 getPage(page), hasNext);
         log.info("Found " + conceptMaps.size() + " ConceptMaps.");
-        return OclFhirUtil.getBundle(conceptMaps, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
+        Bundle bundle = OclFhirUtil.getBundle(conceptMaps, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
                 getPrevPage(page), getNextPage(page, hasNext));
+        bundle.setTotal(sources.size());
+        return bundle;
     }
 
     /**
@@ -171,8 +177,10 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
         List<ConceptMap> conceptMaps = conceptMapConverter.convertToConceptMap(sources, includeMappings,
                 getPage(page), hasNext);
         log.info("Found " + conceptMaps.size() + " ConceptMaps.");
-        return OclFhirUtil.getBundle(conceptMaps, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
+        Bundle bundle = OclFhirUtil.getBundle(conceptMaps, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
                 getPrevPage(page), getNextPage(page, hasNext));
+        bundle.setTotal(sources.size());
+        return bundle;
     }
 
     @Operation(name = TRANSLATE, idempotent = true)

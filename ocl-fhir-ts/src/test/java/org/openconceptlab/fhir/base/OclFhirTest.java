@@ -474,4 +474,17 @@ public class OclFhirTest {
         return new GeneratedKeyHolder(list);
     }
 
+    protected List<Source> getSources() {
+        List<Source> sourceList = new ArrayList<>();
+        for (int i = 1; i <= 12; i++) {
+            Source source = source(123L, V_1_0+i, concept1(), concept2(), concept3());
+            populateSource1(source);
+            source.setId((long) i);
+            source.setMnemonic("source1" + i);
+            source.setReleased(true);
+            sourceList.add(source);
+        }
+        return sourceList;
+    }
+
 }

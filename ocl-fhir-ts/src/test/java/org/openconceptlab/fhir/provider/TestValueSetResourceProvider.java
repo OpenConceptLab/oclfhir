@@ -16,16 +16,14 @@ import org.mockito.stubbing.Answer;
 import org.mockito.stubbing.OngoingStubbing;
 import org.openconceptlab.fhir.base.OclFhirTest;
 import org.openconceptlab.fhir.model.*;
+import org.openconceptlab.fhir.model.Collection;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.*;
@@ -974,6 +972,49 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         assertEquals("/orgs/OCL/sources/test/", OclFhirUtil.toOclUri(" /orgs/OCL/CodeSystem/test "));
         assertEquals("/orgs/OCL/sources/test/", OclFhirUtil.toOclUri("/orgs/OCL/codesystem/test/ "));
         assertEquals("/orgs/OCL/sources/test/", OclFhirUtil.toOclUri("/orgs/OCL/cODesYsteM/test/ "));
+    }
+
+    @Test
+    public void testSearchValueSet_count() {
+        when(collectionRepository.findAllMostRecentReleased(anyList())).thenReturn(getCollections());
+        ValueSetResourceProvider provider = valueSetProvider();
+        Bundle bundle = provider.searchValueSets(null, null, requestDetails);
+        assertEquals(12, bundle.getTotal());
+    }
+
+    @Test
+    public void testSearchValueSetByUrl_version_count() {
+        when(collectionRepository.findByCanonicalUrlAndPublicAccessIn(anyString(), anyList()))
+                .thenReturn(getCollections());
+        when(sourceRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
+                .thenReturn(source1).thenReturn(source2);
+        when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList())).thenReturn(Collections.singletonList(cs22))
+                .thenReturn(Collections.singletonList(cs11));
+        ValueSetResourceProvider provider = valueSetProvider();
+        Bundle bundle = provider.searchValueSetByUrl(newString(URL_COLLECTION_1), newString("*"), null, null, requestDetails);
+        assertEquals(12, bundle.getTotal());
+    }
+
+    @Test
+    public void testSearchValueSetByOwner_count() {
+        when(collectionRepository.findByUserIdUsernameAndPublicAccessIn(anyString(), anyList()))
+                .thenReturn(getCollections());
+        ValueSetResourceProvider provider = valueSetProvider();
+        Bundle bundle = provider.searchValueSetByOwner(newString("user:test"), null, null, requestDetails);
+        assertEquals(12, bundle.getTotal());
+    }
+
+    protected List<Collection> getCollections() {
+        List<Collection> collectionList = new ArrayList<>();
+        for (int i = 1; i <= 12; i++) {
+            Collection collection = new Collection();
+            populateCollection1(collection);
+            collection.setId((long) i);
+            collection.setMnemonic("source1" + i);
+            collection.setReleased(true);
+            collectionList.add(collection);
+        }
+        return collectionList;
     }
 
 }

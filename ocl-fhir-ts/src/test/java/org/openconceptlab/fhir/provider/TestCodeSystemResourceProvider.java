@@ -9,6 +9,7 @@ import com.openpojo.validation.Validator;
 import com.openpojo.validation.ValidatorBuilder;
 import com.openpojo.validation.test.impl.GetterTester;
 import com.openpojo.validation.test.impl.SetterTester;
+import org.apache.commons.collections4.ListUtils;
 import org.hl7.fhir.r4.model.*;
 import org.junit.After;
 import org.junit.Assert;
@@ -25,8 +26,10 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -707,6 +710,35 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         verify(sourceRepository, times(1)).saveAndFlush(any(Source.class));
         verify(insertConcept, times(1)).executeAndReturnKeyHolder(anyMap());
         verify(insertLocalizedText, times(2)).executeAndReturnKeyHolder(anyMap());
+    }
+
+    @Test
+    public void testSearchCodeSystemByOwnerAndId_version_count() {
+        source1.setIsLatestVersion(true);
+        when(sourceRepository.findByMnemonicAndUserIdUsernameAndPublicAccessIn(
+                anyString(), anyString(), anyList())).thenReturn(Arrays.asList(source1,source1,source1,source1,source1,source1,source1,source1,source1,source1,
+                source1,source1,source1,source1,source1,source1,source1,source1));
+        when(conceptRepository.findConcepts(anyLong(), any(PageRequest.class))).thenReturn(new PageImpl(Collections.singletonList(cs11.getConcept())));
+        CodeSystemResourceProvider provider = codeSystemProvider();
+        Bundle bundle = provider.searchCodeSystemByOwnerAndId(newString("user:test"), newString("123"), newString("*"), null, null, null, null, null, requestDetails);
+        assertEquals(18, bundle.getTotal());
+    }
+
+    @Test
+    public void testSearchCodeSystemByOwner_count() {
+        when(sourceRepository.findByOrganizationMnemonicAndPublicAccessIn(anyString(), anyList())).thenReturn(getSources());
+        CodeSystemResourceProvider provider = codeSystemProvider();
+        Bundle bundle = provider.searchCodeSystemByOwner(newString("org:OCL"), null, null, null, null, null, null,requestDetails);
+        assertEquals(12, bundle.getTotal());
+    }
+
+    @Test
+    public void testSearchCodeSystem_count() {
+        when(sourceRepository.findAllMostRecentReleased(anyList())).thenReturn(getSources());
+        when(conceptRepository.findConceptCountInSource(anyLong())).thenReturn(1);
+        CodeSystemResourceProvider provider = codeSystemProvider();
+        Bundle bundle = provider.searchCodeSystems(null,  null, null, null, null, null, requestDetails);
+        assertEquals(12, bundle.getTotal());
     }
 
     private CodeSystem codeSystem() {
