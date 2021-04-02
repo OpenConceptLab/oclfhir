@@ -157,7 +157,7 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
 
     /**
      * Returns public {@link ConceptMap} for a given owner and Id. Returns given version if provided, otherwise
-     * most recent released version is returned.
+     * latest version is returned.
      * @param owner
      * @param id
      * @param version

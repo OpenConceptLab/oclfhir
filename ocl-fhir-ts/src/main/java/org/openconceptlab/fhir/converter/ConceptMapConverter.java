@@ -16,7 +16,6 @@ import org.openconceptlab.fhir.repository.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.stereotype.Component;
 
@@ -290,7 +289,7 @@ public class ConceptMapConverter extends BaseConverter {
             Source fromSource = null;
             if (!isValid(sourceVersion)) {
                 // get most recent released version
-                fromSource = oclFhirUtil.getMostRecentReleasedSourceByUrl(newStringType(sourceSystem.getValue()), access);
+                fromSource = oclFhirUtil.getLatestSourceByUrl(newStringType(sourceSystem.getValue()), access);
             } else {
                 // get a given version
                 fromSource = sourceRepository.findFirstByCanonicalUrlAndVersionAndPublicAccessIn(sourceSystem.getValue(), sourceVersion.getValue(), access);
@@ -305,7 +304,7 @@ public class ConceptMapConverter extends BaseConverter {
         if (isValid(targetSystem)) {
             toSourceUrl = targetSystem.getValue();
             if (targetSystem.getValue().startsWith("http")) {
-                Source toSource = oclFhirUtil.getMostRecentReleasedSourceByUrl(newStringType(targetSystem.getValue()), access);
+                Source toSource = oclFhirUtil.getLatestSourceByUrl(newStringType(targetSystem.getValue()), access);
                 localToSourceUri = toSource != null ? toLocalUri(toSource) : EMPTY;
             } else if (formatExpression(targetSystem.getValue()).matches(OWNER_REGEX)) {
                 localToSourceUri = formatExpression(targetSystem.getValue());

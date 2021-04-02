@@ -16,7 +16,6 @@ import org.openconceptlab.fhir.converter.CodeSystemConverter;
 import org.openconceptlab.fhir.converter.ConceptMapConverter;
 import org.openconceptlab.fhir.converter.ValueSetConverter;
 import org.openconceptlab.fhir.model.Collection;
-import org.openconceptlab.fhir.model.Source;
 import org.openconceptlab.fhir.repository.CollectionRepository;
 import org.openconceptlab.fhir.repository.SourceRepository;
 import org.openconceptlab.fhir.util.OclFhirUtil;
@@ -160,7 +159,7 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
 
     /**
      * Returns public {@link ValueSet} for a given owner and Id. Returns given version if provided, otherwise
-     * most recent released version is returned.
+     * latest version is returned.
      * @param owner
      * @param id
      * @param version
@@ -284,7 +283,7 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
     }
 
     private List<Collection> getCollections(List<String> access) {
-        return collectionRepository.findAllMostRecentReleased(access).stream().sorted(Comparator.comparing(Collection::getMnemonic))
+        return collectionRepository.findAllLatest(access).stream().sorted(Comparator.comparing(Collection::getMnemonic))
                 .collect(Collectors.toList());
     }
 
@@ -296,8 +295,8 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
         } else {
             final Collection collection;
             if (!isValid(version)) {
-                // get most recent released version
-                collection = getMostRecentReleasedCollectionByUrl(url, access);
+                // get latest version
+                collection = getLatestCollectionByUrl(url, access);
             } else {
                 // get a given version
                 collection = collectionRepository.findFirstByCanonicalUrlAndVersionAndPublicAccessIn(url.getValue(), version.getValue(), access);
@@ -314,8 +313,8 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
         String ownerType = getOwnerType(owner.getValue());
         String value = getOwner(owner.getValue());
         if (!isValid(version)) {
-            // get most recent released version
-            collection = getMostRecentReleasedCollectionByOwnerAndUrl(value, ownerType, url, access);
+            // get latest version
+            collection = getLatestCollectionByOwnerAndUrl(value, ownerType, url, access);
         } else {
             // get a given version
             collection = getCollectionVersionByOwnerAndUrl(value, ownerType, url, version, access);
@@ -338,7 +337,7 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
         collections.forEach(s -> map.put(s.getMnemonic(), s));
         List<Collection> filtered = new ArrayList<>();
         map.asMap().forEach((k,v) -> {
-            v.stream().filter(s -> (s.getReleased() != null && s.getReleased())).max(Comparator.comparing(Collection::getCreatedAt)).stream().findFirst().ifPresent(filtered::add);
+            v.stream().max(Comparator.comparing(Collection::getCreatedAt)).stream().findFirst().ifPresent(filtered::add);
         });
         return filtered.stream().sorted(Comparator.comparing(Collection::getMnemonic)).collect(Collectors.toList());
     }
@@ -369,8 +368,8 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
     public Collection getCollectionVersion(StringType id, StringType version, List<String> access, String ownerType, String ownerId) {
         final Collection collection;
         if (!isValid(version)) {
-            // get most recent released version
-            collection = getMostRecentReleasedCollectionByOwner(id.getValue(), ownerId, ownerType, access);
+            // get latest version
+            collection = getLatestCollectionByOwner(id.getValue(), ownerId, ownerType, access);
         } else {
             // get a given version
             if (ORG.equals(ownerType)) {
@@ -384,28 +383,28 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
         return collection;
     }
 
-    private Collection getMostRecentReleasedCollectionByOwner(String id, String owner, String ownerType, List<String> access) {
+    private Collection getLatestCollectionByOwner(String id, String owner, String ownerType, List<String> access) {
         if (ORG.equals(ownerType)) {
-            return collectionRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndOrganizationMnemonicOrderByCreatedAtDesc(
-                    id, true, access, owner);
+            return collectionRepository.findFirstByMnemonicAndPublicAccessInAndOrganizationMnemonicOrderByCreatedAtDesc(
+                    id, access, owner);
         }
-        return collectionRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(
-                id, true, access, owner);
+        return collectionRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(
+                id, access, owner);
     }
 
-    private Collection getMostRecentReleasedCollectionByUrl(StringType url, List<String> access) {
-        return collectionRepository.findFirstByCanonicalUrlAndReleasedAndPublicAccessInOrderByCreatedAtDesc(
-                url.getValue(), true, access
+    private Collection getLatestCollectionByUrl(StringType url, List<String> access) {
+        return collectionRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(
+                url.getValue(), access
         );
     }
 
-    private Collection getMostRecentReleasedCollectionByOwnerAndUrl(String owner, String ownerType, StringType url, List<String> access) {
+    private Collection getLatestCollectionByOwnerAndUrl(String owner, String ownerType, StringType url, List<String> access) {
         if (ORG.equals(ownerType))
-            return collectionRepository.findFirstByCanonicalUrlAndReleasedAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(
-                    url.getValue(), true, owner, access
+            return collectionRepository.findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(
+                    url.getValue(), owner, access
             );
-        return collectionRepository.findFirstByCanonicalUrlAndReleasedAndUserIdUsernameAndPublicAccessInOrderByCreatedAtDesc(
-                url.getValue(), true, owner, access
+        return collectionRepository.findFirstByCanonicalUrlAndUserIdUsernameAndPublicAccessInOrderByCreatedAtDesc(
+                url.getValue(), owner, access
         );
     }
 

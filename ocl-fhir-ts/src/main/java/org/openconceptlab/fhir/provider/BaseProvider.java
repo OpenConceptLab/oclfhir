@@ -44,7 +44,7 @@ public class BaseProvider {
     }
 
     protected List<Source> getSources(List<String> access) {
-        return sourceRepository.findAllMostRecentReleased(access).stream().sorted(Comparator.comparing(Source::getMnemonic))
+        return sourceRepository.findAllLatest(access).stream().sorted(Comparator.comparing(Source::getMnemonic))
                 .collect(Collectors.toList());
     }
 
@@ -67,7 +67,7 @@ public class BaseProvider {
         sources.forEach(s -> map.put(s.getMnemonic(), s));
         List<Source> filtered = new ArrayList<>();
         map.asMap().forEach((k,v) -> {
-            v.stream().filter(s -> (s.getReleased() != null && s.getReleased())).max(Comparator.comparing(Source::getCreatedAt)).stream().findFirst().ifPresent(filtered::add);
+            v.stream().max(Comparator.comparing(Source::getCreatedAt)).stream().findFirst().ifPresent(filtered::add);
         });
         return filtered.stream().sorted(Comparator.comparing(Source::getMnemonic)).collect(Collectors.toList());
     }

@@ -198,8 +198,8 @@ public class OclFhirUtil {
     public Source getSourceVersion(StringType id, StringType version, List<String> access, String ownerType, String ownerId) {
         final Source source;
         if (!isValid(version)) {
-            // get most recent released version
-            source = getMostRecentReleasedSourceByOwner(id.getValue(), ownerId, ownerType, access);
+            // get latest version
+            source = getLatestSourceByOwner(id.getValue(), ownerId, ownerType, access);
         } else {
             // get a given version
             if (ORG.equals(ownerType)) {
@@ -213,13 +213,13 @@ public class OclFhirUtil {
         return source;
     }
 
-    public Source getMostRecentReleasedSourceByOwner(String id, String owner, String ownerType, List<String> access) {
+    public Source getLatestSourceByOwner(String id, String owner, String ownerType, List<String> access) {
         if (ORG.equals(ownerType)) {
-            return sourceRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndOrganizationMnemonicOrderByCreatedAtDesc(
-                    id, true, access, owner);
+            return sourceRepository.findFirstByMnemonicAndPublicAccessInAndOrganizationMnemonicOrderByCreatedAtDesc(
+                    id, access, owner);
         }
-        return sourceRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(
-                id, true, access, owner);
+        return sourceRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(
+                id, access, owner);
     }
 
     public Source getSourceByOwnerAndUrl(StringType owner, StringType url, StringType version, List<String> access) {
@@ -227,8 +227,8 @@ public class OclFhirUtil {
         String ownerType = getOwnerType(owner.getValue());
         String value = getOwner(owner.getValue());
         if (!isValid(version)) {
-            // get most recent released version
-            source = getMostRecentReleasedSourceByOwnerAndUrl(value, ownerType, url, access);
+            // get latest version
+            source = getLatestSourceByOwnerAndUrl(value, ownerType, url, access);
         } else {
             // get a given version
             source = getSourceVersionByOwnerAndUrl(value, ownerType, url, version, access);
@@ -238,19 +238,19 @@ public class OclFhirUtil {
         return source;
     }
 
-    public Source getMostRecentReleasedSourceByUrl(StringType url, List<String> access) {
-        return sourceRepository.findFirstByCanonicalUrlAndReleasedAndPublicAccessInOrderByCreatedAtDesc(
-                url.getValue(), true, access
+    public Source getLatestSourceByUrl(StringType url, List<String> access) {
+        return sourceRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(
+                url.getValue(), access
         );
     }
 
-    private Source getMostRecentReleasedSourceByOwnerAndUrl(String owner, String ownerType, StringType url, List<String> access) {
+    private Source getLatestSourceByOwnerAndUrl(String owner, String ownerType, StringType url, List<String> access) {
         if (ORG.equals(ownerType))
-            return sourceRepository.findFirstByCanonicalUrlAndReleasedAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(
-                    url.getValue(), true, owner, access
+            return sourceRepository.findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(
+                    url.getValue(), owner, access
             );
-        return sourceRepository.findFirstByCanonicalUrlAndReleasedAndUserIdUsernameAndPublicAccessInOrderByCreatedAtDesc(
-                url.getValue(), true, owner, access
+        return sourceRepository.findFirstByCanonicalUrlAndUserIdUsernameAndPublicAccessInOrderByCreatedAtDesc(
+                url.getValue(), owner, access
         );
     }
 
@@ -713,8 +713,8 @@ public class OclFhirUtil {
         } else {
             final Source source;
             if (!isValid(version)) {
-                // get most recent released version
-                source = getMostRecentReleasedSourceByUrl(url, access);
+                // get latest version
+                source = getLatestSourceByUrl(url, access);
             } else {
                 // get a given version
                 source = sourceRepository.findFirstByCanonicalUrlAndVersionAndPublicAccessIn(url.getValue(), version.getValue(), access);

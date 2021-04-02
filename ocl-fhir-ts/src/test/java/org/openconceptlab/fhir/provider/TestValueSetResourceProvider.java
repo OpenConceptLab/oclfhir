@@ -122,8 +122,8 @@ public class TestValueSetResourceProvider extends OclFhirTest {
 
     @Test
     public void testSearchValueSet_return_1() {
-        collection1.setReleased(true);
-        when(collectionRepository.findAllMostRecentReleased(anyList())).thenReturn(Collections.singletonList(collection1));
+        collection1.setReleased(false);
+        when(collectionRepository.findAllLatest(anyList())).thenReturn(Collections.singletonList(collection1));
         ValueSetResourceProvider provider = valueSetProvider();
         Bundle bundle = provider.searchValueSets(null, null, requestDetails);
         assertEquals(1, bundle.getTotal());
@@ -136,8 +136,8 @@ public class TestValueSetResourceProvider extends OclFhirTest {
     @Test
     public void testSearchValueSet_return_2() {
         collection1.setReleased(true);
-        collection2.setReleased(true);
-        when(collectionRepository.findAllMostRecentReleased(anyList())).thenReturn(Arrays.asList(collection1, collection2));
+        collection2.setReleased(false);
+        when(collectionRepository.findAllLatest(anyList())).thenReturn(Arrays.asList(collection1, collection2));
         ValueSetResourceProvider provider = valueSetProvider();
         Bundle bundle = provider.searchValueSets(null, null, requestDetails);
         assertEquals(2, bundle.getTotal());
@@ -172,7 +172,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
 
     @Test
     public void testSearchValueSetByUrl_version_empty_return_most_recent() {
-        when(collectionRepository.findFirstByCanonicalUrlAndReleasedAndPublicAccessInOrderByCreatedAtDesc(anyString(), anyBoolean(), anyList()))
+        when(collectionRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(anyString(), anyList()))
                 .thenReturn(collection1);
         when(sourceRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
                 .thenReturn(source1).thenReturn(source2);
@@ -275,7 +275,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
 
     @Test
     public void testSearchValueSetByOwnerAndId_version_empty() {
-        when(collectionRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndOrganizationMnemonicOrderByCreatedAtDesc(anyString(), anyBoolean(), anyList(), anyString()))
+        when(collectionRepository.findFirstByMnemonicAndPublicAccessInAndOrganizationMnemonicOrderByCreatedAtDesc(anyString(), anyList(), anyString()))
                 .thenReturn(collection1);
         when(sourceRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
                 .thenReturn(source1).thenReturn(source2);
@@ -298,7 +298,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
                 "/users/test/sources/source2/v2.0/concepts/"+TUMOR_DISORDER+"/123/"
         );
         collection1.setCollectionsReferences(references);
-        when(collectionRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(anyString(), anyBoolean(), anyList(), anyString()))
+        when(collectionRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(anyString(), anyList(), anyString()))
                 .thenReturn(collection1);
         when(sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
                 .thenReturn(source1).thenReturn(source2);
@@ -322,7 +322,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
                 "/users/test/sources/source2/v2222.0/concepts/"+TUMOR_DISORDER+"/123/"
         );
         collection1.setCollectionsReferences(references);
-        when(collectionRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(anyString(), anyBoolean(), anyList(), anyString()))
+        when(collectionRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(anyString(), anyList(), anyString()))
                 .thenReturn(collection1);
         when(sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
                 .thenReturn(source1).thenReturn(source2);
@@ -344,7 +344,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
                 "/users/test/sources/source222/v2.0/concepts/"+TUMOR_DISORDER+"/123/"
         );
         collection1.setCollectionsReferences(references);
-        when(collectionRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(anyString(), anyBoolean(), anyList(), anyString()))
+        when(collectionRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(anyString(), anyList(), anyString()))
                 .thenReturn(collection1);
         when(sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
                 .thenReturn(source1).thenReturn(source2);
@@ -366,7 +366,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
                 "/users/OCL/sources/source222/v2.0/concepts/"+TUMOR_DISORDER+"/123/"
         );
         collection1.setCollectionsReferences(references);
-        when(collectionRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(anyString(), anyBoolean(), anyList(), anyString()))
+        when(collectionRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(anyString(), anyList(), anyString()))
                 .thenReturn(collection1);
         when(sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
                 .thenReturn(source1).thenReturn(source2);
@@ -388,7 +388,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
                 "/users/OCL/sources/source2/v2.0/concepts/"+TUMOR_DISORDER+"/123/"
         );
         collection1.setCollectionsReferences(references);
-        when(collectionRepository.findFirstByMnemonicAndReleasedAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(anyString(), anyBoolean(), anyList(), anyString()))
+        when(collectionRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(anyString(), anyList(), anyString()))
                 .thenReturn(collection1);
         when(sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
                 .thenReturn(source1).thenReturn(source2);
@@ -757,7 +757,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         }).when(jdbcTemplate).batchUpdate(anyString(), any(BatchPreparedStatementSetter.class));
         populateSource1(source1);
         source1.setOrganization(newOrganization());
-        when(sourceRepository.findFirstByCanonicalUrlAndReleasedAndPublicAccessInOrderByCreatedAtDesc(anyString(), anyBoolean(), anyList()))
+        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(anyString(), anyList()))
                 .thenReturn(source1);
 
         provider.createValueSet(valueSet, requestDetails);
@@ -803,7 +803,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         }).when(jdbcTemplate).batchUpdate(anyString(), any(BatchPreparedStatementSetter.class));
         populateSource1(source1);
         source1.setOrganization(newOrganization());
-        when(sourceRepository.findFirstByCanonicalUrlAndReleasedAndPublicAccessInOrderByCreatedAtDesc(anyString(), anyBoolean(), anyList()))
+        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(anyString(), anyList()))
                 .thenReturn(source1);
 
         IdType type = new IdType();
@@ -887,8 +887,8 @@ public class TestValueSetResourceProvider extends OclFhirTest {
                 }
             }
         }
-        when(collectionRepository.findFirstByCanonicalUrlAndReleasedAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(
-                anyString(), anyBoolean(), anyString(), anyList())).thenReturn(collection);
+        when(collectionRepository.findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(
+                anyString(), anyString(), anyList())).thenReturn(collection);
 
         return provider.valueSetExpand(newUrl(VS_URL), null, new IntegerType(offset), new IntegerType(count),
                 null, null, null, null, null, Sets.newHashSet(new CanonicalType(systemVersion)), null, newString(OWNER_VAL), requestDetails);
@@ -918,15 +918,15 @@ public class TestValueSetResourceProvider extends OclFhirTest {
             when(collectionRepository.findFirstByCanonicalUrlAndVersionAndOrganizationMnemonicAndPublicAccessIn(anyString(),
                     anyString(), anyString(), anyList())).thenReturn(collection);
         } else {
-            when(collectionRepository.findFirstByCanonicalUrlAndReleasedAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(
-                    anyString(), anyBoolean(), anyString(), anyList())).thenReturn(collection);
+            when(collectionRepository.findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(
+                    anyString(), anyString(), anyList())).thenReturn(collection);
         }
         if (StringUtils.isNotBlank(systemVersion)) {
             when(sourceRepository.findFirstByCanonicalUrlAndVersionAndOrganizationMnemonicAndPublicAccessIn(anyString(),
                     anyString(), anyString(), anyList())).thenReturn(source);
         } else {
-            when(sourceRepository.findFirstByCanonicalUrlAndReleasedAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(
-                    anyString(), anyBoolean(), anyString(), anyList())).thenReturn(source);
+            when(sourceRepository.findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(
+                    anyString(), anyString(), anyList())).thenReturn(source);
         }
 
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList()))
@@ -943,14 +943,14 @@ public class TestValueSetResourceProvider extends OclFhirTest {
                     .findFirstByCanonicalUrlAndVersionAndOrganizationMnemonicAndPublicAccessIn(anyString(), anyString(), anyString(), anyList());
         } else {
             verify(collectionRepository, times(1))
-                    .findFirstByCanonicalUrlAndReleasedAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(anyString(), anyBoolean(), anyString(), anyList());
+                    .findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(anyString(), anyString(), anyList());
         }
         if (StringUtils.isNotBlank(systemVersion)) {
             verify(sourceRepository, times(1))
                     .findFirstByCanonicalUrlAndVersionAndOrganizationMnemonicAndPublicAccessIn(anyString(), anyString(), anyString(), anyList());
         } else {
             verify(sourceRepository, times(1))
-                    .findFirstByCanonicalUrlAndReleasedAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(anyString(), anyBoolean(), anyString(), anyList());
+                    .findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(anyString(), anyString(), anyList());
         }
         return output;
     }
@@ -976,7 +976,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
 
     @Test
     public void testSearchValueSet_count() {
-        when(collectionRepository.findAllMostRecentReleased(anyList())).thenReturn(getCollections());
+        when(collectionRepository.findAllLatest(anyList())).thenReturn(getCollections());
         ValueSetResourceProvider provider = valueSetProvider();
         Bundle bundle = provider.searchValueSets(null, null, requestDetails);
         assertEquals(12, bundle.getTotal());

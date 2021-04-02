@@ -6,7 +6,6 @@ import ca.uhn.fhir.rest.api.server.RequestDetails;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
-import com.sun.source.tree.LabeledStatementTree;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hl7.fhir.instance.model.api.IBaseResource;
@@ -21,8 +20,6 @@ import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.stereotype.Component;
 
 import javax.transaction.Transactional;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -175,7 +172,7 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
 
     /**
      * Returns public {@link CodeSystem} for a given owner and Id. Returns given version if provided, otherwise
-     * most recent released version is returned.
+     * latest version is returned.
      * @param owner
      * @param id
      * @param version

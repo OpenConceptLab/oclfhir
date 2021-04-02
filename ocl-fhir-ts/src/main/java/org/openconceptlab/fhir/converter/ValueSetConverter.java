@@ -623,8 +623,8 @@ public class ValueSetConverter extends BaseConverter {
             if (isValid(version)) {
                 source = sourceRepository.findFirstByCanonicalUrlAndVersionAndPublicAccessIn(system, version, publicAccess);
             } else {
-                source = sourceRepository.findFirstByCanonicalUrlAndReleasedAndPublicAccessInOrderByCreatedAtDesc(
-                        system, True, publicAccess
+                source = sourceRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(
+                        system, publicAccess
                 );
                 // we need to update source version for later use. If version if not provided then we don't want to store
                 // source version info in expressions. This won't be persisted in db, it is for internal user only.
