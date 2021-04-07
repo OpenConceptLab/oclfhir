@@ -215,11 +215,11 @@ public class OclFhirUtil {
 
     public Source getLatestSourceByOwner(String id, String owner, String ownerType, List<String> access) {
         if (ORG.equals(ownerType)) {
-            return sourceRepository.findFirstByMnemonicAndPublicAccessInAndOrganizationMnemonicOrderByCreatedAtDesc(
-                    id, access, owner);
+            return sourceRepository.findFirstByMnemonicAndPublicAccessInAndOrganizationMnemonicAndIsLatestVersionOrderByCreatedAtDesc(
+                    id, access, owner, true);
         }
-        return sourceRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(
-                id, access, owner);
+        return sourceRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameAndIsLatestVersionOrderByCreatedAtDesc(
+                id, access, owner, true);
     }
 
     public Source getSourceByOwnerAndUrl(StringType owner, StringType url, StringType version, List<String> access) {
@@ -239,18 +239,18 @@ public class OclFhirUtil {
     }
 
     public Source getLatestSourceByUrl(StringType url, List<String> access) {
-        return sourceRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(
-                url.getValue(), access
+        return sourceRepository.findFirstByCanonicalUrlAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
+                url.getValue(), access, true
         );
     }
 
     private Source getLatestSourceByOwnerAndUrl(String owner, String ownerType, StringType url, List<String> access) {
         if (ORG.equals(ownerType))
-            return sourceRepository.findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(
-                    url.getValue(), owner, access
+            return sourceRepository.findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
+                    url.getValue(), owner, access, true
             );
-        return sourceRepository.findFirstByCanonicalUrlAndUserIdUsernameAndPublicAccessInOrderByCreatedAtDesc(
-                url.getValue(), owner, access
+        return sourceRepository.findFirstByCanonicalUrlAndUserIdUsernameAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
+                url.getValue(), owner, access, true
         );
     }
 

@@ -6,7 +6,8 @@ import org.hl7.fhir.r4.model.CodeSystem;
 import org.hl7.fhir.r4.model.Enumerations;
 import org.hl7.fhir.r4.model.ValueSet;
 import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.openconceptlab.fhir.base.OclFhirTest;
@@ -20,7 +21,7 @@ import static org.openconceptlab.fhir.provider.OclCapabilityStatementProvider.*;
 
 public class TestOclCapabilityStatementProvider extends OclFhirTest {
 
-    @Before
+    @BeforeEach
     public void setUpBefore() {
         MockitoAnnotations.initMocks(this);
     }

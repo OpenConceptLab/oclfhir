@@ -283,8 +283,7 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
     }
 
     private List<Collection> getCollections(List<String> access) {
-        return collectionRepository.findAllLatest(access).stream().sorted(Comparator.comparing(Collection::getMnemonic))
-                .collect(Collectors.toList());
+        return collectionRepository.findAllLatest(access);
     }
 
     private List<Collection> getCollectionByUrl(StringType url, StringType version, List<String> access) {
@@ -329,17 +328,10 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
         String ownerType = getOwnerType(owner.getValue());
         String value = getOwner(owner.getValue());
         if (ORG.equals(ownerType)) {
-            collections.addAll(collectionRepository.findByOrganizationMnemonicAndPublicAccessIn(value, access));
+            return collectionRepository.findByOrganizationMnemonicAndPublicAccessInAndIsLatestVersionOrderByMnemonic(value, access, true);
         } else {
-            collections.addAll(collectionRepository.findByUserIdUsernameAndPublicAccessIn(value, access));
+            return collectionRepository.findByUserIdUsernameAndPublicAccessInAndIsLatestVersionOrderByMnemonic(value, access, true);
         }
-        Multimap<String, Collection> map = ArrayListMultimap.create();
-        collections.forEach(s -> map.put(s.getMnemonic(), s));
-        List<Collection> filtered = new ArrayList<>();
-        map.asMap().forEach((k,v) -> {
-            v.stream().max(Comparator.comparing(Collection::getCreatedAt)).stream().findFirst().ifPresent(filtered::add);
-        });
-        return filtered.stream().sorted(Comparator.comparing(Collection::getMnemonic)).collect(Collectors.toList());
     }
 
     private List<Collection> getCollectionByOwnerAndId(StringType id, StringType owner, StringType version, List<String> access) {
@@ -385,26 +377,26 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
 
     private Collection getLatestCollectionByOwner(String id, String owner, String ownerType, List<String> access) {
         if (ORG.equals(ownerType)) {
-            return collectionRepository.findFirstByMnemonicAndPublicAccessInAndOrganizationMnemonicOrderByCreatedAtDesc(
-                    id, access, owner);
+            return collectionRepository.findFirstByMnemonicAndPublicAccessInAndOrganizationMnemonicAndIsLatestVersionOrderByCreatedAtDesc(
+                    id, access, owner, true);
         }
-        return collectionRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(
-                id, access, owner);
+        return collectionRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameAndIsLatestVersionOrderByCreatedAtDesc(
+                id, access, owner, true);
     }
 
     private Collection getLatestCollectionByUrl(StringType url, List<String> access) {
-        return collectionRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(
-                url.getValue(), access
+        return collectionRepository.findFirstByCanonicalUrlAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
+                url.getValue(), access, true
         );
     }
 
     private Collection getLatestCollectionByOwnerAndUrl(String owner, String ownerType, StringType url, List<String> access) {
         if (ORG.equals(ownerType))
-            return collectionRepository.findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(
-                    url.getValue(), owner, access
+            return collectionRepository.findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
+                    url.getValue(), owner, access, true
             );
-        return collectionRepository.findFirstByCanonicalUrlAndUserIdUsernameAndPublicAccessInOrderByCreatedAtDesc(
-                url.getValue(), owner, access
+        return collectionRepository.findFirstByCanonicalUrlAndUserIdUsernameAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
+                url.getValue(), owner, access, true
         );
     }
 

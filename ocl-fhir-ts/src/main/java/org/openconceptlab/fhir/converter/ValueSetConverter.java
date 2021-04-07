@@ -165,7 +165,8 @@ public class ValueSetConverter extends BaseConverter {
         // for each source let's evaluate expressions for concept and concept version and populate compose
         sources.forEach(source -> {
             expressions.stream().map(m -> formatExpression(m).split(FS))
-                    .filter(m -> source.getMnemonic().equals(getSourceId(m)) && source.getVersion().equals(getSourceVersion(m)))
+                    .filter(m -> source.getMnemonic().equals(getSourceId(m)) &&
+                            (!isValid(getSourceVersion(m)) ? source.getIsLatestVersion() : source.getVersion().equals(getSourceVersion(m))) )
                     .forEachOrdered(m -> {
                         String conceptId = getConceptId(m);
                         String conceptVersion = getConceptVersion(m);
@@ -211,7 +212,7 @@ public class ValueSetConverter extends BaseConverter {
                     String sourceVersion = m[3];
                     // If sourceId is part of input system-version and expression's source's version is HEAD only then we'll
                     // want to override the source.
-                    if (map.containsKey(sourceId) && HEAD.equals(sourceVersion)) {
+                    if (map.containsKey(sourceId) && !isValid(sourceVersion)) {
                         return sourcesProvided.parallelStream().filter(s -> s.getMnemonic().equals(sourceId)).findFirst().get();
                     } else {
                         // if source is not part of the system-version then don't override
@@ -465,9 +466,9 @@ public class ValueSetConverter extends BaseConverter {
         sources.forEach(source -> {
             expressions.stream().map(m -> formatExpression(m).split(FS))
                     .filter(m -> {
-                        if (map.containsKey(source.getCanonicalUrl()))
+                        if (map.containsKey(source.getCanonicalUrl()) && !isValid(getSourceVersion(m)))
                             return map.get(source.getCanonicalUrl()).equals(source.getVersion());
-                        return source.getMnemonic().equals(getSourceId(m)) && source.getVersion().equals(getSourceVersion(m));
+                        return source.getMnemonic().equals(getSourceId(m)) && (!isValid(getSourceVersion(m)) ? source.getIsLatestVersion() : source.getVersion().equals(getSourceVersion(m)));
                     })
                     .forEachOrdered(m -> {
                         String conceptId = getConceptId(m);
@@ -551,7 +552,7 @@ public class ValueSetConverter extends BaseConverter {
     }
 
     private String getSourceVersion(String[] ar) {
-        return ar.length >= 6 && !ar[5].isEmpty() && ar[5].equals(CONCEPTS) ? HEAD : ar[5];
+        return ar.length >= 6 && !ar[5].isEmpty() && ar[5].equals(CONCEPTS) ? " " : ar[5];
     }
 
     private String getConceptId(String[] ar) {
@@ -623,8 +624,8 @@ public class ValueSetConverter extends BaseConverter {
             if (isValid(version)) {
                 source = sourceRepository.findFirstByCanonicalUrlAndVersionAndPublicAccessIn(system, version, publicAccess);
             } else {
-                source = sourceRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(
-                        system, publicAccess
+                source = sourceRepository.findFirstByCanonicalUrlAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
+                        system, publicAccess, true
                 );
                 // we need to update source version for later use. If version if not provided then we don't want to store
                 // source version info in expressions. This won't be persisted in db, it is for internal user only.

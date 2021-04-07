@@ -9,7 +9,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.hl7.fhir.r4.model.*;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
@@ -47,7 +50,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
     public static final String COLLECTION_2_FULL_NAME = "collection2 full name";
     public static final String COLLECTION_2_COPYRIGHT_TEXT = "collection2 copyright text";
 
-    @Before
+    @BeforeEach
     public void setUpBefore() {
         MockitoAnnotations.initMocks(this);
         when(requestDetails.getCompleteUrl()).thenReturn("http://test.org");
@@ -63,7 +66,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         populateCollection2(collection2);
     }
 
-    @After
+    @AfterEach
     public void after() {
         source1 = null;
         source2 = null;
@@ -114,8 +117,8 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         collection1.setImmutable(false);
         collection1.setRevisionDate(Date.from(LocalDate.of(2020, 12, 1).atStartOfDay(ZoneId.systemDefault()).toInstant()));
         List<CollectionsReference> references = newReferences(
-                "/orgs/OCL/sources/source1/v1.0/concepts/"+AD+"/123/",
-                "/orgs/OCL/sources/source2/v2.0/concepts/"+TUMOR_DISORDER+"/123/"
+                "/orgs/OCL/sources/source1/v1.0/concepts/" + AD + "/123/",
+                "/orgs/OCL/sources/source2/v2.0/concepts/" + TUMOR_DISORDER + "/123/"
         );
         collection1.setCollectionsReferences(references);
     }
@@ -164,7 +167,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         collection2.setIsLatestVersion(true);
         collection1.setVersion("HEAD");
         collection2.setVersion("HEAD");
-        when(collectionRepository.findByPublicAccessIn(anyList())).thenReturn(Arrays.asList(collection1, collection2));
+        when(collectionRepository.findAllLatest(anyList())).thenReturn(Arrays.asList(collection1, collection2));
         ValueSetResourceProvider provider = valueSetProvider();
         Bundle bundle = provider.searchValueSets(null, null, requestDetails);
         assertEquals(0, bundle.getTotal());
@@ -172,12 +175,12 @@ public class TestValueSetResourceProvider extends OclFhirTest {
 
     @Test
     public void testSearchValueSetByUrl_version_empty_return_most_recent() {
-        when(collectionRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(anyString(), anyList()))
+        when(collectionRepository.findFirstByCanonicalUrlAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(anyString(), anyList(), anyBoolean()))
                 .thenReturn(collection1);
         when(sourceRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
                 .thenReturn(source1).thenReturn(source2);
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList())).thenReturn(Collections.singletonList(cs22))
-        .thenReturn(Collections.singletonList(cs11));
+                .thenReturn(Collections.singletonList(cs11));
         ValueSetResourceProvider provider = valueSetProvider();
         Bundle bundle = provider.searchValueSetByUrl(newString(URL_COLLECTION_1), null, null, null, requestDetails);
         assertEquals(1, bundle.getTotal());
@@ -241,16 +244,18 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         assertEquals(0, bundle.getTotal());
     }
 
-    @Test(expected = ResourceNotFoundException.class)
+    @Test
     public void testSearchValueSetByUrl_not_found() {
         ValueSetResourceProvider provider = valueSetProvider();
-        provider.searchValueSetByUrl(newString(URL_COLLECTION_1), null, null, null, requestDetails);
+        Assertions.assertThrows(ResourceNotFoundException.class, () -> {
+            provider.searchValueSetByUrl(newString(URL_COLLECTION_1), null, null, null, requestDetails);
+        });
     }
 
     @Test
     public void testSearchValueSetByOwner() {
         collection1.setReleased(true);
-        when(collectionRepository.findByOrganizationMnemonicAndPublicAccessIn(anyString(), anyList()))
+        when(collectionRepository.findByOrganizationMnemonicAndPublicAccessInAndIsLatestVersionOrderByMnemonic(anyString(), anyList(), anyBoolean()))
                 .thenReturn(Collections.singletonList(collection1));
         ValueSetResourceProvider provider = valueSetProvider();
         Bundle bundle = provider.searchValueSetByOwner(newString("org:OCL"), null, null, requestDetails);
@@ -263,7 +268,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
     @Test
     public void testSearchValueSetByOwner_user() {
         collection1.setReleased(true);
-        when(collectionRepository.findByUserIdUsernameAndPublicAccessIn(anyString(), anyList()))
+        when(collectionRepository.findByUserIdUsernameAndPublicAccessInAndIsLatestVersionOrderByMnemonic(anyString(), anyList(), anyBoolean()))
                 .thenReturn(Collections.singletonList(collection1));
         ValueSetResourceProvider provider = valueSetProvider();
         Bundle bundle = provider.searchValueSetByOwner(newString("user:test"), null, null, requestDetails);
@@ -275,7 +280,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
 
     @Test
     public void testSearchValueSetByOwnerAndId_version_empty() {
-        when(collectionRepository.findFirstByMnemonicAndPublicAccessInAndOrganizationMnemonicOrderByCreatedAtDesc(anyString(), anyList(), anyString()))
+        when(collectionRepository.findFirstByMnemonicAndPublicAccessInAndOrganizationMnemonicAndIsLatestVersionOrderByCreatedAtDesc(anyString(), anyList(), anyString(), anyBoolean()))
                 .thenReturn(collection1);
         when(sourceRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
                 .thenReturn(source1).thenReturn(source2);
@@ -294,11 +299,11 @@ public class TestValueSetResourceProvider extends OclFhirTest {
     @Test
     public void testSearchValueSetByOwnerAndId_expression_owner_user() {
         List<CollectionsReference> references = newReferences(
-                "/users/test/sources/source1/v1.0/concepts/"+AD+"/123/",
-                "/users/test/sources/source2/v2.0/concepts/"+TUMOR_DISORDER+"/123/"
+                "/users/test/sources/source1/v1.0/concepts/" + AD + "/123/",
+                "/users/test/sources/source2/v2.0/concepts/" + TUMOR_DISORDER + "/123/"
         );
         collection1.setCollectionsReferences(references);
-        when(collectionRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(anyString(), anyList(), anyString()))
+        when(collectionRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameAndIsLatestVersionOrderByCreatedAtDesc(anyString(), anyList(), anyString(), anyBoolean()))
                 .thenReturn(collection1);
         when(sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
                 .thenReturn(source1).thenReturn(source2);
@@ -318,11 +323,11 @@ public class TestValueSetResourceProvider extends OclFhirTest {
     @Test
     public void testSearchValueSetByOwnerAndId_expression_source_version_not_found() {
         List<CollectionsReference> references = newReferences(
-                "/users/test/sources/source1/v1111.0/concepts/"+AD+"/123/",
-                "/users/test/sources/source2/v2222.0/concepts/"+TUMOR_DISORDER+"/123/"
+                "/users/test/sources/source1/v1111.0/concepts/" + AD + "/123/",
+                "/users/test/sources/source2/v2222.0/concepts/" + TUMOR_DISORDER + "/123/"
         );
         collection1.setCollectionsReferences(references);
-        when(collectionRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(anyString(), anyList(), anyString()))
+        when(collectionRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameAndIsLatestVersionOrderByCreatedAtDesc(anyString(), anyList(), anyString(), anyBoolean()))
                 .thenReturn(collection1);
         when(sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
                 .thenReturn(source1).thenReturn(source2);
@@ -340,11 +345,11 @@ public class TestValueSetResourceProvider extends OclFhirTest {
     @Test
     public void testSearchValueSetByOwnerAndId_expression_source_not_found() {
         List<CollectionsReference> references = newReferences(
-                "/users/test/sources/source111/v1.0/concepts/"+AD+"/123/",
-                "/users/test/sources/source222/v2.0/concepts/"+TUMOR_DISORDER+"/123/"
+                "/users/test/sources/source111/v1.0/concepts/" + AD + "/123/",
+                "/users/test/sources/source222/v2.0/concepts/" + TUMOR_DISORDER + "/123/"
         );
         collection1.setCollectionsReferences(references);
-        when(collectionRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(anyString(), anyList(), anyString()))
+        when(collectionRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameAndIsLatestVersionOrderByCreatedAtDesc(anyString(), anyList(), anyString(), anyBoolean()))
                 .thenReturn(collection1);
         when(sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
                 .thenReturn(source1).thenReturn(source2);
@@ -362,11 +367,11 @@ public class TestValueSetResourceProvider extends OclFhirTest {
     @Test
     public void testSearchValueSetByOwnerAndId_expression_owner_not_found() {
         List<CollectionsReference> references = newReferences(
-                "/users/OCL/sources/source111/v1.0/concepts/"+AD+"/123/",
-                "/users/OCL/sources/source222/v2.0/concepts/"+TUMOR_DISORDER+"/123/"
+                "/users/OCL/sources/source111/v1.0/concepts/" + AD + "/123/",
+                "/users/OCL/sources/source222/v2.0/concepts/" + TUMOR_DISORDER + "/123/"
         );
         collection1.setCollectionsReferences(references);
-        when(collectionRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(anyString(), anyList(), anyString()))
+        when(collectionRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameAndIsLatestVersionOrderByCreatedAtDesc(anyString(), anyList(), anyString(), anyBoolean()))
                 .thenReturn(collection1);
         when(sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
                 .thenReturn(source1).thenReturn(source2);
@@ -384,11 +389,11 @@ public class TestValueSetResourceProvider extends OclFhirTest {
     @Test
     public void testSearchValueSetByOwnerAndId_expression_concept_not_found() {
         List<CollectionsReference> references = newReferences(
-                "/users/OCL/sources/source1/v1.0/concepts/"+AD+"/123/",
-                "/users/OCL/sources/source2/v2.0/concepts/"+TUMOR_DISORDER+"/123/"
+                "/users/OCL/sources/source1/v1.0/concepts/" + AD + "/123/",
+                "/users/OCL/sources/source2/v2.0/concepts/" + TUMOR_DISORDER + "/123/"
         );
         collection1.setCollectionsReferences(references);
-        when(collectionRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameOrderByCreatedAtDesc(anyString(), anyList(), anyString()))
+        when(collectionRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameAndIsLatestVersionOrderByCreatedAtDesc(anyString(), anyList(), anyString(), anyBoolean()))
                 .thenReturn(collection1);
         when(sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
                 .thenReturn(source1).thenReturn(source2);
@@ -421,25 +426,33 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         assertEquals(copyright, valueSet.getCopyright());
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testValidateCode_url_null() {
-        validateCode(null, V_11_1, CS_URL, V_21_1, AD, null, null, null, OWNER_VAL);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            validateCode(null, V_11_1, CS_URL, V_21_1, AD, null, null, null, OWNER_VAL);
+        });
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testValidateCode_code_null() {
-        validateCode(VS_URL, V_11_1, CS_URL, V_21_1, null, null, null, null, OWNER_VAL);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            validateCode(VS_URL, V_11_1, CS_URL, V_21_1, null, null, null, null, OWNER_VAL);
+        });
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testValidateCode_system_null() {
-        validateCode(VS_URL, V_11_1, null, V_21_1, AD, null, null, null, OWNER_VAL);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            validateCode(VS_URL, V_11_1, null, V_21_1, AD, null, null, null, OWNER_VAL);
+        });
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testValidateCode_code_coding() {
-        validateCode(VS_URL, V_11_1, CS_URL, null, AD, null, null,
-                new Coding("ABC", "ABC", "ABC"), OWNER_VAL);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            validateCode(VS_URL, V_11_1, CS_URL, null, AD, null, null,
+                    new Coding("ABC", "ABC", "ABC"), OWNER_VAL);
+        });
     }
 
     @Test
@@ -491,11 +504,11 @@ public class TestValueSetResourceProvider extends OclFhirTest {
     public void testExpand() {
         // all match
         List<CollectionsReference> references = newReferences(
-                "/orgs/OCL/sources/"+CS+"/v1.0/concepts/"+AD+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+AD+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+TM+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+VEIN_PROCEDURE+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+LUNG_PROCEDURE+"/123/"
+                "/orgs/OCL/sources/" + CS + "/v1.0/concepts/" + AD + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + AD + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + TM + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + VEIN_PROCEDURE + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + LUNG_PROCEDURE + "/123/"
         );
         source1.setCanonicalUrl(CS_URL);
         source1.setMnemonic(CS);
@@ -513,11 +526,11 @@ public class TestValueSetResourceProvider extends OclFhirTest {
     @Test
     public void testExpand_partial() {
         List<CollectionsReference> references = newReferences(
-                "/orgs/OCL/sources/"+CS+"/v1.0/concepts/"+AD+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+AD+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+TM+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+VEIN_PROCEDURE+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+LUNG_PROCEDURE+"/123/"
+                "/orgs/OCL/sources/" + CS + "/v1.0/concepts/" + AD + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + AD + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + TM + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + VEIN_PROCEDURE + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + LUNG_PROCEDURE + "/123/"
         );
         source1.setCanonicalUrl(CS_URL);
         source1.setMnemonic(CS);
@@ -533,58 +546,64 @@ public class TestValueSetResourceProvider extends OclFhirTest {
     @Test
     public void testExpand_count_0() {
         List<CollectionsReference> references = newReferences(
-                "/orgs/OCL/sources/"+CS+"/v1.0/concepts/"+AD+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+AD+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+TM+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+VEIN_PROCEDURE+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+LUNG_PROCEDURE+"/123/"
+                "/orgs/OCL/sources/" + CS + "/v1.0/concepts/" + AD + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + AD + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + TM + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + VEIN_PROCEDURE + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + LUNG_PROCEDURE + "/123/"
         );
-        ValueSet vs = runExpand(references, Collections.singletonList(cs11), Collections.singletonList(cs21), null,0, 0, "");
+        ValueSet vs = runExpand(references, Collections.singletonList(cs11), Collections.singletonList(cs21), null, 0, 0, "");
         assertEquals(5, vs.getExpansion().getTotal());
         assertEquals(0, vs.getExpansion().getContains().size());
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testExpand_count_negative() {
         List<CollectionsReference> references = newReferences(
-                "/orgs/OCL/sources/"+CS+"/v1.0/concepts/"+AD+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+AD+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+TM+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+VEIN_PROCEDURE+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+LUNG_PROCEDURE+"/123/"
+                "/orgs/OCL/sources/" + CS + "/v1.0/concepts/" + AD + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + AD + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + TM + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + VEIN_PROCEDURE + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + LUNG_PROCEDURE + "/123/"
         );
-        runExpand(references, Collections.singletonList(cs11), Collections.singletonList(cs21), null, 0, -2, "");
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            runExpand(references, Collections.singletonList(cs11), Collections.singletonList(cs21), null, 0, -2, "");
+        });
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testExpand_missing_url() {
         ValueSetResourceProvider provider = valueSetProvider();
-        provider.valueSetExpand(null, null, new IntegerType(0), new IntegerType(10),
-                null, null, null, null, null, null, null, newString(OWNER_VAL), requestDetails);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            provider.valueSetExpand(null, null, new IntegerType(0), new IntegerType(10),
+                    null, null, null, null, null, null, null, newString(OWNER_VAL), requestDetails);
+        });
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testExpand_unknown_systemversion() {
         // all match
         List<CollectionsReference> references = newReferences(
-                "/orgs/OCL/sources/"+CS+"/v1.0/concepts/"+AD+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+AD+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+TM+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+VEIN_PROCEDURE+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+LUNG_PROCEDURE+"/123/"
+                "/orgs/OCL/sources/" + CS + "/v1.0/concepts/" + AD + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + AD + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + TM + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + VEIN_PROCEDURE + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + LUNG_PROCEDURE + "/123/"
         );
-        runExpand(references, Collections.singletonList(cs11), Arrays.asList(cs21, cs22, cs23, cs24),
-                null, 0, 50, CS_URL+"|unk");
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            runExpand(references, Collections.singletonList(cs11), Arrays.asList(cs21, cs22, cs23, cs24),
+                    null, 0, 50, CS_URL + "|unk");
+        });
     }
 
     @Test
     public void testExpand_known_systemversion() {
         // all match
         List<CollectionsReference> references = newReferences(
-                "/orgs/OCL/sources/"+CS+"/concepts/"+AD+"/123/",
-                "/orgs/OCL/sources/"+CS+"/concepts/"+TM+"/123/",
-                "/orgs/OCL/sources/"+CS+"/concepts/"+VEIN_PROCEDURE+"/123/",
-                "/orgs/OCL/sources/"+CS+"/concepts/"+LUNG_PROCEDURE+"/123/"
+                "/orgs/OCL/sources/" + CS + "/concepts/" + AD + "/123/",
+                "/orgs/OCL/sources/" + CS + "/concepts/" + TM + "/123/",
+                "/orgs/OCL/sources/" + CS + "/concepts/" + VEIN_PROCEDURE + "/123/",
+                "/orgs/OCL/sources/" + CS + "/concepts/" + LUNG_PROCEDURE + "/123/"
         );
         ValueSet vs = runExpand(references, Collections.singletonList(cs11), Arrays.asList(cs21, cs22, cs23, cs24),
                 Arrays.asList(cs31, cs32, cs33, cs34), 0, 50, CS_URL + "|v3.0");
@@ -599,83 +618,97 @@ public class TestValueSetResourceProvider extends OclFhirTest {
     public void testExpand_known_systemversion_no_head_in_expression() {
         // all match
         List<CollectionsReference> references = newReferences(
-                "/orgs/OCL/sources/"+CS+"/v1.0/concepts/"+AD+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+AD+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+TM+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+VEIN_PROCEDURE+"/123/",
-                "/orgs/OCL/sources/"+CS+"/v2.0/concepts/"+LUNG_PROCEDURE+"/123/"
+                "/orgs/OCL/sources/" + CS + "/v1.0/concepts/" + AD + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + AD + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + TM + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + VEIN_PROCEDURE + "/123/",
+                "/orgs/OCL/sources/" + CS + "/v2.0/concepts/" + LUNG_PROCEDURE + "/123/"
         );
         ValueSet vs = runExpand(references, Collections.singletonList(cs11), Arrays.asList(cs21, cs22, cs23, cs24),
                 Arrays.asList(cs31, cs32, cs33, cs34), 0, 50, CS_URL + "|v3.0");
         assertEquals(0, vs.getExpansion().getContains().size());
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testCreateValueSet_null() {
         ValueSetResourceProvider provider = valueSetProvider();
-        provider.createValueSet(null, requestDetails);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            provider.createValueSet(null, requestDetails);
+        });
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testCreateValueSet_accessionId_null() {
         ValueSetResourceProvider provider = valueSetProvider();
         ValueSet valueSet = valueSet();
         valueSet.setIdentifier(null);
-        provider.createValueSet(valueSet, requestDetails);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            provider.createValueSet(valueSet, requestDetails);
+        });
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testCreateValueSet_url_null() {
         ValueSetResourceProvider provider = valueSetProvider();
         ValueSet valueSet = valueSet();
         valueSet.setUrl(null);
-        provider.createValueSet(valueSet, requestDetails);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            provider.createValueSet(valueSet, requestDetails);
+        });
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testCreateValueSet_invalid_org() {
         ValueSetResourceProvider provider = valueSetProvider();
         ValueSet valueSet = valueSet();
         when(organizationRepository.findByMnemonic(anyString())).thenReturn(null);
-        provider.createValueSet(valueSet, requestDetails);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            provider.createValueSet(valueSet, requestDetails);
+        });
         verify(organizationRepository, times(1)).findByMnemonic(anyString());
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testCreateValueSet_invalid_user() {
         ValueSetResourceProvider provider = valueSetProvider();
         ValueSet valueSet = valueSet();
         valueSet.getIdentifierFirstRep().setValue("/users/testuser/ValueSet/testsource/2.0");
         when(userRepository.findByUsername(anyString())).thenReturn(null);
-        provider.createValueSet(valueSet, requestDetails);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            provider.createValueSet(valueSet, requestDetails);
+        });
         verify(userRepository, times(1)).findByUsername(anyString());
     }
 
-    @Test(expected = AuthenticationException.class)
+    @Test
     public void testCreateValueSet_token_null() {
         ValueSetResourceProvider provider = valueSetProvider();
         ValueSet valueSet = valueSet();
         when(requestDetails.getHeader(anyString())).thenReturn(null);
         when(organizationRepository.findByMnemonic(anyString())).thenReturn(newOrganization());
-        provider.createValueSet(valueSet, requestDetails);
+        Assertions.assertThrows(AuthenticationException.class, () -> {
+            provider.createValueSet(valueSet, requestDetails);
+        });
         verify(requestDetails, times(1)).getHeader(anyString());
         verify(organizationRepository, times(1)).findByMnemonic(anyString());
     }
 
-    @Test(expected = AuthenticationException.class)
+    @Test
     public void testCreateValueSet_invalid_token() {
         ValueSetResourceProvider provider = valueSetProvider();
         ValueSet valueSet = valueSet();
         when(requestDetails.getHeader(anyString())).thenReturn("Token  678423578911230985");
         when(organizationRepository.findByMnemonic(anyString())).thenReturn(newOrganization());
         when(authtokenRepository.findByKey(anyString())).thenReturn(null);
-        provider.createValueSet(valueSet, requestDetails);
+        Assertions.assertThrows(AuthenticationException.class, () -> {
+            provider.createValueSet(valueSet, requestDetails);
+        });
         verify(requestDetails, times(1)).getHeader(anyString());
         verify(organizationRepository, times(1)).findByMnemonic(anyString());
         verify(authtokenRepository, times(1)).findByKey(anyString());
     }
 
-    @Test(expected = AuthenticationException.class)
+    @Test
     public void testCreateValueSet_user_not_org_member_invalid_user() {
         ValueSetResourceProvider provider = valueSetProvider();
         ValueSet valueSet = valueSet();
@@ -684,14 +717,16 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         when(authtokenRepository.findByKey(anyString())).thenReturn(newToken(test_user));
         when(userProfilesOrganizationRepository.findByOrganizationMnemonic(anyString()))
                 .thenReturn(Collections.singletonList(newUserOrg("otheruser")));
-        provider.createValueSet(valueSet, requestDetails);
+        Assertions.assertThrows(AuthenticationException.class, () -> {
+            provider.createValueSet(valueSet, requestDetails);
+        });
         verify(requestDetails, times(1)).getHeader(anyString());
         verify(organizationRepository, times(1)).findByMnemonic(anyString());
         verify(authtokenRepository, times(1)).findByKey(anyString());
         verify(userProfilesOrganizationRepository, times(1)).findByOrganizationMnemonic(anyString());
     }
 
-    @Test(expected = ResourceVersionConflictException.class)
+    @Test
     public void testCreateValueSet_valueset_id_exists() {
         ValueSetResourceProvider provider = valueSetProvider();
         ValueSet valueSet = valueSet();
@@ -702,7 +737,9 @@ public class TestValueSetResourceProvider extends OclFhirTest {
                 .thenReturn(Collections.singletonList(newUserOrg(test_user)));
         when(collectionRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonic(anyString(), anyString(), anyString()))
                 .thenReturn(new Collection());
-        provider.createValueSet(valueSet, requestDetails);
+        Assertions.assertThrows(ResourceVersionConflictException.class, () -> {
+            provider.createValueSet(valueSet, requestDetails);
+        });
         verify(requestDetails, times(1)).getHeader(anyString());
         verify(organizationRepository, times(1)).findByMnemonic(anyString());
         verify(authtokenRepository, times(1)).findByKey(anyString());
@@ -710,7 +747,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         verify(collectionRepository, times(1)).findFirstByMnemonicAndVersionAndOrganizationMnemonic(anyString(), anyString(), anyString());
     }
 
-    @Test(expected = ResourceVersionConflictException.class)
+    @Test
     public void testCreateValueSet_valueset_url_exists() {
         ValueSetResourceProvider provider = valueSetProvider();
         ValueSet valueSet = valueSet();
@@ -721,7 +758,9 @@ public class TestValueSetResourceProvider extends OclFhirTest {
                 .thenReturn(Collections.singletonList(newUserOrg(test_user)));
         when(collectionRepository.findFirstByCanonicalUrlAndVersionAndOrganizationMnemonic(anyString(), anyString(), anyString()))
                 .thenReturn(new Collection());
-        provider.createValueSet(valueSet, requestDetails);
+        Assertions.assertThrows(ResourceVersionConflictException.class, () -> {
+            provider.createValueSet(valueSet, requestDetails);
+        });
         verify(requestDetails, times(1)).getHeader(anyString());
         verify(organizationRepository, times(1)).findByMnemonic(anyString());
         verify(authtokenRepository, times(1)).findByKey(anyString());
@@ -742,7 +781,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
             @Override
             public Object answer(InvocationOnMock invocation) throws Throwable {
                 Object[] args = invocation.getArguments();
-                ((Collection)args[0]).setId(123L);
+                ((Collection) args[0]).setId(123L);
                 return args[0];
             }
         }).when(collectionRepository).saveAndFlush(any(Collection.class));
@@ -757,7 +796,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         }).when(jdbcTemplate).batchUpdate(anyString(), any(BatchPreparedStatementSetter.class));
         populateSource1(source1);
         source1.setOrganization(newOrganization());
-        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(anyString(), anyList()))
+        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(anyString(), anyList(), anyBoolean()))
                 .thenReturn(source1);
 
         provider.createValueSet(valueSet, requestDetails);
@@ -788,7 +827,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
             @Override
             public Object answer(InvocationOnMock invocation) throws Throwable {
                 Object[] args = invocation.getArguments();
-                ((Collection)args[0]).setId(123L);
+                ((Collection) args[0]).setId(123L);
                 return args[0];
             }
         }).when(collectionRepository).saveAndFlush(any(Collection.class));
@@ -803,7 +842,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         }).when(jdbcTemplate).batchUpdate(anyString(), any(BatchPreparedStatementSetter.class));
         populateSource1(source1);
         source1.setOrganization(newOrganization());
-        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(anyString(), anyList()))
+        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(anyString(), anyList(), anyBoolean()))
                 .thenReturn(source1);
 
         IdType type = new IdType();
@@ -887,8 +926,8 @@ public class TestValueSetResourceProvider extends OclFhirTest {
                 }
             }
         }
-        when(collectionRepository.findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(
-                anyString(), anyString(), anyList())).thenReturn(collection);
+        when(collectionRepository.findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
+                anyString(), anyString(), anyList(), anyBoolean())).thenReturn(collection);
 
         return provider.valueSetExpand(newUrl(VS_URL), null, new IntegerType(offset), new IntegerType(count),
                 null, null, null, null, null, Sets.newHashSet(new CanonicalType(systemVersion)), null, newString(OWNER_VAL), requestDetails);
@@ -896,7 +935,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
 
 
     public Parameters validateCode(String url, String version, String system, String systemVersion, String code,
-                                       String display, String language, Coding coding, String owner) {
+                                   String display, String language, Coding coding, String owner) {
         // set up
         ValueSetResourceProvider provider = valueSetProvider();
         Concept concept1 = concept1();
@@ -905,9 +944,9 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         Source source = source(123L, systemVersion, concept1, concept2);
 
         Collection collection = collection(newReferences(
-                "/orgs/OCL/sources/"+CS+"/concepts/"+AD+"/123/",
-                "/orgs/OCL/sources/"+CS+"/"+V_21_2+"/concepts/"+AD+"/123/",
-                "/orgs/OCL/sources/"+CS+"/"+V_21_1+"/concepts/"+TM+"/123/"
+                "/orgs/OCL/sources/" + CS + "/concepts/" + AD + "/123/",
+                "/orgs/OCL/sources/" + CS + "/" + V_21_2 + "/concepts/" + AD + "/123/",
+                "/orgs/OCL/sources/" + CS + "/" + V_21_1 + "/concepts/" + TM + "/123/"
         ));
 
         ConceptsSource cs1 = conceptsSource(concept1, source);
@@ -918,15 +957,15 @@ public class TestValueSetResourceProvider extends OclFhirTest {
             when(collectionRepository.findFirstByCanonicalUrlAndVersionAndOrganizationMnemonicAndPublicAccessIn(anyString(),
                     anyString(), anyString(), anyList())).thenReturn(collection);
         } else {
-            when(collectionRepository.findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(
-                    anyString(), anyString(), anyList())).thenReturn(collection);
+            when(collectionRepository.findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
+                    anyString(), anyString(), anyList(), anyBoolean())).thenReturn(collection);
         }
         if (StringUtils.isNotBlank(systemVersion)) {
             when(sourceRepository.findFirstByCanonicalUrlAndVersionAndOrganizationMnemonicAndPublicAccessIn(anyString(),
                     anyString(), anyString(), anyList())).thenReturn(source);
         } else {
-            when(sourceRepository.findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(
-                    anyString(), anyString(), anyList())).thenReturn(source);
+            when(sourceRepository.findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
+                    anyString(), anyString(), anyList(), anyBoolean())).thenReturn(source);
         }
 
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList()))
@@ -943,14 +982,14 @@ public class TestValueSetResourceProvider extends OclFhirTest {
                     .findFirstByCanonicalUrlAndVersionAndOrganizationMnemonicAndPublicAccessIn(anyString(), anyString(), anyString(), anyList());
         } else {
             verify(collectionRepository, times(1))
-                    .findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(anyString(), anyString(), anyList());
+                    .findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(anyString(), anyString(), anyList(), anyBoolean());
         }
         if (StringUtils.isNotBlank(systemVersion)) {
             verify(sourceRepository, times(1))
                     .findFirstByCanonicalUrlAndVersionAndOrganizationMnemonicAndPublicAccessIn(anyString(), anyString(), anyString(), anyList());
         } else {
             verify(sourceRepository, times(1))
-                    .findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInOrderByCreatedAtDesc(anyString(), anyString(), anyList());
+                    .findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(anyString(), anyString(), anyList(), anyBoolean());
         }
         return output;
     }
@@ -997,7 +1036,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
 
     @Test
     public void testSearchValueSetByOwner_count() {
-        when(collectionRepository.findByUserIdUsernameAndPublicAccessIn(anyString(), anyList()))
+        when(collectionRepository.findByUserIdUsernameAndPublicAccessInAndIsLatestVersionOrderByMnemonic(anyString(), anyList(), anyBoolean()))
                 .thenReturn(getCollections());
         ValueSetResourceProvider provider = valueSetProvider();
         Bundle bundle = provider.searchValueSetByOwner(newString("user:test"), null, null, requestDetails);

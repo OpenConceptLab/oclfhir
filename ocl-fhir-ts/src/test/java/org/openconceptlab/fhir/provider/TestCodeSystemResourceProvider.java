@@ -10,10 +10,11 @@ import com.openpojo.validation.ValidatorBuilder;
 import com.openpojo.validation.test.impl.GetterTester;
 import com.openpojo.validation.test.impl.SetterTester;
 import org.hl7.fhir.r4.model.*;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
@@ -25,6 +26,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -35,7 +37,7 @@ import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 
 public class TestCodeSystemResourceProvider extends OclFhirTest {
 
-    @Before
+    @BeforeEach
     public void setUpBefore() {
         MockitoAnnotations.initMocks(this);
         when(requestDetails.getCompleteUrl()).thenReturn("http://test.org");
@@ -46,7 +48,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         populateSource2(source2);
     }
 
-    @After
+    @AfterEach
     public void after() {
         source1 = null;
         source2 = null;
@@ -73,36 +75,15 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
 
     @Test
     public void testSearchCodeSystem_1() {
-        source1.setReleased(true);
-        source2.setReleased(false);
-        source3.setReleased(false);
-        when(sourceRepository.findAllLatest(anyList())).thenReturn(Arrays.asList(source1, source2, source3));
-        when(conceptRepository.findConceptCountInSource(anyLong())).thenReturn(1);
-        CodeSystemResourceProvider provider = codeSystemProvider();
-        Bundle bundle = provider.searchCodeSystems(null,  null, null, null, null, null, requestDetails);
-        assertEquals(3, bundle.getTotal());
-        assertEquals(0, ((CodeSystem) bundle.getEntryFirstRep().getResource()).getConcept().size());
-        assertBaseCodeSystem((CodeSystem) bundle.getEntry().get(1).getResource(), URL_SOURCE_1, SOURCE_1_NAME, SOURCE_1_FULL_NAME,
-                "Jon Doe 1", "jondoe1@gmail.com", "USA", TEST_SOURCE, SOURCE_1_COPYRIGHT_TEXT, EXAMPLE);
-        assertBaseCodeSystem((CodeSystem) bundle.getEntry().get(2).getResource(), URL_SOURCE_2, SOURCE_2_NAME, SOURCE_2_FULL_NAME,
-                "Jon Doe 2", "jondoe2@gmail.com", "ETH", TEST_SOURCE, SOURCE_2_COPYRIGHT_TEXT, EXAMPLE);
-    }
-
-    @Test
-    public void testSearchCodeSystem_2() {
-        source1.setReleased(true);
-        source2.setReleased(true);
-        source3.setReleased(false);
         when(sourceRepository.findAllLatest(anyList())).thenReturn(Arrays.asList(source1, source2, source3));
         when(conceptRepository.findConceptCountInSource(anyLong())).thenReturn(1);
         CodeSystemResourceProvider provider = codeSystemProvider();
         Bundle bundle = provider.searchCodeSystems(null, null, null, null, null, null, requestDetails);
         assertEquals(3, bundle.getTotal());
         assertEquals(0, ((CodeSystem) bundle.getEntryFirstRep().getResource()).getConcept().size());
-        assertEquals(0, ((CodeSystem) bundle.getEntry().get(1).getResource()).getConcept().size());
-        assertBaseCodeSystem((CodeSystem) bundle.getEntry().get(1).getResource(), URL_SOURCE_1, SOURCE_1_NAME, SOURCE_1_FULL_NAME,
+        assertBaseCodeSystem((CodeSystem) bundle.getEntry().get(0).getResource(), URL_SOURCE_1, SOURCE_1_NAME, SOURCE_1_FULL_NAME,
                 "Jon Doe 1", "jondoe1@gmail.com", "USA", TEST_SOURCE, SOURCE_1_COPYRIGHT_TEXT, EXAMPLE);
-        assertBaseCodeSystem((CodeSystem) bundle.getEntry().get(2).getResource(), URL_SOURCE_2, SOURCE_2_NAME, SOURCE_2_FULL_NAME,
+        assertBaseCodeSystem((CodeSystem) bundle.getEntry().get(1).getResource(), URL_SOURCE_2, SOURCE_2_NAME, SOURCE_2_FULL_NAME,
                 "Jon Doe 2", "jondoe2@gmail.com", "ETH", TEST_SOURCE, SOURCE_2_COPYRIGHT_TEXT, EXAMPLE);
     }
 
@@ -153,9 +134,9 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         source1.setIsLatestVersion(false);
         source2.setIsLatestVersion(false);
         source3.setIsLatestVersion(false);
-        when(sourceRepository.findByPublicAccessIn(anyList())).thenReturn(Arrays.asList(source1, source2, source3));
+        when(sourceRepository.findAllLatest(anyList())).thenReturn(new ArrayList<>());
         CodeSystemResourceProvider provider = codeSystemProvider();
-        Bundle bundle = provider.searchCodeSystems(null, null,  null, null, null, null, requestDetails);
+        Bundle bundle = provider.searchCodeSystems(null, null, null, null, null, null, requestDetails);
         assertEquals(0, bundle.getTotal());
     }
 
@@ -165,16 +146,16 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         source1.setVersion("HEAD");
         source2.setIsLatestVersion(false);
         source3.setIsLatestVersion(false);
-        when(sourceRepository.findByPublicAccessIn(anyList())).thenReturn(Arrays.asList(source1, source2, source3));
+        when(sourceRepository.findAllLatest(anyList())).thenReturn(Arrays.asList(source1));
         CodeSystemResourceProvider provider = codeSystemProvider();
-        Bundle bundle = provider.searchCodeSystems(null, null,  null, null, null, null, requestDetails);
+        Bundle bundle = provider.searchCodeSystems(null, null, null, null, null, null, requestDetails);
         assertEquals(0, bundle.getTotal());
     }
 
     @Test
     public void testSearchCodeSystemByUrl_version_empty_return_most_recent() {
         source1.setDefaultLocale(EN);
-        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(anyString(), anyList()))
+        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(anyString(), anyList(), anyBoolean()))
                 .thenReturn(source1);
         Page page = new PageImpl(Collections.singletonList(cs11.getConcept()));
         when(conceptRepository.findConcepts(anyLong(), any(PageRequest.class))).thenReturn(page);
@@ -205,19 +186,21 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         Assert.assertFalse(codeSystem.getConcept().isEmpty());
     }
 
-    @Test(expected = ResourceNotFoundException.class)
+    @Test
     public void testSearchCodeSystemByUrl_not_found() {
         source1.setDefaultLocale(EN);
         source1.setVersion(V_1_0);
         CodeSystemResourceProvider provider = codeSystemProvider();
-        provider.searchCodeSystemByUrl(newString(URL_SOURCE_1), newString(V_1_0), null, null, null, null, null, requestDetails);
+        Assertions.assertThrows(ResourceNotFoundException.class, () -> {
+            provider.searchCodeSystemByUrl(newString(URL_SOURCE_1), newString(V_1_0), null, null, null, null, null, requestDetails);
+        });
     }
 
     @Test
     public void testSearchCodeSystemByUrl_version_head_return_empty() {
         source1.setDefaultLocale(EN);
         source1.setVersion("HEAD");
-        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(anyString(), anyList()))
+        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(anyString(), anyList(), anyBoolean()))
                 .thenReturn(source1);
         when(conceptRepository.findConcepts(anyLong(), any(PageRequest.class))).thenReturn(new PageImpl(Collections.singletonList(cs11.getConcept())));
         CodeSystemResourceProvider provider = codeSystemProvider();
@@ -238,19 +221,19 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         CodeSystemResourceProvider provider = codeSystemProvider();
         Bundle bundle = provider.searchCodeSystemByUrl(newString(URL_SOURCE_1), newString("*"), null, null, null, null, null, requestDetails);
         assertEquals(2, bundle.getTotal());
-        assertEquals(URL_SOURCE_1, ((CodeSystem)bundle.getEntry().get(0).getResource()).getUrl());
-        assertEquals(V_1_0, ((CodeSystem)bundle.getEntry().get(0).getResource()).getVersion());
-        assertEquals(URL_SOURCE_1, ((CodeSystem)bundle.getEntry().get(1).getResource()).getUrl());
-        assertEquals("v2.0", ((CodeSystem)bundle.getEntry().get(1).getResource()).getVersion());
+        assertEquals(URL_SOURCE_1, ((CodeSystem) bundle.getEntry().get(0).getResource()).getUrl());
+        assertEquals(V_1_0, ((CodeSystem) bundle.getEntry().get(0).getResource()).getVersion());
+        assertEquals(URL_SOURCE_1, ((CodeSystem) bundle.getEntry().get(1).getResource()).getUrl());
+        assertEquals("v2.0", ((CodeSystem) bundle.getEntry().get(1).getResource()).getVersion());
     }
 
     @Test
     public void testSearchCodeSystemByOwner() {
         source1.setReleased(true);
         source2.setReleased(true);
-        when(sourceRepository.findByOrganizationMnemonicAndPublicAccessIn(anyString(), anyList())).thenReturn(Arrays.asList(source1, source2));
+        when(sourceRepository.findByOrganizationMnemonicAndPublicAccessInAndIsLatestVersionOrderByMnemonic(anyString(), anyList(), anyBoolean())).thenReturn(Arrays.asList(source1, source2));
         CodeSystemResourceProvider provider = codeSystemProvider();
-        Bundle bundle = provider.searchCodeSystemByOwner(newString("org:OCL"), null, null, null, null, null, null,requestDetails);
+        Bundle bundle = provider.searchCodeSystemByOwner(newString("org:OCL"), null, null, null, null, null, null, requestDetails);
         assertEquals(2, bundle.getTotal());
         assertEquals(0, ((CodeSystem) bundle.getEntryFirstRep().getResource()).getConcept().size());
         assertEquals(0, ((CodeSystem) bundle.getEntry().get(1).getResource()).getConcept().size());
@@ -264,7 +247,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
     public void testSearchCodeSystemByOwner_user() {
         source1.setReleased(true);
         source2.setReleased(true);
-        when(sourceRepository.findByUserIdUsernameAndPublicAccessIn(anyString(), anyList())).thenReturn(Arrays.asList(source1, source2));
+        when(sourceRepository.findByUserIdUsernameAndPublicAccessInAndIsLatestVersionOrderByMnemonic(anyString(), anyList(), anyBoolean())).thenReturn(Arrays.asList(source1, source2));
         CodeSystemResourceProvider provider = codeSystemProvider();
         Bundle bundle = provider.searchCodeSystemByOwner(newString("user:test"), null, null, null, null, null, null, requestDetails);
         assertEquals(2, bundle.getTotal());
@@ -290,18 +273,19 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         assertEquals(0, bundle.getTotal());
     }
 
-    @Test(expected = ResourceNotFoundException.class)
+    @Test
     public void testSearchCodeSystemByOwnerAndId_not_found() {
         CodeSystemResourceProvider provider = codeSystemProvider();
-        Bundle bundle = provider.searchCodeSystemByOwnerAndId(newString("org:OCL"), newString("123"), null, null, null, null, null, null, requestDetails);
-        assertEquals(0, bundle.getTotal());
+        Assertions.assertThrows(ResourceNotFoundException.class, () -> {
+            provider.searchCodeSystemByOwnerAndId(newString("org:OCL"), newString("123"), null, null, null, null, null, null, requestDetails);
+        });
     }
 
     @Test
     public void testSearchCodeSystemByOwnerAndId_version_empty_return_most_recent() {
         source1.setIsLatestVersion(true);
-        when(sourceRepository.findFirstByMnemonicAndPublicAccessInAndOrganizationMnemonicOrderByCreatedAtDesc(
-                anyString(), anyList(), anyString())).thenReturn(source1);
+        when(sourceRepository.findFirstByMnemonicAndPublicAccessInAndOrganizationMnemonicAndIsLatestVersionOrderByCreatedAtDesc(
+                anyString(), anyList(), anyString(), anyBoolean())).thenReturn(source1);
         when(conceptRepository.findConcepts(anyLong(), any(PageRequest.class))).thenReturn(new PageImpl(Collections.singletonList(cs11.getConcept())));
         CodeSystemResourceProvider provider = codeSystemProvider();
         Bundle bundle = provider.searchCodeSystemByOwnerAndId(newString("org:OCL"), newString("123"), null, null, null, null, null, null, requestDetails);
@@ -317,8 +301,8 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
     public void testSearchCodeSystemByOwnerAndId_version_head_return_empty() {
         source1.setIsLatestVersion(true);
         source1.setVersion("HEAD");
-        when(sourceRepository.findFirstByMnemonicAndPublicAccessInAndOrganizationMnemonicOrderByCreatedAtDesc(
-                anyString(), anyList(), anyString())).thenReturn(source1);
+        when(sourceRepository.findFirstByMnemonicAndPublicAccessInAndOrganizationMnemonicAndIsLatestVersionOrderByCreatedAtDesc(
+                anyString(), anyList(), anyString(), anyBoolean())).thenReturn(source1);
         when(conceptRepository.findConcepts(anyLong(), any(PageRequest.class))).thenReturn(new PageImpl(Collections.singletonList(cs11.getConcept())));
         CodeSystemResourceProvider provider = codeSystemProvider();
         Bundle bundle = provider.searchCodeSystemByOwnerAndId(newString("org:OCL"), newString("123"), null, null, null, null, null, null, requestDetails);
@@ -355,38 +339,46 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         assertEquals(0, codeSystem.getConcept().size());
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testCodeSystemLookup_code_null() {
         CodeSystemResourceProvider provider = codeSystemProvider();
-        provider.codeSystemLookUp(null, newUrl(URL_SOURCE_1), null, null, null,
-                requestDetails);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            provider.codeSystemLookUp(null, newUrl(URL_SOURCE_1), null, null, null,
+                    requestDetails);
+        });
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testCodeSystemLookup_code_empty() {
         CodeSystemResourceProvider provider = codeSystemProvider();
-        provider.codeSystemLookUp(newCode(""), newUrl(URL_SOURCE_1), null, null, null,
-                requestDetails);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            provider.codeSystemLookUp(newCode(""), newUrl(URL_SOURCE_1), null, null, null,
+                    requestDetails);
+        });
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testCodeSystemLookup_url_null() {
         CodeSystemResourceProvider provider = codeSystemProvider();
-        provider.codeSystemLookUp(newCode(AD), null, null, null, null,
-                requestDetails);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            provider.codeSystemLookUp(newCode(AD), null, null, null, null,
+                    requestDetails);
+        });
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testCodeSystemLookup_url_empty() {
         CodeSystemResourceProvider provider = codeSystemProvider();
-        provider.codeSystemLookUp(newCode(AD), newUrl(""), null, null, null,
-                requestDetails);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            provider.codeSystemLookUp(newCode(AD), newUrl(""), null, null, null,
+                    requestDetails);
+        });
     }
 
     @Test
     public void testCodeSystemLookup() {
-        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(
-                anyString(), anyList())).thenReturn(source1);
+        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
+                anyString(), anyList(), anyBoolean())).thenReturn(source1);
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(eq(123L), anyList()))
                 .thenReturn(Collections.singletonList(cs11));
         CodeSystemResourceProvider provider = codeSystemProvider();
@@ -398,8 +390,8 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
 
     @Test
     public void testCodeSystemLookup_displayLanguage() {
-        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(
-                anyString(), anyList())).thenReturn(source1);
+        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
+                anyString(), anyList(), anyBoolean())).thenReturn(source1);
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(eq(123L), anyList()))
                 .thenReturn(Collections.singletonList(cs11));
         CodeSystemResourceProvider provider = codeSystemProvider();
@@ -409,18 +401,20 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         assertEquals(TRASTORNO_ALERGICO, parameters.getParameter("display").toString());
     }
 
-    @Test(expected = ResourceNotFoundException.class)
+    @Test
     public void testCodeSystemLookup_invalid_code() {
-        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(
-                anyString(), anyList())).thenReturn(source1);
+        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
+                anyString(), anyList(), anyBoolean())).thenReturn(source1);
         CodeSystemResourceProvider provider = codeSystemProvider();
-        provider.codeSystemLookUp(newCode("BLOB"), newUrl(URL_SOURCE_1), null, null, null, requestDetails);
+        Assertions.assertThrows(ResourceNotFoundException.class, () -> {
+            provider.codeSystemLookUp(newCode("BLOB"), newUrl(URL_SOURCE_1), null, null, null, requestDetails);
+        });
     }
 
     @Test
     public void testCodeSystemLookup_displayLanguage_not_exist() {
-        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(
-                anyString(), anyList())).thenReturn(source1);
+        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
+                anyString(), anyList(), anyBoolean())).thenReturn(source1);
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(eq(123L), anyList()))
                 .thenReturn(Collections.singletonList(cs11));
         CodeSystemResourceProvider provider = codeSystemProvider();
@@ -430,34 +424,42 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         assertNull(parameters.getParameter("display"));
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testCodeSystemValidateCode_url_null() {
         CodeSystemResourceProvider provider = codeSystemProvider();
-        provider.codeSystemValidateCode(null, newCode(AD), null, null, null, null, null, requestDetails);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            provider.codeSystemValidateCode(null, newCode(AD), null, null, null, null, null, requestDetails);
+        });
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testCodeSystemValidateCode_url_empty() {
         CodeSystemResourceProvider provider = codeSystemProvider();
-        provider.codeSystemValidateCode(newUrl(""), newCode(AD), null, null, null, null, null, requestDetails);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            provider.codeSystemValidateCode(newUrl(""), newCode(AD), null, null, null, null, null, requestDetails);
+        });
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testCodeSystemValidateCode_code_null() {
         CodeSystemResourceProvider provider = codeSystemProvider();
-        provider.codeSystemValidateCode(newUrl(URL_SOURCE_1), null, null, null, null, null, null, requestDetails);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            provider.codeSystemValidateCode(newUrl(URL_SOURCE_1), null, null, null, null, null, null, requestDetails);
+        });
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testCodeSystemValidateCode_code_empty() {
         CodeSystemResourceProvider provider = codeSystemProvider();
-        provider.codeSystemValidateCode(newUrl(URL_SOURCE_1), newCode(""), null, null, null, null, null, requestDetails);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            provider.codeSystemValidateCode(newUrl(URL_SOURCE_1), newCode(""), null, null, null, null, null, requestDetails);
+        });
     }
 
     @Test
     public void testCodeSystemValidateCode() {
-        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(
-                anyString(), anyList())).thenReturn(source1);
+        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
+                anyString(), anyList(), anyBoolean())).thenReturn(source1);
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(eq(123L), anyList()))
                 .thenReturn(Collections.singletonList(cs11));
         CodeSystemResourceProvider provider = codeSystemProvider();
@@ -467,8 +469,8 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
 
     @Test
     public void testCodeSystemValidateCode_display_valid() {
-        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(
-                anyString(), anyList())).thenReturn(source1);
+        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
+                anyString(), anyList(), anyBoolean())).thenReturn(source1);
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(eq(123L), anyList()))
                 .thenReturn(Collections.singletonList(cs11));
         CodeSystemResourceProvider provider = codeSystemProvider();
@@ -478,8 +480,8 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
 
     @Test
     public void testCodeSystemValidateCode_display_invalid() {
-        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(
-                anyString(), anyList())).thenReturn(source1);
+        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
+                anyString(), anyList(), anyBoolean())).thenReturn(source1);
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(eq(123L), anyList()))
                 .thenReturn(Collections.singletonList(cs11));
         CodeSystemResourceProvider provider = codeSystemProvider();
@@ -489,8 +491,8 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
 
     @Test
     public void testCodeSystemValidateCode_displayLanguage_valid() {
-        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(
-                anyString(), anyList())).thenReturn(source1);
+        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
+                anyString(), anyList(), anyBoolean())).thenReturn(source1);
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(eq(123L), anyList()))
                 .thenReturn(Collections.singletonList(cs11));
         CodeSystemResourceProvider provider = codeSystemProvider();
@@ -500,8 +502,8 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
 
     @Test
     public void testCodeSystemValidateCode_displayLanguage_invalid() {
-        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInOrderByCreatedAtDesc(
-                anyString(), anyList())).thenReturn(source1);
+        when(sourceRepository.findFirstByCanonicalUrlAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
+                anyString(), anyList(), anyBoolean())).thenReturn(source1);
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(eq(123L), anyList()))
                 .thenReturn(Collections.singletonList(cs11));
         CodeSystemResourceProvider provider = codeSystemProvider();
@@ -554,72 +556,86 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         validateAccessors(UserProfilesUserPermission.class);
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testCreateCodeSystem_null() {
         CodeSystemResourceProvider provider = codeSystemProvider();
-        provider.createCodeSystem(null, requestDetails);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            provider.createCodeSystem(null, requestDetails);
+        });
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testCreateCodeSystem_accessionId_null() {
         CodeSystemResourceProvider provider = codeSystemProvider();
         CodeSystem codeSystem = codeSystem();
         codeSystem.setIdentifier(null);
-        provider.createCodeSystem(codeSystem, requestDetails);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            provider.createCodeSystem(codeSystem, requestDetails);
+        });
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testCreateCodeSystem_url_null() {
         CodeSystemResourceProvider provider = codeSystemProvider();
         CodeSystem codeSystem = codeSystem();
         codeSystem.setUrl(null);
-        provider.createCodeSystem(codeSystem, requestDetails);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            provider.createCodeSystem(codeSystem, requestDetails);
+        });
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testCreateCodeSystem_invalid_org() {
         CodeSystemResourceProvider provider = codeSystemProvider();
         CodeSystem codeSystem = codeSystem();
         when(organizationRepository.findByMnemonic(anyString())).thenReturn(null);
-        provider.createCodeSystem(codeSystem, requestDetails);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            provider.createCodeSystem(codeSystem, requestDetails);
+        });
         verify(organizationRepository, times(1)).findByMnemonic(anyString());
     }
 
-    @Test(expected = InvalidRequestException.class)
+    @Test
     public void testCreateCodeSystem_invalid_user() {
         CodeSystemResourceProvider provider = codeSystemProvider();
         CodeSystem codeSystem = codeSystem();
         codeSystem.getIdentifierFirstRep().setValue("/users/testuser/CodeSystem/testsource/2.0");
         when(userRepository.findByUsername(anyString())).thenReturn(null);
-        provider.createCodeSystem(codeSystem, requestDetails);
+        Assertions.assertThrows(InvalidRequestException.class, () -> {
+            provider.createCodeSystem(codeSystem, requestDetails);
+        });
         verify(userRepository, times(1)).findByUsername(anyString());
     }
 
-    @Test(expected = AuthenticationException.class)
+    @Test
     public void testCreateCodeSystem_token_null() {
         CodeSystemResourceProvider provider = codeSystemProvider();
         CodeSystem codeSystem = codeSystem();
         when(requestDetails.getHeader(anyString())).thenReturn(null);
         when(organizationRepository.findByMnemonic(anyString())).thenReturn(newOrganization());
-        provider.createCodeSystem(codeSystem, requestDetails);
+        Assertions.assertThrows(AuthenticationException.class, () -> {
+            provider.createCodeSystem(codeSystem, requestDetails);
+        });
         verify(requestDetails, times(1)).getHeader(anyString());
         verify(organizationRepository, times(1)).findByMnemonic(anyString());
     }
 
-    @Test(expected = AuthenticationException.class)
+    @Test
     public void testCreateCodeSystem_invalid_token() {
         CodeSystemResourceProvider provider = codeSystemProvider();
         CodeSystem codeSystem = codeSystem();
         when(requestDetails.getHeader(anyString())).thenReturn("Token  678423578911230985");
         when(organizationRepository.findByMnemonic(anyString())).thenReturn(newOrganization());
         when(authtokenRepository.findByKey(anyString())).thenReturn(null);
-        provider.createCodeSystem(codeSystem, requestDetails);
+        Assertions.assertThrows(AuthenticationException.class, () -> {
+            provider.createCodeSystem(codeSystem, requestDetails);
+        });
         verify(requestDetails, times(1)).getHeader(anyString());
         verify(organizationRepository, times(1)).findByMnemonic(anyString());
         verify(authtokenRepository, times(1)).findByKey(anyString());
     }
 
-    @Test(expected = AuthenticationException.class)
+    @Test
     public void testCreateCodeSystem_user_not_org_member_invalid_user() {
         CodeSystemResourceProvider provider = codeSystemProvider();
         CodeSystem codeSystem = codeSystem();
@@ -628,14 +644,16 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         when(authtokenRepository.findByKey(anyString())).thenReturn(newToken(test_user));
         when(userProfilesOrganizationRepository.findByOrganizationMnemonic(anyString()))
                 .thenReturn(Collections.singletonList(newUserOrg("otheruser")));
-        provider.createCodeSystem(codeSystem, requestDetails);
+        Assertions.assertThrows(AuthenticationException.class, () -> {
+            provider.createCodeSystem(codeSystem, requestDetails);
+        });
         verify(requestDetails, times(1)).getHeader(anyString());
         verify(organizationRepository, times(1)).findByMnemonic(anyString());
         verify(authtokenRepository, times(1)).findByKey(anyString());
         verify(userProfilesOrganizationRepository, times(1)).findByOrganizationMnemonic(anyString());
     }
 
-    @Test(expected = ResourceVersionConflictException.class)
+    @Test
     public void testCreateCodeSystem_codesystem_id_exists() {
         CodeSystemResourceProvider provider = codeSystemProvider();
         CodeSystem codeSystem = codeSystem();
@@ -646,7 +664,9 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
                 .thenReturn(Collections.singletonList(newUserOrg(test_user)));
         when(sourceRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonic(anyString(), anyString(), anyString()))
                 .thenReturn(new Source());
-        provider.createCodeSystem(codeSystem, requestDetails);
+        Assertions.assertThrows(ResourceVersionConflictException.class, () -> {
+            provider.createCodeSystem(codeSystem, requestDetails);
+        });
         verify(requestDetails, times(1)).getHeader(anyString());
         verify(organizationRepository, times(1)).findByMnemonic(anyString());
         verify(authtokenRepository, times(1)).findByKey(anyString());
@@ -654,7 +674,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         verify(sourceRepository, times(1)).findFirstByMnemonicAndVersionAndOrganizationMnemonic(anyString(), anyString(), anyString());
     }
 
-    @Test(expected = ResourceVersionConflictException.class)
+    @Test
     public void testCreateCodeSystem_codesystem_url_exists() {
         CodeSystemResourceProvider provider = codeSystemProvider();
         CodeSystem codeSystem = codeSystem();
@@ -665,7 +685,9 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
                 .thenReturn(Collections.singletonList(newUserOrg(test_user)));
         when(sourceRepository.findFirstByCanonicalUrlAndVersionAndOrganizationMnemonic(anyString(), anyString(), anyString()))
                 .thenReturn(new Source());
-        provider.createCodeSystem(codeSystem, requestDetails);
+        Assertions.assertThrows(ResourceVersionConflictException.class, () -> {
+            provider.createCodeSystem(codeSystem, requestDetails);
+        });
         verify(requestDetails, times(1)).getHeader(anyString());
         verify(organizationRepository, times(1)).findByMnemonic(anyString());
         verify(authtokenRepository, times(1)).findByKey(anyString());
@@ -686,7 +708,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
             @Override
             public Object answer(InvocationOnMock invocation) throws Throwable {
                 Object[] args = invocation.getArguments();
-                ((Source)args[0]).setId(123L);
+                ((Source) args[0]).setId(123L);
                 return args[0];
             }
         }).when(sourceRepository).saveAndFlush(any(Source.class));
@@ -715,8 +737,8 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
     public void testSearchCodeSystemByOwnerAndId_version_count() {
         source1.setIsLatestVersion(true);
         when(sourceRepository.findByMnemonicAndUserIdUsernameAndPublicAccessIn(
-                anyString(), anyString(), anyList())).thenReturn(Arrays.asList(source1,source1,source1,source1,source1,source1,source1,source1,source1,source1,
-                source1,source1,source1,source1,source1,source1,source1,source1));
+                anyString(), anyString(), anyList())).thenReturn(Arrays.asList(source1, source1, source1, source1, source1, source1, source1, source1, source1, source1,
+                source1, source1, source1, source1, source1, source1, source1, source1));
         when(conceptRepository.findConcepts(anyLong(), any(PageRequest.class))).thenReturn(new PageImpl(Collections.singletonList(cs11.getConcept())));
         CodeSystemResourceProvider provider = codeSystemProvider();
         Bundle bundle = provider.searchCodeSystemByOwnerAndId(newString("user:test"), newString("123"), newString("*"), null, null, null, null, null, requestDetails);
@@ -725,9 +747,9 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
 
     @Test
     public void testSearchCodeSystemByOwner_count() {
-        when(sourceRepository.findByOrganizationMnemonicAndPublicAccessIn(anyString(), anyList())).thenReturn(getSources());
+        when(sourceRepository.findByOrganizationMnemonicAndPublicAccessInAndIsLatestVersionOrderByMnemonic(anyString(), anyList(), anyBoolean())).thenReturn(getSources());
         CodeSystemResourceProvider provider = codeSystemProvider();
-        Bundle bundle = provider.searchCodeSystemByOwner(newString("org:OCL"), null, null, null, null, null, null,requestDetails);
+        Bundle bundle = provider.searchCodeSystemByOwner(newString("org:OCL"), null, null, null, null, null, null, requestDetails);
         assertEquals(12, bundle.getTotal());
     }
 
@@ -736,7 +758,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         when(sourceRepository.findAllLatest(anyList())).thenReturn(getSources());
         when(conceptRepository.findConceptCountInSource(anyLong())).thenReturn(1);
         CodeSystemResourceProvider provider = codeSystemProvider();
-        Bundle bundle = provider.searchCodeSystems(null,  null, null, null, null, null, requestDetails);
+        Bundle bundle = provider.searchCodeSystems(null, null, null, null, null, null, requestDetails);
         assertEquals(12, bundle.getTotal());
     }
 
@@ -776,7 +798,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         c2.setCode(DATATYPE).setValue(newString("test_data_type"));
         CodeSystem.ConceptPropertyComponent c3 = new CodeSystem.ConceptPropertyComponent();
         c1.setCode(INACTIVE).setValue(new BooleanType(false));
-        component.getProperty().addAll(Arrays.asList(c1,c2,c3));
+        component.getProperty().addAll(Arrays.asList(c1, c2, c3));
         return system;
     }
 

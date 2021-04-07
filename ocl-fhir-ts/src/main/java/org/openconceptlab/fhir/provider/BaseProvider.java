@@ -44,8 +44,7 @@ public class BaseProvider {
     }
 
     protected List<Source> getSources(List<String> access) {
-        return sourceRepository.findAllLatest(access).stream().sorted(Comparator.comparing(Source::getMnemonic))
-                .collect(Collectors.toList());
+        return sourceRepository.findAllLatest(access);
     }
 
     protected List<Source> getSourceByUrl(StringType url, StringType version, List<String> access) {
@@ -55,21 +54,13 @@ public class BaseProvider {
     protected List<Source> getSourceByOwner(StringType owner, List<String> access) {
         if (!isValid(owner))
             return new ArrayList<>();
-        List<Source> sources = new ArrayList<>();
         String ownerType = getOwnerType(owner.getValue());
         String value = getOwner(owner.getValue());
         if (ORG.equals(ownerType)) {
-            sources.addAll(sourceRepository.findByOrganizationMnemonicAndPublicAccessIn(value, access));
+            return sourceRepository.findByOrganizationMnemonicAndPublicAccessInAndIsLatestVersionOrderByMnemonic(value, access, true);
         } else {
-            sources.addAll(sourceRepository.findByUserIdUsernameAndPublicAccessIn(value, access));
+            return sourceRepository.findByUserIdUsernameAndPublicAccessInAndIsLatestVersionOrderByMnemonic(value, access, true);
         }
-        Multimap<String, Source> map = ArrayListMultimap.create();
-        sources.forEach(s -> map.put(s.getMnemonic(), s));
-        List<Source> filtered = new ArrayList<>();
-        map.asMap().forEach((k,v) -> {
-            v.stream().max(Comparator.comparing(Source::getCreatedAt)).stream().findFirst().ifPresent(filtered::add);
-        });
-        return filtered.stream().sorted(Comparator.comparing(Source::getMnemonic)).collect(Collectors.toList());
     }
 
     protected List<Collection> getCollectionByOwnerAndIdAndVersion(String id, StringType owner, String version, List<String> access) {
