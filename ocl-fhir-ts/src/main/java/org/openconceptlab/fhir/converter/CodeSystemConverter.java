@@ -84,6 +84,11 @@ public class CodeSystemConverter extends BaseConverter {
 		return codeSystems;
 	}
 
+	/**
+	 * Converts {@link Source} into {@link CodeSystem}. Used for retrieving CodeSystems.
+	 * @param source
+	 * @return CodeSystem
+	 */
 	private CodeSystem toBaseCodeSystem(final Source source){
         CodeSystem codeSystem = new CodeSystem();
         // Url
@@ -143,6 +148,24 @@ public class CodeSystemConverter extends BaseConverter {
 		// revision date
 		if (source.getRevisionDate() != null)
 			codeSystem.setDate(source.getRevisionDate());
+		// experimental
+		if (source.isExperimental() != null) codeSystem.setExperimental(source.isExperimental());
+		// case_sensitive
+		if (source.isCaseSensitive() != null) codeSystem.setCaseSensitive(source.isCaseSensitive());
+		// collection_reference
+		if (isValid(source.getCollectionReference())) codeSystem.setValueSet(source.getCollectionReference());
+		// hierarchy_meaning
+		if (isValid(source.getHierarchyMeaning())) {
+			Optional<String> hierarchyMeaning = Stream.of(CodeSystem.CodeSystemHierarchyMeaning.values()).map(Enum::toString)
+					.filter(m -> source.getHierarchyMeaning().equalsIgnoreCase(m))
+					.filter(m -> !m.equals(CodeSystem.CodeSystemContentMode.NULL.toCode()))
+					.findAny();
+			hierarchyMeaning.ifPresent(hm -> codeSystem.setHierarchyMeaning(CodeSystem.CodeSystemHierarchyMeaning.fromCode(hm.toLowerCase())));
+		}
+		// compositional
+		if (source.isCompositional() != null) codeSystem.setCompositional(source.isCompositional());
+		// version_needed
+		if (source.isVersionNeeded() != null) codeSystem.setVersionNeeded(source.isVersionNeeded());
         return codeSystem;
     }
 
@@ -549,6 +572,18 @@ public class CodeSystemConverter extends BaseConverter {
 		removeAccessionIdentifier(codeSystem.getIdentifier());
 		// update identifier, contact and jurisdiction
 		addJsonStrings(codeSystem, source);
+		// case_sensitive
+		source.setCaseSensitive(codeSystem.getCaseSensitive());
+		// collection_reference
+		if (isValid(codeSystem.getValueSet())) source.setCollectionReference(codeSystem.getValueSet());
+		// hierarchy_meaning
+		if (codeSystem.getHierarchyMeaning() != null) source.setHierarchyMeaning(codeSystem.getHierarchyMeaning().toCode());
+		// compositional
+		source.setCompositional(codeSystem.getCompositional());
+		// version_needed
+		source.setVersionNeeded(codeSystem.getVersionNeeded());
+		// experimental
+		source.setExperimental(codeSystem.getExperimental());
 		// update base source resource
 		sourceRepository.saveAndFlush(source);
 		log.info("updated codesystem - " + source.getMnemonic());

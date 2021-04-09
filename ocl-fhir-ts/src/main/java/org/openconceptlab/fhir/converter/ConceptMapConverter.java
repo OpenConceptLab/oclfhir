@@ -113,6 +113,8 @@ public class ConceptMapConverter extends BaseConverter {
         // revision date
         if (source.getRevisionDate() != null)
             conceptMap.setDate(source.getRevisionDate());
+        // experimental
+        if (source.isExperimental() != null) conceptMap.setExperimental(source.isExperimental());
         return conceptMap;
     }
 
@@ -703,6 +705,8 @@ public class ConceptMapConverter extends BaseConverter {
         conceptMap.setIdentifier(new Identifier());
         // update contact and jurisdiction
         addJsonStrings(conceptMap, source);
+        // experimental
+        source.setExperimental(conceptMap.getExperimental());
         // update base source resource
         sourceRepository.saveAndFlush(source);
         log.info("updated conceptmap - " + source.getMnemonic());

@@ -134,6 +134,9 @@ public class ValueSetConverter extends BaseConverter {
         // revision date
         if (collection.getRevisionDate() != null)
             valueSet.setDate(collection.getRevisionDate());
+        // experimental
+        if (collection.isExperimental() != null)
+            valueSet.setExperimental(collection.isExperimental());
         return valueSet;
     }
 
@@ -176,7 +179,7 @@ public class ValueSetConverter extends BaseConverter {
                             Optional<Concept> conceptOpt = oclFhirUtil.getSourceConcept(source, conceptId, conceptVersion);
                             conceptOpt.ifPresent(c -> {
                                 populateCompose(valueSet, includeConceptDesignation, c, isValid(source.getCanonicalUrl()) ? source.getCanonicalUrl() : source.getUri()
-                                        , source.getVersion(), source.getDefaultLocale());
+                                        , source.getVersion(), source.getDefaultLocale(), collection.getLockedDate());
                             });
                         }
                     });
@@ -277,10 +280,11 @@ public class ValueSetConverter extends BaseConverter {
     }
 
     private void populateCompose(ValueSet valueSet, boolean includeConceptDesignation, Concept concept, String sourceCanonicalUrl,
-                                 String sourceVersion, String sourceDefaultLocale) {
+                                 String sourceVersion, String sourceDefaultLocale, Date lockedDate) {
         // compose.include
         if (isValid(sourceCanonicalUrl)) {
-            Optional<ValueSet.ConceptSetComponent> includeComponent = valueSet.getCompose().getInclude().parallelStream()
+            ValueSet.ValueSetComposeComponent compose = valueSet.getCompose();
+            Optional<ValueSet.ConceptSetComponent> includeComponent = compose.getInclude().parallelStream()
                     .filter(i -> sourceCanonicalUrl.equals(i.getSystem()) &&
                             sourceVersion.equals(i.getVersion())).findAny();
             if (includeComponent.isPresent()) {
@@ -295,12 +299,15 @@ public class ValueSetConverter extends BaseConverter {
                 // compose.include.concept
                 addConceptReference(include, concept.getMnemonic(), concept.getName(), concept.getConceptsNames(),
                         sourceDefaultLocale, includeConceptDesignation);
-                valueSet.getCompose().addInclude(include);
+                compose.addInclude(include);
             }
             // compose.inactive
-            if (!valueSet.getCompose().getInactive() && concept.getRetired()) {
-                valueSet.getCompose().setInactive(True);
+            if (!compose.getInactive() && concept.getRetired()) {
+                compose.setInactive(True);
             }
+            // compose.locked_date
+            if (lockedDate != null)
+                compose.setLockedDate(lockedDate);
         }
     }
 
@@ -717,6 +724,11 @@ public class ValueSetConverter extends BaseConverter {
         addCommonFields(valueSet, collection);
         // extras
         collection.setExtras(EMPTY_JSON);
+        // experimental
+        collection.setExperimental(valueSet.getExperimental());
+        // locked_date
+        if (valueSet.getCompose().getLockedDate() != null)
+            collection.setLockedDate(new Timestamp(valueSet.getCompose().getLockedDate().getTime()));
         return collection;
     }
 
@@ -817,6 +829,11 @@ public class ValueSetConverter extends BaseConverter {
         removeAccessionIdentifier(valueSet.getIdentifier());
         // update identifier, contact and jurisdiction
         addJsonStrings(valueSet, collection);
+        // experimental
+        collection.setExperimental(valueSet.getExperimental());
+        // locked_date
+        if (valueSet.getCompose().getLockedDate() != null)
+            collection.setLockedDate(new Timestamp(valueSet.getCompose().getLockedDate().getTime()));
 
         // existing references
         List<String> existing = getAllExpressions(collection);

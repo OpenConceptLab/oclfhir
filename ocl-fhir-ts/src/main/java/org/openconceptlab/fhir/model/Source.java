@@ -116,6 +116,24 @@ public class Source extends BaseOclEntity implements Serializable {
 	@Column(name = "canonical_url")
 	private String canonicalUrl;
 
+	@Column
+	private Boolean experimental;
+
+	@Column(name = "case_sensitive")
+	private Boolean caseSensitive;
+
+	@Column(name = "collection_reference")
+	private String collectionReference;
+
+	@Column(name = "hierarchy_meaning")
+	private String hierarchyMeaning;
+
+	@Column
+	private Boolean compositional;
+
+	@Column(name = "version_needed")
+	private Boolean versionNeeded;
+
 	@OneToMany(mappedBy="parent", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 	private List<Concept> concepts;
 
@@ -506,6 +524,54 @@ public class Source extends BaseOclEntity implements Serializable {
 
 	public void setUserId(UserProfile userProfile3) {
 		this.userId = userProfile3;
+	}
+
+	public Boolean isExperimental() {
+		return experimental;
+	}
+
+	public void setExperimental(boolean experimental) {
+		this.experimental = experimental;
+	}
+
+	public Boolean isCaseSensitive() {
+		return caseSensitive;
+	}
+
+	public void setCaseSensitive(boolean caseSensitive) {
+		this.caseSensitive = caseSensitive;
+	}
+
+	public String getCollectionReference() {
+		return collectionReference;
+	}
+
+	public void setCollectionReference(String collectionReference) {
+		this.collectionReference = collectionReference;
+	}
+
+	public String getHierarchyMeaning() {
+		return hierarchyMeaning;
+	}
+
+	public void setHierarchyMeaning(String hierarchyMeaning) {
+		this.hierarchyMeaning = hierarchyMeaning;
+	}
+
+	public Boolean isCompositional() {
+		return compositional;
+	}
+
+	public void setCompositional(boolean compositional) {
+		this.compositional = compositional;
+	}
+
+	public Boolean isVersionNeeded() {
+		return versionNeeded;
+	}
+
+	public void setVersionNeeded(boolean versionNeeded) {
+		this.versionNeeded = versionNeeded;
 	}
 
 	@Override

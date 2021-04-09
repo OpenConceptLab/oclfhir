@@ -8,6 +8,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.aspectj.apache.bcel.classfile.Code;
 import org.hl7.fhir.r4.model.*;
 import org.hl7.fhir.r4.model.codesystems.PublicationStatus;
 import org.openconceptlab.fhir.model.Collection;
@@ -456,6 +457,8 @@ public class BaseConverter {
             source.setRevisionDate(resource.getDate());
         // extras
         source.setExtras(EMPTY_JSON);
+        // experimental
+        source.setExperimental(resource.getExperimental());
         if (resource instanceof CodeSystem) {
             CodeSystem codeSystem = (CodeSystem) resource;
             // content type
@@ -467,6 +470,16 @@ public class BaseConverter {
             // purpose
             if (isValid(codeSystem.getPurpose()))
                 source.setPurpose(codeSystem.getPurpose());
+            // case_sensitive
+            source.setCaseSensitive(codeSystem.getCaseSensitive());
+            // collection_reference
+            if (isValid(codeSystem.getValueSet())) source.setCollectionReference(codeSystem.getValueSet());
+            // hierarchy_meaning
+            if (codeSystem.getHierarchyMeaning() != null) source.setHierarchyMeaning(codeSystem.getHierarchyMeaning().toCode());
+            // compositional
+            source.setCompositional(codeSystem.getCompositional());
+            // version_needed
+            source.setVersionNeeded(codeSystem.getVersionNeeded());
         }
         if (resource instanceof ConceptMap) {
             ConceptMap conceptMap = (ConceptMap) resource;

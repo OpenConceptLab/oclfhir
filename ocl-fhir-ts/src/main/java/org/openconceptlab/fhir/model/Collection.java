@@ -123,6 +123,12 @@ public class Collection extends BaseOclEntity implements Serializable {
 	@Column(name = "canonical_url")
 	private String canonicalUrl;
 
+	@Column
+	private Boolean experimental;
+
+	@Column(name = "locked_date")
+	private Timestamp lockedDate;
+
 	@ManyToOne(fetch = FetchType.LAZY)
 	private Organization organization;
 
@@ -506,4 +512,19 @@ public class Collection extends BaseOclEntity implements Serializable {
 		return collectionsReference;
 	}
 
+	public Boolean isExperimental() {
+		return experimental;
+	}
+
+	public void setExperimental(boolean experimental) {
+		this.experimental = experimental;
+	}
+
+	public Timestamp getLockedDate() {
+		return lockedDate;
+	}
+
+	public void setLockedDate(Timestamp lockedDate) {
+		this.lockedDate = lockedDate;
+	}
 }
