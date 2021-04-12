@@ -128,7 +128,7 @@ public class OclFhirUtil {
             }
         }
 
-        addLink(bundle, "prev", prevUrl != null ? buildUrl(prevUrl) : "null");
+        addLink(bundle, "previous", prevUrl != null ? buildUrl(prevUrl) : "null");
         addLink(bundle, "next", nextUrl != null ? buildUrl(nextUrl) : "null");
 
         return bundle;
