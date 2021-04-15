@@ -2,10 +2,7 @@ package org.openconceptlab.fhir.provider;
 
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import org.hl7.fhir.r4.hapi.rest.server.ServerCapabilityStatementProvider;
-import org.hl7.fhir.r4.model.CapabilityStatement;
-import org.hl7.fhir.r4.model.CodeSystem;
-import org.hl7.fhir.r4.model.Enumerations;
-import org.hl7.fhir.r4.model.ValueSet;
+import org.hl7.fhir.r4.model.*;
 import org.springframework.stereotype.Component;
 
 import javax.servlet.http.HttpServletRequest;
@@ -26,11 +23,14 @@ public class OclCapabilityStatementProvider extends ServerCapabilityStatementPro
     public static final String OPEN_CONCEPT_LAB_FHIR_CAPABILITY_STATEMENT = "Open Concept Lab FHIR Capability Statement";
     public static final String OPEN_CONCEPT_LAB_FHIR_API = "Open Concept Lab FHIR API";
     public static final String THE_CANONICAL_URL_OF_THE_CODE_SYSTEM = "The canonical url of the code system";
-    public static final String THE_BUSINESS_VERSION_OF_THE_CODE_SYSTEM = "The business version of the code system";
     public static final String THE_CANONICAL_URL_OF_THE_VALUESET = "The canonical url of the value set";
+    public static final String THE_CANONICAL_URL_OF_THE_CONCEPTMAP = "The canonical url of the concept map";
+    public static final String THE_BUSINESS_VERSION_OF_THE_CODE_SYSTEM = "The business version of the code system";
     public static final String THE_BUSINESS_VERSION_OF_THE_VALUESET = "The business version of the value set";
+    public static final String THE_BUSINESS_VERSION_OF_THE_CONCEPTMAP = "The business version of the concept map";
     public static final String CODE_SYSTEM_PROFILE = "http://hl7.org/fhir/StructureDefinition/CodeSystem";
     public static final String VALUESET_PROFILE = "http://hl7.org/fhir/StructureDefinition/ValueSet";
+    public static final String CONCEPTMAP_PROFILE = "http://hl7.org/fhir/StructureDefinition/ConceptMap";
     public static final String COMMA = ", ";
 
     @Override
@@ -52,13 +52,17 @@ public class OclCapabilityStatementProvider extends ServerCapabilityStatementPro
         List<CapabilityStatement.CapabilityStatementRestComponent> restComponents = capabilityStatement.getRest();
         CapabilityStatement.CapabilityStatementRestComponent codeSystemRestComponent = restComponent(CodeSystem.class.getSimpleName(), CODE_SYSTEM_PROFILE);
         CapabilityStatement.CapabilityStatementRestComponent valueSetRestComponent = restComponent(ValueSet.class.getSimpleName(), VALUESET_PROFILE);
+        CapabilityStatement.CapabilityStatementRestComponent conceptMapRestComponent = restComponent(ConceptMap.class.getSimpleName(), CONCEPTMAP_PROFILE);
 
         codeSystemRestComponent.setMode(CapabilityStatement.RestfulCapabilityMode.SERVER);
         valueSetRestComponent.setMode(CapabilityStatement.RestfulCapabilityMode.SERVER);
+        conceptMapRestComponent.setMode(CapabilityStatement.RestfulCapabilityMode.SERVER);
+
         String codeSystemLookupDefinition = (getOperationDefinitionPrefix(theRequestDetails) + "OperationDefinition/" + "CodeSystem--lookup?_format=json");
         String codeSystemValidateCodeDefinition = (getOperationDefinitionPrefix(theRequestDetails) + "OperationDefinition/" + "CodeSystem--validate-code?_format=json");
         String valueSetValidateCodeDefinition = (getOperationDefinitionPrefix(theRequestDetails) + "OperationDefinition/" + "ValueSet--validate-code?_format=json");
         String valueSetExpandDefinition = (getOperationDefinitionPrefix(theRequestDetails) + "OperationDefinition/" + "ValueSet--expand?_format=json");
+        String conceptMapTranslateDefinition = (getOperationDefinitionPrefix(theRequestDetails) + "OperationDefinition/" + "ConceptMap--translate?_format=json");
 
         codeSystemRestComponent.getOperation().add(operationComponent("lookup", codeSystemLookupDefinition,
                 "Supported parameters: " + CODE + COMMA + SYSTEM + COMMA + VERSION + COMMA + DISP_LANG));
@@ -74,8 +78,13 @@ public class OclCapabilityStatementProvider extends ServerCapabilityStatementPro
                         INCLUDE_DESIGNATIONS + COMMA + INCLUDE_DEFINITION + COMMA + ACTIVE_ONLY + COMMA + DISPLAY_LANGUAGE + COMMA +
                         EXCLUDE_SYSTEM + COMMA + SYSTEMVERSION + COMMA + FILTER));
 
+        conceptMapRestComponent.getOperation().add(operationComponent("translate", conceptMapTranslateDefinition,
+                "Supported parameters: " + URL + COMMA + CONCEPT_MAP_VERSION + COMMA + SYSTEM + COMMA + VERSION + COMMA +
+                        CODE + COMMA + CODING + COMMA + TARGET_SYSTEM));
+
         restComponents.add(codeSystemRestComponent);
         restComponents.add(valueSetRestComponent);
+        restComponents.add(conceptMapRestComponent);
         return capabilityStatement;
     }
 
@@ -124,6 +133,9 @@ public class OclCapabilityStatementProvider extends ServerCapabilityStatementPro
         List<CapabilityStatement.ResourceInteractionComponent> interactions = new ArrayList<>();
         interactions.add(interactionType(CapabilityStatement.TypeRestfulInteraction.READ));
         interactions.add(interactionType(CapabilityStatement.TypeRestfulInteraction.SEARCHTYPE));
+        interactions.add(interactionType(CapabilityStatement.TypeRestfulInteraction.CREATE));
+        interactions.add(interactionType(CapabilityStatement.TypeRestfulInteraction.UPDATE));
+        interactions.add(interactionType(CapabilityStatement.TypeRestfulInteraction.DELETE));
         return interactions;
     }
 
