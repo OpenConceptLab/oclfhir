@@ -20,7 +20,9 @@ import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.stereotype.Component;
 
 import javax.transaction.Transactional;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
@@ -103,15 +105,9 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
                                     @OptionalParam(name = CodeSystem.SP_VERSION) StringType version,
                                     RequestDetails details) {
         List<Source> sources = filterSourceHead(getSources(publicAccess));
-        StringBuilder hasNext = new StringBuilder();
-        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false,
-                getPage(page), hasNext);
-        List<CodeSystem> filtered = filter(codeSystems, getFilter(status, contentMode, publisher, version));
-        log.info("Found " + filtered.size() + " CodeSystems. ");
-        Bundle bundle = OclFhirUtil.getBundle(filtered, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
-                getPrevPage(page), getNextPage(page, hasNext));
-        bundle.setTotal(sources.size());
-        return bundle;
+        OclFhirUtil.Filter filter = getFilter(status, contentMode, publisher, version);
+        return codeSystemConverter.convertToCodeSystem(sources, false, page,
+                isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(), filter);
     }
 
     /**
@@ -132,15 +128,9 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
                                         RequestDetails details) {
         List<Source> sources = filterSourceHead(getSourceByUrl(url, version, publicAccess));
         boolean includeConcepts = !isValid(version) || !isVersionAll(version);
-        StringBuilder hasNext = new StringBuilder();
-        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, includeConcepts,
-                getPage(page), hasNext);
-        List<CodeSystem> filtered = filter(codeSystems, getFilter(status, contentMode, publisher, version));
-        log.info("Found " + filtered.size() + " CodeSystems. ");
-        Bundle bundle = OclFhirUtil.getBundle(filtered, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
-                getPrevPage(page), getNextPage(page, hasNext));
-        bundle.setTotal(sources.size());
-        return bundle;
+        OclFhirUtil.Filter filter = getFilter(status, contentMode, publisher, version);
+        return codeSystemConverter.convertToCodeSystem(sources, includeConcepts, page,
+                isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(), filter);
     }
 
     /**
@@ -159,15 +149,9 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
                                           @OptionalParam(name = CodeSystem.SP_VERSION) StringType version,
                                           RequestDetails details) {
         List<Source> sources = filterSourceHead(getSourceByOwner(owner, publicAccess));
-        StringBuilder hasNext = new StringBuilder();
-        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, false, getPage(page),
-                hasNext);
-        List<CodeSystem> filtered = filter(codeSystems, getFilter(status, contentMode, publisher, version));
-        log.info("Found " + filtered.size() + " CodeSystems.");
-        Bundle bundle = OclFhirUtil.getBundle(filtered, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
-                getPrevPage(page), getNextPage(page, hasNext));
-        bundle.setTotal(sources.size());
-        return bundle;
+        OclFhirUtil.Filter filter = getFilter(status, contentMode, publisher, version);
+        return codeSystemConverter.convertToCodeSystem(sources, false, page,
+                isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(), filter);
     }
 
     /**
@@ -191,15 +175,9 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
                                                RequestDetails details) {
         List<Source> sources = filterSourceHead(getSourceByOwnerAndIdAndVersion(id, owner, version, publicAccess));
         boolean includeConcepts = !isVersionAll(version);
-        StringBuilder hasNext = new StringBuilder();
-        List<CodeSystem> codeSystems = codeSystemConverter.convertToCodeSystem(sources, includeConcepts, getPage(page)
-                , hasNext);
-        List<CodeSystem> filtered = filter(codeSystems, getFilter(status, contentMode, publisher, version));
-        log.info("Found " + filtered.size() + " CodeSystems.");
-        Bundle bundle = OclFhirUtil.getBundle(filtered, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
-                getPrevPage(page), getNextPage(page, hasNext));
-        bundle.setTotal(sources.size());
-        return bundle;
+        OclFhirUtil.Filter filter = getFilter(status, contentMode, publisher, version);
+        return codeSystemConverter.convertToCodeSystem(sources, includeConcepts, page,
+                isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(), filter);
     }
 
     /**
@@ -298,21 +276,6 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
         }
         if (isVersionAll(version)) throw new InvalidRequestException("Invalid version provided.");
     }
-
-    private List<CodeSystem> filter(List<CodeSystem> codeSystems, Filter filter) {
-        log.info("CodeSystem filter - " + filter);
-        return codeSystems.stream()
-                .filter(c ->
-                        !isValid(filter.getStatus()) || (c.getStatus() != null && c.getStatus().toCode().equalsIgnoreCase(filter.getStatus())))
-                .filter(c ->
-                        !isValid(filter.getContentMode()) || (c.getContent() != null && c.getContent().toCode().equalsIgnoreCase(filter.getContentMode())))
-                .filter(c ->
-                        !isValid(filter.getPublisher()) || (isValid(c.getPublisher()) && c.getPublisher().equals(filter.getPublisher())))
-                .filter(c ->
-                        !isValid(filter.getVersion()) || isVersionAll(filter.getVersion()) || (isValid(c.getVersion()) && c.getVersion().equals(filter.getVersion())))
-                .collect(Collectors.toList());
-    }
-
 
 }
 

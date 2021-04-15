@@ -6,6 +6,8 @@ import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.hl7.fhir.instance.model.api.IBase;
+import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
 import org.hl7.fhir.r4.model.CodeSystem.ConceptPropertyComponent;
 import org.hl7.fhir.r4.model.codesystems.PublicationStatus;
@@ -60,28 +62,39 @@ public class CodeSystemConverter extends BaseConverter {
 				userProfilesOrganizationRepository, organizationRepository, userRepository, collectionRepository, mappingRepository);
 	}
 
-	public List<CodeSystem> convertToCodeSystem(List<Source> sources, boolean includeConcepts, int page, StringBuilder hasNext) {
+	public Bundle convertToCodeSystem(List<Source> sources, boolean includeConcepts, StringType page,
+									  String url, OclFhirUtil.Filter filter) {
+		StringBuilder hasNext = new StringBuilder();
+		int pageInt = getPage(page);
+		// convert source into codesystem
 		List<CodeSystem> codeSystems = new ArrayList<>();
-		if (!includeConcepts) {
-			int offset = page * 10;
-			int count = 10;
-			if (page == 0) {
-				if (sources.size() > count) hasNext.append(True);
-			} else if (page < sources.size()/count) {
-				hasNext.append(True);
-			}
-			sources = paginate(sources, offset, count);
-		}
-		sources.forEach(source -> {
+		for (Source source : sources) {
 			// convert to base
 			CodeSystem codeSystem = toBaseCodeSystem(source);
 			if (includeConcepts) {
 				// add concepts
-				addConceptsToCodeSystem(codeSystem, source, page, hasNext);
+				addConceptsToCodeSystem(codeSystem, source, pageInt, hasNext);
 			}
 			codeSystems.add(codeSystem);
-		});
-		return codeSystems;
+		}
+		// apply codesystem filter
+		List<CodeSystem> codeSystemsFiltered = applyFilter(codeSystems, filter);
+		int total = codeSystemsFiltered.size();
+		// paginate filtered list
+		if (!includeConcepts) {
+			int offset = pageInt * 10;
+			int count = 10;
+			if (pageInt == 0) {
+				if (codeSystemsFiltered.size() > count) hasNext.append(True);
+			} else if (pageInt < codeSystemsFiltered.size()/count) {
+				hasNext.append(True);
+			}
+			codeSystemsFiltered = paginate(codeSystemsFiltered, offset, count);
+		}
+		// bundle resources
+		Bundle bundle = OclFhirUtil.getBundle(codeSystemsFiltered, url, getPrevPage(page), getNextPage(page, hasNext));
+		bundle.setTotal(total);
+		return bundle;
 	}
 
 	/**
@@ -722,6 +735,20 @@ public class CodeSystemConverter extends BaseConverter {
 			keys.add(insert(insertLocalizedText, toMap(t)));
 		});
 		return keys;
+	}
+
+	private List<CodeSystem> applyFilter(List<CodeSystem> codeSystems, Filter filter) {
+		log.info("CodeSystem filter - " + filter);
+		return codeSystems.stream()
+				.filter(c ->
+						!isValid(filter.getStatus()) || (c.getStatus() != null && c.getStatus().toCode().equalsIgnoreCase(filter.getStatus())))
+				.filter(c ->
+						!isValid(filter.getContentMode()) || (c.getContent() != null && c.getContent().toCode().equalsIgnoreCase(filter.getContentMode())))
+				.filter(c ->
+						!isValid(filter.getPublisher()) || (isValid(c.getPublisher()) && c.getPublisher().equals(filter.getPublisher())))
+				.filter(c ->
+						!isValid(filter.getVersion()) || isVersionAll(filter.getVersion()) || (isValid(c.getVersion()) && c.getVersion().equals(filter.getVersion())))
+				.collect(Collectors.toList());
 	}
 
 }

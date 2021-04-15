@@ -1,5 +1,7 @@
 package org.openconceptlab.fhir.provider;
 
+import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.parser.IParser;
 import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
@@ -9,7 +11,10 @@ import com.openpojo.validation.Validator;
 import com.openpojo.validation.ValidatorBuilder;
 import com.openpojo.validation.test.impl.GetterTester;
 import com.openpojo.validation.test.impl.SetterTester;
+import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
+import org.hl7.fhir.utilities.xhtml.XhtmlNode;
+import org.hl7.fhir.utilities.xhtml.XhtmlParser;
 import org.junit.Assert;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -19,6 +24,7 @@ import org.mockito.MockitoAnnotations;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.openconceptlab.fhir.base.OclFhirTest;
+import org.openconceptlab.fhir.model.Collection;
 import org.openconceptlab.fhir.model.Organization;
 import org.openconceptlab.fhir.model.*;
 import org.springframework.data.domain.Page;
@@ -26,12 +32,16 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 
@@ -737,12 +747,11 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
     public void testSearchCodeSystemByOwnerAndId_version_count() {
         source1.setIsLatestVersion(true);
         when(sourceRepository.findByMnemonicAndUserIdUsernameAndPublicAccessIn(
-                anyString(), anyString(), anyList())).thenReturn(Arrays.asList(source1, source1, source1, source1, source1, source1, source1, source1, source1, source1,
-                source1, source1, source1, source1, source1, source1, source1, source1));
+                anyString(), anyString(), anyList())).thenReturn(Arrays.asList(source1, source1, source1, source1, source1, source1, source1, source1, source1));
         when(conceptRepository.findConcepts(anyLong(), any(PageRequest.class))).thenReturn(new PageImpl(Collections.singletonList(cs11.getConcept())));
         CodeSystemResourceProvider provider = codeSystemProvider();
         Bundle bundle = provider.searchCodeSystemByOwnerAndId(newString("user:test"), newString("123"), newString("*"), null, null, null, null, null, requestDetails);
-        assertEquals(18, bundle.getTotal());
+        assertEquals(9, bundle.getTotal());
     }
 
     @Test
@@ -760,6 +769,35 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         CodeSystemResourceProvider provider = codeSystemProvider();
         Bundle bundle = provider.searchCodeSystems(null, null, null, null, null, null, requestDetails);
         assertEquals(12, bundle.getTotal());
+        assertEquals(10, bundle.getEntry().size());
+    }
+
+    @Test
+    public void testSearchCodeSystem_filter_count1() {
+        List<Source> sources = getSources();
+        for (int i = 0; i < sources.size()/2; i++ ) {
+            sources.get(i).setPublisher("FILTERED");
+        }
+        when(sourceRepository.findAllLatest(anyList())).thenReturn(sources);
+        when(conceptRepository.findConceptCountInSource(anyLong())).thenReturn(1);
+        CodeSystemResourceProvider provider = codeSystemProvider();
+        Bundle bundle = provider.searchCodeSystems(null, null, null, null, newString("FILTERED"), null, requestDetails);
+        assertEquals(6, bundle.getTotal());
+        assertEquals(6, bundle.getEntry().size());
+    }
+
+    @Test
+    public void testSearchCodeSystem_filter_count2() {
+        List<Source> sources = getSources();
+        for (int i = 0; i < sources.size() - 1; i++ ) {
+            sources.get(i).setPublisher("FILTERED");
+        }
+        when(sourceRepository.findAllLatest(anyList())).thenReturn(sources);
+        when(conceptRepository.findConceptCountInSource(anyLong())).thenReturn(1);
+        CodeSystemResourceProvider provider = codeSystemProvider();
+        Bundle bundle = provider.searchCodeSystems(null, null, null, null, newString("FILTERED"), null, requestDetails);
+        assertEquals(11, bundle.getTotal());
+        assertEquals(10, bundle.getEntry().size());
     }
 
     private CodeSystem codeSystem() {

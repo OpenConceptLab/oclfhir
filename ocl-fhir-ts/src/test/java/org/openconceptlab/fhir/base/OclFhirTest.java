@@ -482,6 +482,7 @@ public class OclFhirTest {
             source.setId((long) i);
             source.setMnemonic("source1" + i);
             source.setReleased(true);
+            source.setPublisher("OCL");
             sourceList.add(source);
         }
         return sourceList;
