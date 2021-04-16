@@ -317,10 +317,16 @@ public class ValueSetConverter extends BaseConverter {
         // code
         referenceComponent.setCode(code);
         // display
+        if (isValid(display)) {
+            referenceComponent.setDisplay(display);
+        } else {
+            List<LocalizedText> lts = names.stream().filter(c -> c.getLocalizedText() != null).map(ConceptsName::getLocalizedText)
+                    .collect(Collectors.toList());
+            referenceComponent.setDisplay(oclFhirUtil.getDisplayForLanguage(lts, dictDefaultLocale).orElse(EMPTY));
+        }
+        // designation
         List<LocalizedText> lts = names.stream().filter(c -> c.getLocalizedText() != null).map(ConceptsName::getLocalizedText)
                 .collect(Collectors.toList());
-        referenceComponent.setDisplay(oclFhirUtil.getDisplayForLanguage(lts, dictDefaultLocale).orElse(""));
-        // designation
         if (includeConceptDesignation)
             addConceptReferenceDesignation(lts, referenceComponent);
         includeComponent.getConcept().add(referenceComponent);

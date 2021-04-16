@@ -215,13 +215,16 @@ public class CodeSystemConverter extends BaseConverter {
 			// code
 			definitionComponent.setCode(concept.getMnemonic());
 			// display
-			List<LocalizedText> names = concept.getConceptsNames().stream()
-					.filter(c -> c.getLocalizedText() != null)
-					.map(ConceptsName::getLocalizedText)
-					.collect(Collectors.toList());
-			Optional<String> display = oclFhirUtil.getDisplayForLanguage(names, source.getDefaultLocale());
-			definitionComponent.setDisplay(display.orElse(EMPTY));
-
+			if (isValid(concept.getName())) {
+				definitionComponent.setDisplay(concept.getName());
+			} else {
+				List<LocalizedText> names = concept.getConceptsNames().stream()
+						.filter(c -> c.getLocalizedText() != null)
+						.map(ConceptsName::getLocalizedText)
+						.collect(Collectors.toList());
+				Optional<String> display = oclFhirUtil.getDisplayForLanguage(names, source.getDefaultLocale());
+				definitionComponent.setDisplay(display.orElse(EMPTY));
+			}
 			// definition
 			List<LocalizedText> definitions = concept.getConceptsDescriptions().stream()
 					.filter(c -> c.getLocalizedText() != null)
@@ -334,7 +337,7 @@ public class CodeSystemConverter extends BaseConverter {
 		// add identifier, contact and jurisdiction
 		addJsonStrings(codeSystem, source);
 		// add concepts
-		List<Concept> concepts = toConcepts(codeSystem.getConcept(), codeSystem.getLanguage());
+		List<Concept> concepts = toConcepts(codeSystem.getConcept(), isValid(codeSystem.getLanguage()) ? codeSystem.getLanguage() : EN_LOCALE);
 		populateBaseConceptField(concepts, source, user);
 
 		// save source
@@ -413,7 +416,7 @@ public class CodeSystemConverter extends BaseConverter {
 			// code
 			concept.setMnemonic(code);
 			// name
-			concept.setName(code);
+			concept.setName(isValid(component.getDisplay()) ? component.getDisplay() : code);
 			// definition
 			addDefinition(concept, component.getDefinition(), defaultLocale);
 			// designation
