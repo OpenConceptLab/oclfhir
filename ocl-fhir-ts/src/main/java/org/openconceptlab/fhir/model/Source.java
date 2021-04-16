@@ -161,6 +161,9 @@ public class Source extends BaseOclEntity implements Serializable {
 	@JoinColumn(name="user_id")
 	private UserProfile userId;
 
+	@Column
+	private String text;
+
 	public Source() {
 	}
 
@@ -572,6 +575,14 @@ public class Source extends BaseOclEntity implements Serializable {
 
 	public void setVersionNeeded(boolean versionNeeded) {
 		this.versionNeeded = versionNeeded;
+	}
+
+	public String getText() {
+		return text;
+	}
+
+	public void setText(String text) {
+		this.text = text;
 	}
 
 	@Override

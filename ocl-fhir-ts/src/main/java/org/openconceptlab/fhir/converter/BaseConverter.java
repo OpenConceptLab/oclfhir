@@ -184,6 +184,8 @@ public class BaseConverter {
             source.setContact(convertToJsonString(getResContactString(codeSystem), CONTACT));
         if (!codeSystem.getJurisdiction().isEmpty())
             source.setJurisdiction(convertToJsonString(getResJurisdictionString(codeSystem), JURISDICTION));
+        if (codeSystem.getText().getStatus() != null || !codeSystem.getText().getDiv().isEmpty())
+            source.setText(convertToJsonString(getResTextString(codeSystem), TEXT));
     }
 
     protected void addJsonStrings(final ValueSet valueSet, final Collection collection) {
@@ -193,6 +195,8 @@ public class BaseConverter {
             collection.setContact(convertToJsonString(getResContactString(valueSet), CONTACT));
         if (!valueSet.getJurisdiction().isEmpty())
             collection.setJurisdiction(convertToJsonString(getResJurisdictionString(valueSet), JURISDICTION));
+        if (valueSet.getText().getStatus() != null || !valueSet.getText().getDiv().isEmpty())
+            collection.setText(convertToJsonString(getResTextString(valueSet), TEXT));
     }
 
     protected void addJsonStrings(final ConceptMap conceptMap, final Source source) {
@@ -202,6 +206,8 @@ public class BaseConverter {
             source.setContact(convertToJsonString(getResContactString(conceptMap), CONTACT));
         if (!conceptMap.getJurisdiction().isEmpty())
             source.setJurisdiction(convertToJsonString(getResJurisdictionString(conceptMap), JURISDICTION));
+        if (conceptMap.getText().getStatus() != null || !conceptMap.getText().getDiv().isEmpty())
+            source.setText(convertToJsonString(getResTextString(conceptMap), TEXT));
     }
 
     protected Long insert(SimpleJdbcInsert insert, Map<String, Object> parameters) {
@@ -233,6 +239,12 @@ public class BaseConverter {
         return getFhirContext().newJsonParser().encodeResourceToString(system);
     }
 
+    private String getResTextString(final CodeSystem codeSystem) {
+        CodeSystem system = new CodeSystem();
+        system.setText(codeSystem.getText());
+        return getFhirContext().newJsonParser().encodeResourceToString(system);
+    }
+
     private String getResIdentifierString(final ValueSet valueSet) {
         ValueSet set = new ValueSet();
         set.setIdentifier(valueSet.getIdentifier());
@@ -251,6 +263,12 @@ public class BaseConverter {
         return getFhirContext().newJsonParser().encodeResourceToString(set);
     }
 
+    private String getResTextString(final ValueSet valueSet) {
+        ValueSet set = new ValueSet();
+        set.setText(valueSet.getText());
+        return getFhirContext().newJsonParser().encodeResourceToString(set);
+    }
+
     private String getResIdentifierString(final ConceptMap conceptMap) {
         ConceptMap map = new ConceptMap();
         map.setIdentifier(conceptMap.getIdentifier());
@@ -266,6 +284,12 @@ public class BaseConverter {
     private String getResJurisdictionString(final ConceptMap conceptMap) {
         ConceptMap map = new ConceptMap();
         map.setJurisdiction(conceptMap.getJurisdiction());
+        return getFhirContext().newJsonParser().encodeResourceToString(map);
+    }
+
+    private String getResTextString(final ConceptMap conceptMap) {
+        ConceptMap map = new ConceptMap();
+        map.setText(conceptMap.getText());
         return getFhirContext().newJsonParser().encodeResourceToString(map);
     }
 
@@ -458,7 +482,8 @@ public class BaseConverter {
         // extras
         source.setExtras(EMPTY_JSON);
         // experimental
-        source.setExperimental(resource.getExperimental());
+        if (resource.getExperimentalElement().getValue() != null)
+            source.setExperimental(resource.getExperimentalElement().booleanValue());
         if (resource instanceof CodeSystem) {
             CodeSystem codeSystem = (CodeSystem) resource;
             // content type
@@ -471,15 +496,19 @@ public class BaseConverter {
             if (isValid(codeSystem.getPurpose()))
                 source.setPurpose(codeSystem.getPurpose());
             // case_sensitive
+            if (codeSystem.getCaseSensitiveElement().getValue() != null)
+                source.setCaseSensitive(codeSystem.getCaseSensitiveElement().booleanValue());
             source.setCaseSensitive(codeSystem.getCaseSensitive());
             // collection_reference
             if (isValid(codeSystem.getValueSet())) source.setCollectionReference(codeSystem.getValueSet());
             // hierarchy_meaning
             if (codeSystem.getHierarchyMeaning() != null) source.setHierarchyMeaning(codeSystem.getHierarchyMeaning().toCode());
             // compositional
-            source.setCompositional(codeSystem.getCompositional());
+            if (codeSystem.getCompositionalElement().getValue() != null)
+                source.setCompositional(codeSystem.getCompositionalElement().booleanValue());
             // version_needed
-            source.setVersionNeeded(codeSystem.getVersionNeeded());
+            if (codeSystem.getVersionNeededElement().getValue() != null)
+                source.setVersionNeeded(codeSystem.getVersionNeededElement().booleanValue());
         }
         if (resource instanceof ConceptMap) {
             ConceptMap conceptMap = (ConceptMap) resource;

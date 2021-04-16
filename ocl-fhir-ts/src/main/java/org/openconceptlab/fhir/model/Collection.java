@@ -153,6 +153,9 @@ public class Collection extends BaseOclEntity implements Serializable {
 	@OneToMany(mappedBy="collection", cascade = CascadeType.ALL)
 	private List<CollectionsReference> collectionsreferences;
 
+	@Column
+	private String text;
+
 	public Collection() {
 	}
 
@@ -526,5 +529,13 @@ public class Collection extends BaseOclEntity implements Serializable {
 
 	public void setLockedDate(Timestamp lockedDate) {
 		this.lockedDate = lockedDate;
+	}
+
+	public String getText() {
+		return text;
+	}
+
+	public void setText(String text) {
+		this.text = text;
 	}
 }

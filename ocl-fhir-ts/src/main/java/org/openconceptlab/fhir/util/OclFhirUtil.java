@@ -409,6 +409,7 @@ public class OclFhirUtil {
                 .sorted(Comparator.comparing(LocalizedText::getLocalePreferred, Comparator.reverseOrder()))
                 .filter(name -> !isValid(displayLanguage) || name.getLocale().equals(displayLanguage))
                 .map(LocalizedText::getName)
+                .sorted()
                 .findFirst();
     }
 
@@ -490,12 +491,13 @@ public class OclFhirUtil {
         return page == null || page.getValue().matches("0|1") ? 0 : Integer.parseInt(page.getValue()) - 1;
     }
 
-    public static <T extends MetadataResource> void addJsonFields(T resource, String identifier, String contact, String jurisdiction) {
+    public static <T extends MetadataResource> void addJsonFields(T resource, String identifier, String contact, String jurisdiction, String text) {
         JsonObject object = new JsonObject();
         object.addProperty(RESOURCE_TYPE, resource.getClass().getSimpleName());
         addJsonProperty(object, resource.getClass().getSimpleName(), IDENTIFIER, identifier);
         addJsonProperty(object, resource.getClass().getSimpleName(), CONTACT, contact);
         addJsonProperty(object, resource.getClass().getSimpleName(), JURISDICTION, jurisdiction);
+        addJsonObjProperty(object, resource.getClass().getSimpleName(), TEXT, text);
 
         if (resource instanceof CodeSystem) {
             CodeSystem cs = (CodeSystem) getFhirContext().newJsonParser().parseResource(gson.toJson(object));
@@ -503,12 +505,21 @@ public class OclFhirUtil {
                 ((CodeSystem) resource).setIdentifier(cs.getIdentifier());
             resource.setContact(cs.getContact());
             resource.setJurisdiction(cs.getJurisdiction());
+            resource.setText(cs.getText());
         } else if (resource instanceof ValueSet) {
             ValueSet vs = (ValueSet) getFhirContext().newJsonParser().parseResource(gson.toJson(object));
             if (!vs.getIdentifier().isEmpty())
                 ((ValueSet) resource).setIdentifier(vs.getIdentifier());
             resource.setContact(vs.getContact());
             resource.setJurisdiction(vs.getJurisdiction());
+            resource.setText(vs.getText());
+        } else if (resource instanceof ConceptMap) {
+            ConceptMap cm = (ConceptMap) getFhirContext().newJsonParser().parseResource(gson.toJson(object));
+            if (!cm.getIdentifier().isEmpty())
+                ((ConceptMap) resource).setIdentifier(cm.getIdentifier());
+            resource.setContact(cm.getContact());
+            resource.setJurisdiction(cm.getJurisdiction());
+            resource.setText(cm.getText());
         }
     }
 
@@ -517,6 +528,19 @@ public class OclFhirUtil {
             try {
                 JsonArray array = jsonArray(value);
                 object.add(property, array);
+            } catch (Exception e) {
+                log.warn(String.format("Error parsing %s.%s ", resourceType, property) + e.getMessage(), e);
+            }
+        }
+    }
+
+    private static void addJsonObjProperty(JsonObject object, String resourceType, String property, String value) {
+        if (isValid(value)) {
+            try {
+                JsonElement e = jsonParser.parse(value);
+                if (e instanceof JsonObject) {
+                    object.add(property, e);
+                }
             } catch (Exception e) {
                 log.warn(String.format("Error parsing %s.%s ", resourceType, property) + e.getMessage(), e);
             }

@@ -113,7 +113,7 @@ public class ValueSetConverter extends BaseConverter {
             valueSet.setPublisher(collection.getPublisher());
         // identifier, contact, jurisdiction
         addJsonFields(valueSet, isValid(collection.getIdentifier()) && !EMPTY_JSON.equals(collection.getIdentifier())
-                ? collection.getIdentifier() : EMPTY, collection.getContact(), collection.getJurisdiction());
+                ? collection.getIdentifier() : EMPTY, collection.getContact(), collection.getJurisdiction(), collection.getText());
         // add accession identifier if not present
         Optional<Identifier> identifierOpt = valueSet.getIdentifier().stream()
                 .filter(i -> i.getType().hasCoding(ACSN_SYSTEM, ACSN)).findAny();
@@ -725,7 +725,8 @@ public class ValueSetConverter extends BaseConverter {
         // extras
         collection.setExtras(EMPTY_JSON);
         // experimental
-        collection.setExperimental(valueSet.getExperimental());
+        if (valueSet.getExperimentalElement().getValue() != null)
+            collection.setExperimental(valueSet.getExperimentalElement().booleanValue());
         // locked_date
         if (valueSet.getCompose().getLockedDate() != null)
             collection.setLockedDate(new Timestamp(valueSet.getCompose().getLockedDate().getTime()));
@@ -830,7 +831,8 @@ public class ValueSetConverter extends BaseConverter {
         // update identifier, contact and jurisdiction
         addJsonStrings(valueSet, collection);
         // experimental
-        collection.setExperimental(valueSet.getExperimental());
+        if (valueSet.getExperimentalElement().getValue() != null)
+            collection.setExperimental(valueSet.getExperimentalElement().booleanValue());
         // locked_date
         if (valueSet.getCompose().getLockedDate() != null)
             collection.setLockedDate(new Timestamp(valueSet.getCompose().getLockedDate().getTime()));

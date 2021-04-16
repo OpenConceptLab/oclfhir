@@ -136,7 +136,7 @@ public class CodeSystemConverter extends BaseConverter {
 			codeSystem.setPublisher(source.getPublisher());
 		// identifier, contact, jurisdiction
 		addJsonFields(codeSystem, isValid(source.getIdentifier()) && !EMPTY_JSON.equals(source.getIdentifier()) ? source.getIdentifier() : EMPTY,
-				source.getContact(), source.getJurisdiction());
+				source.getContact(), source.getJurisdiction(), source.getText());
 		// add accession identifier if not present
 		Optional<Identifier> identifierOpt = codeSystem.getIdentifier().stream()
 				.filter(i -> i.getType().hasCoding(ACSN_SYSTEM, ACSN)).findAny();
@@ -235,12 +235,14 @@ public class CodeSystemConverter extends BaseConverter {
 			addConceptDesignation(concept, definitionComponent);
 
 			// property - concept_class, data_type, ,inactive
-			definitionComponent.getProperty().add(new ConceptPropertyComponent(new CodeType(OclFhirConstants.CONCEPTCLASS),
-					new StringType(concept.getConceptClass())));
-			definitionComponent.getProperty().add(new ConceptPropertyComponent(new CodeType(OclFhirConstants.DATATYPE),
-					new StringType(concept.getDatatype())));
-			definitionComponent.getProperty().add(new ConceptPropertyComponent(new CodeType(INACTIVE),
-					new BooleanType(concept.getRetired())));
+			if (!NA.equals(concept.getConceptClass()) || !NA.equals(concept.getDatatype()) || concept.getRetired()) {
+				definitionComponent.getProperty().add(new ConceptPropertyComponent(new CodeType(OclFhirConstants.CONCEPTCLASS),
+						new StringType(concept.getConceptClass())));
+				definitionComponent.getProperty().add(new ConceptPropertyComponent(new CodeType(OclFhirConstants.DATATYPE),
+						new StringType(concept.getDatatype())));
+				definitionComponent.getProperty().add(new ConceptPropertyComponent(new CodeType(INACTIVE),
+						new BooleanType(concept.getRetired())));
+			}
 			// add concept in CodeSystem
 			codeSystem.getConcept().add(definitionComponent);
 		}
@@ -574,7 +576,7 @@ public class CodeSystemConverter extends BaseConverter {
 		// purpose
 		if (isValid(codeSystem.getPurpose()))
 			source.setPurpose(codeSystem.getPurpose());
-		// revision date TODO - Add validation
+		// revision date
 		if (codeSystem.getDate() != null)
 			source.setRevisionDate(codeSystem.getDate());
 		// updated by
@@ -586,17 +588,21 @@ public class CodeSystemConverter extends BaseConverter {
 		// update identifier, contact and jurisdiction
 		addJsonStrings(codeSystem, source);
 		// case_sensitive
-		source.setCaseSensitive(codeSystem.getCaseSensitive());
+		if (codeSystem.getCaseSensitiveElement().getValue() != null)
+			source.setCaseSensitive(codeSystem.getCaseSensitiveElement().booleanValue());
 		// collection_reference
 		if (isValid(codeSystem.getValueSet())) source.setCollectionReference(codeSystem.getValueSet());
 		// hierarchy_meaning
 		if (codeSystem.getHierarchyMeaning() != null) source.setHierarchyMeaning(codeSystem.getHierarchyMeaning().toCode());
 		// compositional
-		source.setCompositional(codeSystem.getCompositional());
+		if (codeSystem.getCompositionalElement().getValue() != null)
+			source.setCompositional(codeSystem.getCompositionalElement().booleanValue());
 		// version_needed
-		source.setVersionNeeded(codeSystem.getVersionNeeded());
+		if (codeSystem.getVersionNeededElement().getValue() != null)
+			source.setVersionNeeded(codeSystem.getVersionNeededElement().booleanValue());
 		// experimental
-		source.setExperimental(codeSystem.getExperimental());
+		if (codeSystem.getExperimentalElement().getValue() != null)
+			source.setExperimental(codeSystem.getExperimentalElement().booleanValue());
 		// update base source resource
 		sourceRepository.saveAndFlush(source);
 		log.info("updated codesystem - " + source.getMnemonic());

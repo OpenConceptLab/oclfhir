@@ -57,6 +57,7 @@ public final class OclFhirConstants {
 	public static final String IDENTIFIER = "identifier";
 	public static final String CONTACT = "contact";
 	public static final String JURISDICTION = "jurisdiction";
+	public static final String TEXT = "text";
 
 	public static final String OWNER_REGEX = "^/users/.*|^/orgs/.*";
 	public static final String ORG_ = "org:";
