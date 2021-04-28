@@ -230,7 +230,8 @@ public class ValueSetConverter extends BaseConverter {
     }
 
     private List<Source> getSourcesFromExpressions(List<String> expressions) {
-        return expressions.parallelStream().map(m -> formatExpression(m).split(FS))
+        List<Source> sources =
+         expressions.parallelStream().map(m -> formatExpression(m).split(FS))
                 .map(m -> ownerType(m) + "|" + ownerId(m) + "|" + getSourceId(m) + "|" + getSourceVersion(m))
                 .distinct()
                 .map(m -> m.split("\\|"))
@@ -241,6 +242,7 @@ public class ValueSetConverter extends BaseConverter {
                 .map(Optional::get)
                 .sorted(Comparator.comparing(Source::getCanonicalUrl).thenComparing(Source::getCreatedAt).reversed())
                 .collect(Collectors.toList());
+        return sources;
     }
 
     private List<String> getAllExpressions(Collection collection) {
@@ -487,7 +489,7 @@ public class ValueSetConverter extends BaseConverter {
                         String conceptId = getConceptId(m);
                         String conceptVersion = getConceptVersion(m);
                         if (isValid(conceptId)) {
-                            Optional<Concept> conceptOpt = oclFhirUtil.getSourceConcept(source, conceptId, conceptVersion);
+                            Optional<Concept> conceptOpt = oclFhirUtil.getSourceConcept(source, conceptId, "");
                              conceptOpt.ifPresent(c -> {
                                 // only return non retired concepts when activeOnly is True
                                 if (c.getRetired() && activeOnly.booleanValue()) {
@@ -522,7 +524,7 @@ public class ValueSetConverter extends BaseConverter {
         // sort based on canonical_url,version desc and code asc
         List<ValueSet.ValueSetExpansionContainsComponent> sorted = expansion.getContains().stream()
                         .sorted(Comparator.comparing(ValueSet.ValueSetExpansionContainsComponent::getSystem)
-                        .thenComparing(ValueSet.ValueSetExpansionContainsComponent::getVersion)
+                        .thenComparing(Comparator.nullsLast(Comparator.comparing(ValueSet.ValueSetExpansionContainsComponent::getVersion)))
                         .reversed()
                         .thenComparing(ValueSet.ValueSetExpansionContainsComponent::getCode))
                         .collect(Collectors.toList());
@@ -615,7 +617,7 @@ public class ValueSetConverter extends BaseConverter {
             validatedConceptIds.putAll(validated);
             expressions.addAll(toExpression(ownerType, owner, source.getMnemonic(), source.getVersion(), validated));
         });
-        // save collection
+        // save
         saveCollection(collection, validatedConceptIds, expressions);
         // clear data
         sourceToConceptMap.clear();
@@ -801,7 +803,6 @@ public class ValueSetConverter extends BaseConverter {
         oclFhirUtil.updateIndex(getToken(), COLLECTIONS, collection.getMnemonic());
     }
 
-    @Transactional
      void update(final ValueSet valueSet, final Collection collection, final String accessionId, final String authToken) {
         final OclEntity oclEntity = new OclEntity(valueSet, accessionId, authToken, false);
         // update status
@@ -888,7 +889,8 @@ public class ValueSetConverter extends BaseConverter {
         newExpressions.clear();
     }
 
-    private void saveCollection(Collection collection, Map<Long, String> validatedConceptIds, Set<String> expressions) {
+    @Transactional
+    protected void saveCollection(Collection collection, Map<Long, String> validatedConceptIds, Set<String> expressions) {
         // save base collection
         collectionRepository.saveAndFlush(collection);
         // save collection reference

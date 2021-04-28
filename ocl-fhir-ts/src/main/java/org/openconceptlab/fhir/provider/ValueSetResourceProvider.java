@@ -52,7 +52,6 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
     }
 
     @Create
-    @Transactional
     public MethodOutcome createValueSet(@ResourceParam ValueSet valueSet, RequestDetails requestDetails) {
         if (valueSet == null) {
             throw new InvalidRequestException("The ValueSet can not be empty");
@@ -69,7 +68,6 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
     }
 
     @Update
-    @Transactional
     public MethodOutcome updateValueSet(@IdParam IdType idType,
                                         @ResourceParam ValueSet valueSet,
                                         RequestDetails requestDetails) {
