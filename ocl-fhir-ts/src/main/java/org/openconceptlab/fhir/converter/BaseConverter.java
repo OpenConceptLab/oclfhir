@@ -486,8 +486,11 @@ public class BaseConverter {
             source.setExperimental(resource.getExperimentalElement().booleanValue());
         // source_type
         String sourceType = getSourceType(resource);
-        if (isValid(sourceType))
+        if (isValid(sourceType)) {
             source.setSourceType(sourceType);
+        } else {
+            source.setSourceType(resource.getClass().getSimpleName());
+        }
         if (resource instanceof CodeSystem) {
             CodeSystem codeSystem = (CodeSystem) resource;
             // content type
