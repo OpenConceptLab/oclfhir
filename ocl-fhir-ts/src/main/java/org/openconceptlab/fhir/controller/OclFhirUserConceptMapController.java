@@ -76,9 +76,9 @@ public class OclFhirUserConceptMapController extends BaseOclFhirController {
                                                           @PathVariable(name = USER) @Parameter(description = THE_USERNAME) String user,
                                                           @RequestBody @Parameter(description = THE_CONCEPTMAP_JSON_RESOURCE) String conceptMap,
                                                           @RequestHeader(name = AUTHORIZATION) @Parameter(hidden = true) String auth) {
-        if (!validateIfEditable(CONCEPTMAP, id, version, USER, user))
-            return badRequest("The ConceptMap can not be edited.");
         ConceptMap map = (ConceptMap) parser.parseResource(conceptMap);
+        if (!validateIfEditable(CONCEPTMAP, id, version, USER, user) && !getSourceType(map).toLowerCase().contains(CONCEPTMAP.toLowerCase()))
+            return badRequest("The ConceptMap can not be edited.");
         IdType idType = new IdType(CONCEPTMAP, id, version);
         performUpdate(map, auth, idType, formatUser(user));
         return ResponseEntity.status(HttpStatus.OK).build();

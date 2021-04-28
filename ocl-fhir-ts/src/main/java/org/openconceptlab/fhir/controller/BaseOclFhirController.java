@@ -318,8 +318,8 @@ public class BaseOclFhirController {
         if (CODESYSTEM.equals(resourceType) || CONCEPTMAP.equals(resourceType)) {
             Source source = oclFhirUtil.getSourceVersion(id, version, publicAccess, ownerType, owner);
             if (source != null && isValid(source.getSourceType())) {
-                return (CODESYSTEM.equals(resourceType) && source.getSourceType().contains(CODESYSTEM)) ||
-                        (CONCEPTMAP.equals(resourceType) && source.getSourceType().contains(CONCEPTMAP));
+                return (CODESYSTEM.equals(resourceType) && source.getSourceType().toLowerCase().contains(CODESYSTEM.toLowerCase())) ||
+                        (CONCEPTMAP.equals(resourceType) && source.getSourceType().toLowerCase().contains(CONCEPTMAP.toLowerCase()));
             }
         }
         return false;

@@ -79,9 +79,9 @@ public class OclFhirOrgCodeSystemController extends BaseOclFhirController {
                                                          @PathVariable(name = ORG) @Parameter(description = THE_ORGANIZATION_ID) String org,
                                                          @RequestBody @Parameter(description = THE_CODESYSTEM_JSON_RESOURCE) String codeSystem,
                                                          @RequestHeader(name = AUTHORIZATION) @Parameter(hidden = true) String auth) {
-        if (!validateIfEditable(CODESYSTEM, id, version, ORG, org))
-            return badRequest("The CodeSystem can not be edited.");
         CodeSystem system = (CodeSystem) parser.parseResource(codeSystem);
+        if (!validateIfEditable(CODESYSTEM, id, version, ORG, org) && !getSourceType(system).toLowerCase().contains(CODESYSTEM.toLowerCase()))
+            return badRequest("The CodeSystem can not be edited.");
         IdType idType = new IdType(CODESYSTEM, id, version);
         performUpdate(system, auth, idType, formatOrg(org));
         return ResponseEntity.status(HttpStatus.OK).build();
@@ -101,7 +101,8 @@ public class OclFhirOrgCodeSystemController extends BaseOclFhirController {
                                                         @PathVariable(name = VERSION) @Parameter(description = THE_CODESYSTEM_VERSION) String version,
                                                         @PathVariable(name = ORG) @Parameter(description = THE_ORGANIZATION_ID) String org,
                                                         @RequestHeader(name = AUTHORIZATION) @Parameter(hidden = true) String auth) {
-        if (!validateIfEditable(CODESYSTEM, id, version, ORG, org)) return badRequest("The CodeSystem can not be deleted.");
+        if (!validateIfEditable(CODESYSTEM, id, version, ORG, org))
+            return badRequest("The CodeSystem can not be deleted.");
         String url = oclFhirUtil.oclApiBaseUrl() + FS + ORGS + FS + org + FS + SOURCES + FS + id + FS + version + FS;
         return performDeleteOclApi(url, auth);
     }

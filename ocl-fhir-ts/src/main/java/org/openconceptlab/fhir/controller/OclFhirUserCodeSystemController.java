@@ -77,9 +77,9 @@ public class OclFhirUserCodeSystemController extends BaseOclFhirController {
                                                           @PathVariable(name = USER) @Parameter(description = THE_USERNAME) String user,
                                                           @RequestBody @Parameter(description = THE_CODESYSTEM_JSON_RESOURCE) String codeSystem,
                                                           @RequestHeader(name = AUTHORIZATION) @Parameter(hidden = true) String auth) {
-        if (!validateIfEditable(CODESYSTEM, id, version, USER, user))
-            return badRequest("The CodeSystem can not be edited.");
         CodeSystem system = (CodeSystem) parser.parseResource(codeSystem);
+        if (!validateIfEditable(CODESYSTEM, id, version, USER, user) && !getSourceType(system).toLowerCase().contains(CODESYSTEM.toLowerCase()))
+            return badRequest("The CodeSystem can not be edited.");
         IdType idType = new IdType(CODESYSTEM, id, version);
         performUpdate(system, auth, idType, formatUser(user));
         return ResponseEntity.status(HttpStatus.OK).build();
