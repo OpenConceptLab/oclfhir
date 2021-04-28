@@ -606,6 +606,10 @@ public class CodeSystemConverter extends BaseConverter {
 		// experimental
 		if (codeSystem.getExperimentalElement().getValue() != null)
 			source.setExperimental(codeSystem.getExperimentalElement().booleanValue());
+		// source_type
+		String sourceType = getSourceType(codeSystem);
+		if (isValid(sourceType))
+			source.setSourceType(sourceType);
 		// update base source resource
 		sourceRepository.saveAndFlush(source);
 		log.info("updated codesystem - " + source.getMnemonic());

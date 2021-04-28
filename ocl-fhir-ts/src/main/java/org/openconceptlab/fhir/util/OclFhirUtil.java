@@ -16,6 +16,7 @@ import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.repository.ConceptRepository;
 import org.openconceptlab.fhir.repository.ConceptsSourceRepository;
 import org.openconceptlab.fhir.repository.SourceRepository;
+import org.springframework.beans.ExtendedBeanInfoFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -808,6 +809,20 @@ public class OclFhirUtil {
         if (isValid(version)) filter.setVersion(version.getValue());
         return filter;
     }
+
+    public static String getSourceType(MetadataResource resource) {
+        String url = BASE_URL + "/codesystem-type";
+        List<Extension> extensions = resource.getExtension();
+        for (Extension extension : extensions) {
+            if (url.equals(extension.getUrl())) {
+                if (extension.getValue() != null && extension.getValue() instanceof StringType) {
+                    return ((StringType) extension.getValue()).getValue();
+                }
+            }
+        }
+        return EMPTY;
+    }
+
 }
 
 

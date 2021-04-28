@@ -708,6 +708,10 @@ public class ConceptMapConverter extends BaseConverter {
         // experimental
         if (conceptMap.getExperimentalElement().getValue() != null)
             source.setExperimental(conceptMap.getExperimentalElement().booleanValue());
+        // source_type
+        String sourceType = getSourceType(conceptMap);
+        if (isValid(sourceType))
+            source.setSourceType(sourceType);
         // update base source resource
         sourceRepository.saveAndFlush(source);
         log.info("updated conceptmap - " + source.getMnemonic());
