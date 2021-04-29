@@ -22,6 +22,7 @@ import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 
+import javax.persistence.EntityManager;
 import javax.servlet.http.HttpServletRequest;
 import javax.sql.DataSource;
 import java.sql.ResultSet;
@@ -165,6 +166,9 @@ public class OclFhirTest {
     @Mock
     protected ResultSet resultSet;
 
+    @Mock
+    protected EntityManager entityManager;
+
     @Spy
     protected OclCapabilityStatementProvider capabilityStatementProvider;
 
@@ -246,6 +250,7 @@ public class OclFhirTest {
             this.jdbcTemplate = OclFhirTest.this.jdbcTemplate;
             this.insertCollectionReference = OclFhirTest.this.insertCollectionReference;
             this.namedParameterJdbcTemplate = OclFhirTest.this.namedParameterJdbcTemplate;
+            this.entityManager = OclFhirTest.this.entityManager;
         }
 
         @Override

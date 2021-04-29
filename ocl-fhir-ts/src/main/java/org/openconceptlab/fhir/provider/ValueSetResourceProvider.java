@@ -68,6 +68,7 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
     }
 
     @Update
+    @Transactional
     public MethodOutcome updateValueSet(@IdParam IdType idType,
                                         @ResourceParam ValueSet valueSet,
                                         RequestDetails requestDetails) {
@@ -237,7 +238,7 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
                                    @OperationParam(name = FILTER, type = StringType.class) StringType filter,
                                    @OperationParam(name = OWNER, type = StringType.class) StringType owner,
                                    RequestDetails requestDetails) {
-        validate(url, offset, count, valueSetVersion);
+        validate(offset, count, valueSetVersion);
         String id = requestDetails.getHeader(RESOURCE_ID);
         // $expand by id
         Collection collection = null;
@@ -248,6 +249,7 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
             collection = collections.get(0);
         // $expand by url
         } else {
+            validateUrl(url);
             collection = isValid(owner) ? getCollectionByOwnerAndUrl(owner, newStringType(url), valueSetVersion, publicAccess) :
                     getCollectionByUrl(newStringType(url), valueSetVersion, publicAccess).get(0);
         }
@@ -429,9 +431,12 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
             throw new InvalidRequestException("Both system and code of coding must be provided.");
     }
 
-    private void validate(UriType url, IntegerType offset, IntegerType count, StringType... versions) {
+    private void validateUrl(UriType url) {
         if (!isValid(url))
             throw new InvalidRequestException("Url parameter of $expand operation must be provided.");
+    }
+
+    private void validate(IntegerType offset, IntegerType count, StringType... versions) {
         if (isValid(offset) && offset.getValue() < 0)
             throw new InvalidRequestException("Offset parameter of $expand operation can not be negative.");
         if (isValid(count) && count.getValue() < 0)

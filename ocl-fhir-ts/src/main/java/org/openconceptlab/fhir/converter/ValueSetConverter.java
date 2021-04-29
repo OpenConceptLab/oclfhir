@@ -10,6 +10,7 @@ import org.openconceptlab.fhir.model.Organization;
 import org.openconceptlab.fhir.model.*;
 import org.openconceptlab.fhir.repository.*;
 import org.openconceptlab.fhir.util.OclFhirUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.RowMapper;
@@ -18,6 +19,7 @@ import org.springframework.jdbc.core.simple.SimpleJdbcInsert;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import javax.persistence.EntityManager;
 import javax.sql.DataSource;
 import javax.transaction.Transactional;
 import java.sql.PreparedStatement;
@@ -52,6 +54,9 @@ public class ValueSetConverter extends BaseConverter {
     private static final String insertCollectionsReferences = "insert into collections_references (collection_id,collectionreference_id) values (?,?) on conflict do nothing";
     private static final String insertCollectionsConcepts = "insert into collections_concepts (collection_id,concept_id) values (?,?) on conflict do nothing";
     private static final Log log = LogFactory.getLog(ValueSetConverter.class);
+
+    @Autowired
+    protected EntityManager entityManager;
 
     public ValueSetConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil,
                              UserProfile oclUser, ConceptsSourceRepository conceptsSourceRepository, DataSource dataSource,
@@ -171,12 +176,13 @@ public class ValueSetConverter extends BaseConverter {
                     .filter(m -> source.getMnemonic().equals(getSourceId(m)) &&
                             (!isValid(getSourceVersion(m)) ? source.getIsLatestVersion() : source.getVersion().equals(getSourceVersion(m))) )
                     .forEachOrdered(m -> {
+                        String expSrcVersion = getSourceVersion(m);
                         String conceptId = getConceptId(m);
                         String conceptVersion = getConceptVersion(m);
                         if (isValid(conceptId)) {
                             // we can not simply get concepts list from the source considering huge number of concepts, this is alternate
                             // way to get only concepts that we care about and not retrieve whole list. This has improved performance and consumes less memory
-                            Optional<Concept> conceptOpt = oclFhirUtil.getSourceConcept(source, conceptId, conceptVersion);
+                            Optional<Concept> conceptOpt = oclFhirUtil.getSourceConcept(source, conceptId, isValid(expSrcVersion) ? conceptVersion : EMPTY);
                             conceptOpt.ifPresent(c -> {
                                 populateCompose(valueSet, includeConceptDesignation, c, isValid(source.getCanonicalUrl()) ? source.getCanonicalUrl() : source.getUri()
                                         , source.getVersion(), source.getDefaultLocale(), collection.getLockedDate());
@@ -224,6 +230,9 @@ public class ValueSetConverter extends BaseConverter {
                 })
                 .filter(Objects::nonNull)
                 .forEach(filtered::add);
+
+       // List<Source> sources = getSourcesFromExpressions(expressions);
+        //sources.addAll(filtered);
 
         return filtered.stream().sorted(Comparator.comparing(Source::getCanonicalUrl).thenComparing(Source::getCreatedAt).reversed())
                 .collect(Collectors.toList());
@@ -459,7 +468,7 @@ public class ValueSetConverter extends BaseConverter {
             }
         }
 
-        List<Source> sources = getSourcesFromExpressions(expressions, systemVersion)
+        Set<Source> sources = getSourcesFromExpressions(expressions, systemVersion)
                 .stream()
                 .filter(s -> {
                     for(String es : excludeSystem) {
@@ -474,7 +483,7 @@ public class ValueSetConverter extends BaseConverter {
                     }
                     return True;
                 })
-                .collect(Collectors.toList());
+                .collect(Collectors.toSet());
         Map<String, String> map = systemVersion.parallelStream().map(m -> m.split("\\|"))
                 .filter(m -> m.length == 2)
                 .collect(Collectors.toMap(m -> m[0], m->m[1]));
@@ -486,10 +495,11 @@ public class ValueSetConverter extends BaseConverter {
                         return source.getMnemonic().equals(getSourceId(m)) && (!isValid(getSourceVersion(m)) ? source.getIsLatestVersion() : source.getVersion().equals(getSourceVersion(m)));
                     })
                     .forEachOrdered(m -> {
+                        String expSrcVersion = getSourceVersion(m);
                         String conceptId = getConceptId(m);
                         String conceptVersion = getConceptVersion(m);
                         if (isValid(conceptId)) {
-                            Optional<Concept> conceptOpt = oclFhirUtil.getSourceConcept(source, conceptId, "");
+                            Optional<Concept> conceptOpt = oclFhirUtil.getSourceConcept(source, conceptId, isValid(expSrcVersion) ? conceptVersion : EMPTY);
                              conceptOpt.ifPresent(c -> {
                                 // only return non retired concepts when activeOnly is True
                                 if (c.getRetired() && activeOnly.booleanValue()) {
@@ -593,6 +603,7 @@ public class ValueSetConverter extends BaseConverter {
         return ar[2];
     }
 
+    @Transactional
     public void createValueSet(ValueSet valueSet, String accessionId, String authToken) {
         // validate and authenticate
         OclEntity oclEntity = new OclEntity(valueSet, accessionId, authToken, true);
@@ -644,6 +655,7 @@ public class ValueSetConverter extends BaseConverter {
                 );
                 // we need to update source version for later use. If version if not provided then we don't want to store
                 // source version info in expressions. This won't be persisted in db, it is for internal user only.
+                entityManager.detach(source);
                 source.setVersion(EMPTY);
             }
             if (source == null)
@@ -654,10 +666,10 @@ public class ValueSetConverter extends BaseConverter {
                     .map(ValueSet.ConceptReferenceComponent::getCode)
                     .collect(Collectors.toList());
             // clear extra source data
-            source.getConcepts().clear();
-            source.getMappings().clear();
-            source.getConceptsSources().clear();
-            source.getMappingsSources().clear();
+            //source.getConcepts().clear();
+            //source.getMappings().clear();
+            //source.getConceptsSources().clear();
+            //source.getMappingsSources().clear();
 
             map.put(source, conceptIds);
         });
@@ -803,6 +815,7 @@ public class ValueSetConverter extends BaseConverter {
         oclFhirUtil.updateIndex(getToken(), COLLECTIONS, collection.getMnemonic());
     }
 
+    @Transactional
      void update(final ValueSet valueSet, final Collection collection, final String accessionId, final String authToken) {
         final OclEntity oclEntity = new OclEntity(valueSet, accessionId, authToken, false);
         // update status

@@ -590,7 +590,7 @@ public class Source extends BaseOclEntity implements Serializable {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		Source source = (Source) o;
-		return new EqualsBuilder().append(id, source.id).isEquals();
+		return new EqualsBuilder().append(mnemonic, source.mnemonic).append(version, source.version).isEquals();
 	}
 
 	@Override

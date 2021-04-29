@@ -517,10 +517,10 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         ValueSet vs = runExpand(references, Collections.singletonList(cs11), Arrays.asList(cs21, cs22, cs23, cs24), null, 0, 50, "");
         assertEquals(5, vs.getExpansion().getContains().size());
         assertContains(vs, 0, CS_URL, "v2.0", AD, ALLERGIC_DISORDER);
+        assertContains(vs, 4, CS_URL, "v1.0", AD, ALLERGIC_DISORDER);
         assertContains(vs, 1, CS_URL, "v2.0", LUNG_PROCEDURE, LUNG_PROCEDURE_1);
         assertContains(vs, 2, CS_URL, "v2.0", TM, TUMOR_DISORDER);
         assertContains(vs, 3, CS_URL, "v2.0", VEIN_PROCEDURE, VEIN_PROCEDURE_1);
-        assertContains(vs, 4, CS_URL, "v1.0", AD, ALLERGIC_DISORDER);
     }
 
     @Test
