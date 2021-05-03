@@ -343,7 +343,7 @@ public class OclFhirUtil {
         identifier.setValue(value.replace("sources", CODESYSTEM).replace("collections", VALUESET).trim());
         identifier.getType().setText("Accession ID");
         identifier.getType().getCodingFirstRep().setSystem(ACSN_SYSTEM).setCode(ACSN).setDisplay("Accession ID");
-        return validateAccessionId(Optional.of(identifier));
+        return Optional.of(identifier);
     }
 
     public static String oclSystem() {
