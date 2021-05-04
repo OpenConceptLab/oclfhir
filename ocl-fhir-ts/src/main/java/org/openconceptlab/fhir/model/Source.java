@@ -164,6 +164,10 @@ public class Source extends BaseOclEntity implements Serializable {
 	@Column
 	private String text;
 
+	@Type(type = "jsonb")
+	@Column(name="meta", columnDefinition = "jsonb")
+	private String meta;
+
 	public Source() {
 	}
 
@@ -583,6 +587,14 @@ public class Source extends BaseOclEntity implements Serializable {
 
 	public void setText(String text) {
 		this.text = text;
+	}
+
+	public String getMeta() {
+		return meta;
+	}
+
+	public void setMeta(String meta) {
+		this.meta = meta;
 	}
 
 	@Override

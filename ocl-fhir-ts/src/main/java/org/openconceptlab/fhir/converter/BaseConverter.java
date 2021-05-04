@@ -186,6 +186,10 @@ public class BaseConverter {
             source.setJurisdiction(convertToJsonString(getResJurisdictionString(codeSystem), JURISDICTION));
         if (codeSystem.getText().getStatus() != null || !codeSystem.getText().getDiv().isEmpty())
             source.setText(convertToJsonString(getResTextString(codeSystem), TEXT));
+        Meta meta = codeSystem.getMeta();
+        if (meta.hasLastUpdated() || meta.hasSource() || meta.hasProfile() || meta.hasSecurity() || meta.hasTag()) {
+            source.setMeta(convertToJsonString(getResMetaString(codeSystem), META));
+        }
     }
 
     protected void addJsonStrings(final ValueSet valueSet, final Collection collection) {
@@ -197,6 +201,10 @@ public class BaseConverter {
             collection.setJurisdiction(convertToJsonString(getResJurisdictionString(valueSet), JURISDICTION));
         if (valueSet.getText().getStatus() != null || !valueSet.getText().getDiv().isEmpty())
             collection.setText(convertToJsonString(getResTextString(valueSet), TEXT));
+        Meta meta = valueSet.getMeta();
+        if (meta.hasLastUpdated() || meta.hasSource() || meta.hasProfile() || meta.hasSecurity() || meta.hasTag()) {
+            collection.setMeta(convertToJsonString(getResMetaString(valueSet), META));
+        }
     }
 
     protected void addJsonStrings(final ConceptMap conceptMap, final Source source) {
@@ -208,6 +216,10 @@ public class BaseConverter {
             source.setJurisdiction(convertToJsonString(getResJurisdictionString(conceptMap), JURISDICTION));
         if (conceptMap.getText().getStatus() != null || !conceptMap.getText().getDiv().isEmpty())
             source.setText(convertToJsonString(getResTextString(conceptMap), TEXT));
+        Meta meta = conceptMap.getMeta();
+        if (meta.hasLastUpdated() || meta.hasSource() || meta.hasProfile() || meta.hasSecurity() || meta.hasTag()) {
+            source.setMeta(convertToJsonString(getResMetaString(conceptMap), META));
+        }
     }
 
     protected Long insert(SimpleJdbcInsert insert, Map<String, Object> parameters) {
@@ -245,6 +257,12 @@ public class BaseConverter {
         return getFhirContext().newJsonParser().encodeResourceToString(system);
     }
 
+    private String getResMetaString(final CodeSystem codeSystem) {
+        CodeSystem system = new CodeSystem();
+        system.setMeta(codeSystem.getMeta());
+        return getFhirContext().newJsonParser().encodeResourceToString(system);
+    }
+
     private String getResIdentifierString(final ValueSet valueSet) {
         ValueSet set = new ValueSet();
         set.setIdentifier(valueSet.getIdentifier());
@@ -269,6 +287,12 @@ public class BaseConverter {
         return getFhirContext().newJsonParser().encodeResourceToString(set);
     }
 
+    private String getResMetaString(final ValueSet valueSet) {
+        ValueSet set = new ValueSet();
+        set.setMeta(valueSet.getMeta());
+        return getFhirContext().newJsonParser().encodeResourceToString(set);
+    }
+
     private String getResIdentifierString(final ConceptMap conceptMap) {
         ConceptMap map = new ConceptMap();
         map.setIdentifier(conceptMap.getIdentifier());
@@ -290,6 +314,12 @@ public class BaseConverter {
     private String getResTextString(final ConceptMap conceptMap) {
         ConceptMap map = new ConceptMap();
         map.setText(conceptMap.getText());
+        return getFhirContext().newJsonParser().encodeResourceToString(map);
+    }
+
+    private String getResMetaString(final ConceptMap conceptMap) {
+        ConceptMap map = new ConceptMap();
+        map.setMeta(conceptMap.getMeta());
         return getFhirContext().newJsonParser().encodeResourceToString(map);
     }
 

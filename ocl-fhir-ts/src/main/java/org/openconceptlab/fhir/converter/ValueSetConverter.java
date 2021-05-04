@@ -118,7 +118,12 @@ public class ValueSetConverter extends BaseConverter {
             valueSet.setPublisher(collection.getPublisher());
         // identifier, contact, jurisdiction
         addJsonFields(valueSet, isValid(collection.getIdentifier()) && !EMPTY_JSON.equals(collection.getIdentifier())
-                ? collection.getIdentifier() : EMPTY, collection.getContact(), collection.getJurisdiction(), collection.getText());
+                ? collection.getIdentifier() : EMPTY, collection.getContact(), collection.getJurisdiction(), collection.getText(),
+                collection.getMeta());
+        // add lastUpdated date is not populated in valueSet.meta.lastUpdated
+        if (valueSet.getMeta().getLastUpdated() == null) {
+            valueSet.getMeta().setLastUpdated(collection.getUpdatedAt());
+        }
         // add accession identifier if not present
         Optional<Identifier> identifierOpt = valueSet.getIdentifier().stream()
                 .filter(i -> i.getType().hasCoding(ACSN_SYSTEM, ACSN)).findAny();

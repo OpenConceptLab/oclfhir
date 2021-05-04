@@ -98,7 +98,12 @@ public class ConceptMapConverter extends BaseConverter {
             conceptMap.setPublisher(source.getPublisher());
         // identifier, contact, jurisdiction
         addJsonFields(conceptMap, isValid(source.getIdentifier()) && !EMPTY_JSON.equals(source.getIdentifier()) ?
-                        source.getIdentifier() : EMPTY, source.getContact(), source.getJurisdiction(), source.getText());
+                        source.getIdentifier() : EMPTY, source.getContact(), source.getJurisdiction(), source.getText(),
+                source.getMeta());
+        // add lastUpdated date is not populated in conceptMap.meta.lastUpdated
+        if (conceptMap.getMeta().getLastUpdated() == null) {
+            conceptMap.getMeta().setLastUpdated(source.getUpdatedAt());
+        }
         // add accession identifier if not present
         if (conceptMap.getIdentifier().isEmpty() || !conceptMap.getIdentifier().getType().hasCoding(ACSN_SYSTEM, ACSN)) {
             getIdentifier(source.getUri().replace(SOURCES, CONCEPTMAP))

@@ -136,7 +136,11 @@ public class CodeSystemConverter extends BaseConverter {
 			codeSystem.setPublisher(source.getPublisher());
 		// identifier, contact, jurisdiction
 		addJsonFields(codeSystem, isValid(source.getIdentifier()) && !EMPTY_JSON.equals(source.getIdentifier()) ? source.getIdentifier() : EMPTY,
-				source.getContact(), source.getJurisdiction(), source.getText());
+				source.getContact(), source.getJurisdiction(), source.getText(), source.getMeta());
+		// add lastUpdated date is not populated in codeSystem.meta.lastUpdated
+		if (codeSystem.getMeta().getLastUpdated() == null) {
+			codeSystem.getMeta().setLastUpdated(source.getUpdatedAt());
+		}
 		// add accession identifier if not present
 		Optional<Identifier> identifierOpt = codeSystem.getIdentifier().stream()
 				.filter(i -> i.getType().hasCoding(ACSN_SYSTEM, ACSN)).findAny();
