@@ -122,6 +122,7 @@ public class BaseConverter {
         if (token == null) {
             throw new AuthenticationException("Invalid authentication token.");
         }
+        if (isOclAdmin(token)) return;
         if (isValid(username)) {
             if (!username.equals(token.getUserProfile().getUsername())) {
                 throw new AuthenticationException("The " + username + " is not authorized to use the token provided.");
@@ -454,6 +455,15 @@ public class BaseConverter {
                 .filter(f -> isValid(f.getKey()))
                 .map(m -> "Token " + m.getKey())
                 .findFirst();
+    }
+
+    protected boolean isOclAdmin(AuthtokenToken token) {
+        if (token == null) {
+            throw new AuthenticationException("Invalid authentication token.");
+        }
+        return oclUser.getAuthtokenTokens().stream()
+                .filter(f -> isValid(f.getKey()))
+                .anyMatch(f -> f.getKey().equals(token.getKey()));
     }
 
     protected void removeAccessionIdentifier(List<Identifier> identifiers) {
