@@ -805,8 +805,8 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         verify(organizationRepository, times(1)).findByMnemonic(anyString());
         verify(authtokenRepository, times(1)).findByKey(anyString());
         verify(userProfilesOrganizationRepository, times(1)).findByOrganizationMnemonic(anyString());
-        verify(collectionRepository, times(1)).saveAndFlush(any(Collection.class));
-        verify(insertCollectionReference, times(1)).executeAndReturnKeyHolder(anyMap());
+        verify(collectionRepository, times(2)).saveAndFlush(any(Collection.class));
+        verify(insertCollectionReference, times(2)).executeAndReturnKeyHolder(anyMap());
     }
 
     @Test

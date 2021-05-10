@@ -6,11 +6,14 @@ import ca.uhn.fhir.rest.server.exceptions.AuthenticationException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceVersionConflictException;
+import ch.qos.logback.core.net.SyslogOutputStream;
+import com.google.common.collect.Sets;
 import com.openpojo.reflection.impl.PojoClassFactory;
 import com.openpojo.validation.Validator;
 import com.openpojo.validation.ValidatorBuilder;
 import com.openpojo.validation.test.impl.GetterTester;
 import com.openpojo.validation.test.impl.SetterTester;
+import org.apache.commons.collections4.list.TreeList;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
 import org.hl7.fhir.utilities.xhtml.XhtmlNode;
@@ -37,7 +40,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.rmi.server.ExportException;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -738,9 +743,9 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         verify(organizationRepository, times(1)).findByMnemonic(anyString());
         verify(authtokenRepository, times(1)).findByKey(anyString());
         verify(userProfilesOrganizationRepository, times(1)).findByOrganizationMnemonic(anyString());
-        verify(sourceRepository, times(1)).saveAndFlush(any(Source.class));
-        verify(insertConcept, times(1)).executeAndReturnKeyHolder(anyMap());
-        verify(insertLocalizedText, times(2)).executeAndReturnKeyHolder(anyMap());
+        verify(sourceRepository, times(2)).saveAndFlush(any(Source.class));
+        verify(insertConcept, times(4)).executeAndReturnKeyHolder(anyMap());
+        verify(insertLocalizedText, times(8)).executeAndReturnKeyHolder(anyMap());
     }
 
     @Test

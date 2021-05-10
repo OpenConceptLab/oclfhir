@@ -47,7 +47,6 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
     }
 
     @Create
-    @Transactional
     public MethodOutcome createConceptMap(@ResourceParam ConceptMap conceptMap, RequestDetails requestDetails) {
         if (conceptMap == null) {
             throw new InvalidRequestException("The ConceptMap can not be empty");

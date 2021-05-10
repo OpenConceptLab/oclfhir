@@ -18,6 +18,7 @@ import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
+import org.springframework.jdbc.core.PreparedStatementSetter;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.stereotype.Component;
@@ -50,7 +51,12 @@ public class CodeSystemConverter extends BaseConverter {
 	private static final String updateConceptSql = "update concepts set " +
 			" version = ?, " +
 			" versioned_object_id = ?, " +
-			" uri = (select substring(c2.uri, 1 ,length(c2.uri) - 2) || c2.id || '/' from concepts c2 where c2.id = ?) " +
+			" uri = (select c2.uri || c2.id || '/' from concepts c2 where c2.id = ?) " +
+			" where id = ?";
+
+	private static final String updateConceptBaseSql = "update concepts set " +
+			" version = ?, " +
+			" versioned_object_id = ? " +
 			" where id = ?";
 
 	public CodeSystemConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil,
@@ -339,30 +345,42 @@ public class CodeSystemConverter extends BaseConverter {
 		// add parent and access
 		addParent(source, oclEntity.getOwner());
 		// add identifier, contact and jurisdiction
+		removeVersionFromIdentifier(codeSystem.getIdentifier());
 		addJsonStrings(codeSystem, source);
 		// add concepts
 		List<Concept> concepts = toConcepts(codeSystem.getConcept(), isValid(codeSystem.getLanguage()) ? codeSystem.getLanguage() : EN_LOCALE);
 		populateBaseConceptField(concepts, source, user);
 
+		// save given version
+		saveSource(source, concepts);
+		// save HEAD version
+		source.setId(null);
+		source.setVersion(HEAD);
+		source.setIsLatestVersion(false);
+		source.setReleased(false);
+		source.setUri(removeVersion(source.getUri()));
+		saveSource(source, concepts);
+
+		// populate index
+		oclFhirUtil.populateIndex(getToken(), SOURCES, CONCEPTS);
+	}
+
+	@Transactional
+	protected void saveSource(Source source, List<Concept> concepts) {
 		// save source
 		sourceRepository.saveAndFlush(source);
 		log.info("saved source - " + source.getMnemonic());
 
 		// save concepts
 		saveConcepts(source, concepts);
-
-		// populate index
-		oclFhirUtil.populateIndex(getToken(), SOURCES, CONCEPTS);
 	}
 
 	private void saveConcepts(Source source, List<Concept> concepts) {
 		List<Integer> conceptIds = new CopyOnWriteArrayList<>();
 		// save concept
 		persistConcepts(concepts, conceptIds);
-		// update concept version
-		List<List<Integer>> conceptIdBatches = updateConcepts(conceptIds);
 		// save concepts sources
-		saveConceptsSources(source.getId(), conceptIds, conceptIdBatches);
+		saveConceptsSources(source.getId(), conceptIds);
 	}
 
 	private void persistConcepts(List<Concept> concepts, List<Integer> conceptIds) {
@@ -376,30 +394,9 @@ public class CodeSystemConverter extends BaseConverter {
 		}
 	}
 
-	private List<List<Integer>> updateConcepts(List<Integer> conceptIds) {
-		// update concept version = concept id
-		List<List<Integer>> conceptIdBatches = ListUtils.partition(conceptIds, 1000);
-		conceptIdBatches.forEach(this::batchUpdateConcept);
-		return conceptIdBatches;
-	}
-
-	protected void batchUpdateConcept(List<Integer> conceptIds) {
-		this.jdbcTemplate.batchUpdate(updateConceptSql, new BatchPreparedStatementSetter() {
-			public void setValues(PreparedStatement ps, int i)
-					throws SQLException {
-				ps.setInt(1, conceptIds.get(i));
-				ps.setInt(2, conceptIds.get(i));
-				ps.setInt(3, conceptIds.get(i));
-				ps.setInt(4, conceptIds.get(i));
-			}
-			public int getBatchSize() {
-				return conceptIds.size();
-			}
-		});
-	}
-
-	private void saveConceptsSources(Long sourceId, List<Integer> conceptIds, List<List<Integer>> conceptIdBatches) {
+	private void saveConceptsSources(Long sourceId, List<Integer> conceptIds) {
 		// save concepts sources
+		List<List<Integer>> conceptIdBatches = ListUtils.partition(conceptIds, 1000);
 		conceptIdBatches.forEach(b -> batchUpdateConceptSources(b, sourceId));
 		log.info("saved " + conceptIds.size() + " concepts");
 	}
@@ -648,7 +645,7 @@ public class CodeSystemConverter extends BaseConverter {
 			c.setCreatedBy(user);
 			c.setUpdatedBy(user);
 			c.setVersionedObject(c);
-			c.setUri(getVersionLessSourceUri(source) + CONCEPTS + FS + c.getMnemonic() + FS + c.getVersion() + FS);
+			c.setUri(getVersionLessSourceUri(source) + CONCEPTS + FS + c.getMnemonic() + FS);
 			c.setExtras(EMPTY_JSON);
 		});
 	}
@@ -694,21 +691,53 @@ public class CodeSystemConverter extends BaseConverter {
 
 	private void batchConcepts(List<Concept> concepts, List<Integer> conceptIds) {
 		concepts.forEach(c -> {
-			Integer conceptId = insert(insertConcept, toMap(c)).intValue();
-			if (!c.getConceptsNames().isEmpty()) {
-				List<Long> nameIds = insertRows(
-						c.getConceptsNames().stream().filter(Objects::nonNull).filter(f -> f.getLocalizedText() != null).map(ConceptsName::getLocalizedText).collect(Collectors.toList())
-				);
-				batchInsertConceptNames(insertConceptNamesSql, nameIds, conceptId);
-			}
-			if (!c.getConceptsDescriptions().isEmpty()) {
-				List<Long> descIds = insertRows(
-						c.getConceptsDescriptions().stream().filter(Objects::nonNull).filter(f -> f.getLocalizedText() != null).map(ConceptsDescription::getLocalizedText).collect(Collectors.toList())
-				);
-				batchInsertConceptNames(insertConceptDescSql, descIds, conceptId);
-			}
-			conceptIds.add(conceptId);
+			boolean isLatestVersion = c.getIsLatestVersion();
+			boolean released = c.getReleased();
+			// base concept version
+			c.setIsLatestVersion(false);
+			c.setReleased(false);
+			Integer id1 = saveConcept(c);
+			this.jdbcTemplate.update(updateConceptBaseSql, new PreparedStatementSetter() {
+				@Override
+				public void setValues(PreparedStatement ps) throws SQLException {
+					ps.setInt(1, id1);
+					ps.setInt(2, id1);
+					ps.setInt(3, id1);
+				}
+			});
+  			// first concept version (Ideally we should only be creating one concept record, but we need to create two for OCL API compatibility)
+			c.setIsLatestVersion(isLatestVersion);
+			c.setReleased(released);
+			Integer id2 = saveConcept(c);
+			this.jdbcTemplate.update(updateConceptSql, new PreparedStatementSetter() {
+				@Override
+				public void setValues(PreparedStatement ps) throws SQLException {
+					ps.setInt(1, id2);
+					ps.setInt(2, id1);
+					ps.setInt(3, id2);
+					ps.setInt(4, id2);
+				}
+			});
+			conceptIds.add(id1);
+			conceptIds.add(id2);
 		});
+	}
+
+	private Integer saveConcept(Concept c) {
+		Integer conceptId = insert(insertConcept, toMap(c)).intValue();
+		if (!c.getConceptsNames().isEmpty()) {
+			List<Long> nameIds = insertRows(
+					c.getConceptsNames().stream().filter(Objects::nonNull).filter(f -> f.getLocalizedText() != null).map(ConceptsName::getLocalizedText).collect(Collectors.toList())
+			);
+			batchInsertConceptNames(insertConceptNamesSql, nameIds, conceptId);
+		}
+		if (!c.getConceptsDescriptions().isEmpty()) {
+			List<Long> descIds = insertRows(
+					c.getConceptsDescriptions().stream().filter(Objects::nonNull).filter(f -> f.getLocalizedText() != null).map(ConceptsDescription::getLocalizedText).collect(Collectors.toList())
+			);
+			batchInsertConceptNames(insertConceptDescSql, descIds, conceptId);
+		}
+		return conceptId;
 	}
 
 	private Map<String, Object> toMap(LocalizedText text) {

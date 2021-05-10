@@ -49,7 +49,6 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
     }
 
     @Create
-    @Transactional
     public MethodOutcome createCodeSystem(@ResourceParam CodeSystem codeSystem, RequestDetails requestDetails) {
         if (codeSystem == null) {
             throw new InvalidRequestException("The CodeSystem can not be empty");

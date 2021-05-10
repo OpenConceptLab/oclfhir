@@ -608,7 +608,6 @@ public class ValueSetConverter extends BaseConverter {
         return ar[2];
     }
 
-    @Transactional
     public void createValueSet(ValueSet valueSet, String accessionId, String authToken) {
         // validate and authenticate
         OclEntity oclEntity = new OclEntity(valueSet, accessionId, authToken, true);
@@ -619,22 +618,33 @@ public class ValueSetConverter extends BaseConverter {
         // add parent and access
         addParent(collection, oclEntity.getOwner());
         // add identifier, contact and jurisdiction
+        removeVersionFromIdentifier(valueSet.getIdentifier());
         addJsonStrings(valueSet, collection);
         // add concepts
         Map<Source,List<String>> sourceToConceptMap = toConcepts(valueSet.getCompose(), valueSet.getLanguage());
         Map<Long,String> validatedConceptIds = new HashMap<>();
         Set<String> expressions = new HashSet<>();
-        sourceToConceptMap.forEach((source,conceptIds) -> {
-            // validate source-concept relationship and build reference expressions
-            String ownerType = source.getOrganization() != null ? ORGS : USERS;
-            String owner = source.getOrganization() != null ? source.getOrganization().getMnemonic() :
-                    source.getUserId().getUsername();
-            Map<Long,String> validated = getValidatedConceptIds(source.getId(), conceptIds);
-            validatedConceptIds.putAll(validated);
-            expressions.addAll(toExpression(ownerType, owner, source.getMnemonic(), source.getVersion(), validated));
+        sourceToConceptMap.forEach((source, conceptIds) -> {
+            if (!conceptIds.isEmpty()) {
+                // validate source-concept relationship and build reference expressions
+                String ownerType = source.getOrganization() != null ? ORGS : USERS;
+                String owner = source.getOrganization() != null ? source.getOrganization().getMnemonic() :
+                        source.getUserId().getUsername();
+                Map<Long, String> validated = getValidatedConceptIds(source.getId(), conceptIds);
+                validatedConceptIds.putAll(validated);
+                expressions.addAll(toExpression(ownerType, owner, source.getMnemonic(), source.getVersion(), validated));
+            }
         });
-        // save
+        // save given version
         saveCollection(collection, validatedConceptIds, expressions);
+        // save HEAD version
+        collection.setId(null);
+        collection.setVersion(HEAD);
+        collection.setIsLatestVersion(false);
+        collection.setReleased(false);
+        collection.setUri(removeVersion(collection.getUri()));
+        saveCollection(collection, validatedConceptIds, expressions);
+
         // clear data
         sourceToConceptMap.clear();
         validatedConceptIds.clear();

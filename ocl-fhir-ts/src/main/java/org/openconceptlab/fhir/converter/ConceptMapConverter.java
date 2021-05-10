@@ -379,15 +379,28 @@ public class ConceptMapConverter extends BaseConverter {
         // add mappings
         List<Mapping> mappings = getMappings(conceptMap, source, user);
 
+        // save given version
+        saveSource(source, mappings);
+        // save HEAD version
+        source.setId(null);
+        source.setVersion(HEAD);
+        source.setIsLatestVersion(false);
+        source.setReleased(false);
+        source.setUri(removeVersion(source.getUri()));
+        saveSource(source, mappings);
+
+        // populate index
+        oclFhirUtil.populateIndex(getToken(), SOURCES, MAPPINGS);
+    }
+
+    @Transactional
+    protected void saveSource(Source source, List<Mapping> mappings) {
         // save source
         sourceRepository.saveAndFlush(source);
         log.info("saved source - " + source.getMnemonic());
 
         // save mappings
         saveMappings(source, mappings);
-
-        // populate index
-        oclFhirUtil.populateIndex(getToken(), SOURCES, MAPPINGS);
     }
 
     private List<Mapping> toMappings(List<ConceptMap.ConceptMapGroupComponent> components) {
@@ -554,29 +567,6 @@ public class ConceptMapConverter extends BaseConverter {
         map.put(UPDATED_AT, obj.getParent().getUpdatedAt());
         return map;
     }
-
-//    private void saveMappingsAlternate(Source source, List<Mapping> mappings) {
-//        String versionLessSourceUri = getVersionLessSourceUri(source);
-//        List<Integer> mappingIdVersions = new ArrayList<>();
-//        mappings.forEach(m -> {
-//            Map<String, Object> map = toMap(m);
-//
-//            map.put(IS_LATEST_VERSION, false);
-//            map.put(IS_ACTIVE, true);
-//            Integer mappingId = insert(insertMapping, map).intValue();
-//            jdbcTemplate.update(updateMappingSql, mappingId, mappingId, mappingId,
-//                    versionLessSourceUri + MAPPINGS + FS + mappingId + FS, mappingId);
-//
-//            map.put(IS_LATEST_VERSION, true);
-//            Integer mappingIdVersion = insert(insertMapping, map).intValue();
-//            jdbcTemplate.update(updateMappingSql, mappingIdVersion, mappingIdVersion, mappingIdVersion,
-//                    versionLessSourceUri + MAPPINGS + FS + mappingId + FS + mappingIdVersion + FS, mappingIdVersion);
-//            mappingIdVersions.add(mappingIdVersion);
-//        });
-//        List<List<Integer>> batches = ListUtils.partition(mappingIdVersions, 1000);
-//        saveMappingsSources(source.getId(), batches);
-//        log.info("saved " + mappingIdVersions.size() + " mappings");
-//    }
 
     private void saveMappings(Source source, List<Mapping> mappings) {
         String versionLessSourceUri = getVersionLessSourceUri(source);

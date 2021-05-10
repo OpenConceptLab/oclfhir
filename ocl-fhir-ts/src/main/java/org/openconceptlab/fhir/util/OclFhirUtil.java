@@ -816,7 +816,7 @@ public class OclFhirUtil {
     }
 
     public static String getSourceType(MetadataResource resource) {
-        String url = BASE_URL + "/codesystem-type";
+        String url = BASE_URL + "/resource-type";
         List<Extension> extensions = resource.getExtension();
         for (Extension extension : extensions) {
             if (url.equals(extension.getUrl())) {

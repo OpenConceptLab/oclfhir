@@ -584,5 +584,23 @@ public class BaseConverter {
         return value.substring(0, value.lastIndexOf(FS)) + FS;
     }
 
+    protected String removeVersion(String uri) {
+        if (!isValid(uri)) return EMPTY;
+        String[] arr = uri.split(FS);
+        if (arr.length >= 5) {
+            return FS + String.join(FS, arr[1], arr[2], arr[3], arr[4]) + FS;
+        }
+        return uri;
+    }
+
+    protected void removeVersionFromIdentifier(List<Identifier> identifiers) {
+        if (identifiers.isEmpty()) return;
+        identifiers.stream()
+                .filter(i -> ACSN_SYSTEM.equals(i.getType().getCodingFirstRep().getSystem())
+                    && ACSN.equals(i.getType().getCodingFirstRep().getCode()))
+                .findAny()
+                .ifPresent(i -> i.setValue(i.getValue().replaceAll("/version/.*", FS)));
+    }
+
 }
 
