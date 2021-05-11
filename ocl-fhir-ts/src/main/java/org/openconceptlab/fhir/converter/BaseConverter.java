@@ -178,6 +178,32 @@ public class BaseConverter {
         }
     }
 
+    protected boolean checkHeadVersionId(String username, String org, String id, String resourceType) {
+        if (CODESYSTEM.equals(resourceType) || CONCEPTMAP.equals(resourceType)) {
+            Source userSource = sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsername(id, HEAD, username);
+            Source orgSource = sourceRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonic(id, HEAD, org);
+            if (userSource != null || orgSource != null) return true;
+        } else if (VALUESET.equals(resourceType)) {
+            Collection userCollection = collectionRepository.findFirstByMnemonicAndVersionAndUserIdUsername(id, HEAD, username);
+            Collection orgCollection = collectionRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonic(id, HEAD, org);
+            if (userCollection != null || orgCollection != null) return true;
+        }
+        return false;
+    }
+
+    protected boolean checkHeadVersionUrl(String username, String org, String url, String resourceType) {
+        if (CODESYSTEM.equals(resourceType) || CONCEPTMAP.equals(resourceType)) {
+            Source userSource = sourceRepository.findFirstByCanonicalUrlAndVersionAndUserIdUsername(url, HEAD, username);
+            Source orgSource = sourceRepository.findFirstByCanonicalUrlAndVersionAndOrganizationMnemonic(url, HEAD, org);
+            if (userSource != null || orgSource != null) return true;
+        } else if (VALUESET.equals(resourceType)) {
+            Collection userCollection = collectionRepository.findFirstByCanonicalUrlAndVersionAndUserIdUsername(url, HEAD, username);
+            Collection orgCollection = collectionRepository.findFirstByCanonicalUrlAndVersionAndOrganizationMnemonic(url, HEAD, org);
+            if (userCollection != null || orgCollection != null) return true;
+        }
+        return false;
+    }
+
     protected void addJsonStrings(final CodeSystem codeSystem, final Source source) {
         if (!codeSystem.getIdentifier().isEmpty())
             source.setIdentifier(convertToJsonString(getResIdentifierString(codeSystem), IDENTIFIER));
@@ -358,6 +384,11 @@ public class BaseConverter {
         private BaseOclEntity owner;
         private UserProfile userProfile;
         private String accessionId;
+        private String org;
+        private String username;
+        private String resourceId;
+        private String resourceType;
+        private String url;
 
         public OclEntity(MetadataResource resource, String accessionId, String authToken, boolean validateIfExists) {
             // we'll support two type of accession id patterns as input
@@ -367,20 +398,20 @@ public class BaseConverter {
             String username = EMPTY;
             String resourceId = EMPTY;
             String formattedId = formatExpression(accessionId);
-            String [] ar = formattedId.split(FS);
+            String[] ar = formattedId.split(FS);
             if (ar.length >= 5) {
                 if (ORGS.equals(ar[1]) && isValid(ar[2])) {
                     org = ar[2];
-                } else if (USERS.equals(ar[1]) && isValid(ar[2])){
+                } else if (USERS.equals(ar[1]) && isValid(ar[2])) {
                     username = ar[2];
                 }
                 if (resource.getClass().getSimpleName().toLowerCase().equals(ar[3].toLowerCase()) && isValid(ar[4])) {
                     resourceId = ar[4];
                     resource.setId(resourceId);
                 }
-                if (ar.length >=6 && isValid(ar[5])) {
+                if (ar.length >= 6 && isValid(ar[5])) {
                     if (VERSION.equals(ar[5])) {
-                        if (ar.length >=7 && isValid(ar[6]))
+                        if (ar.length >= 7 && isValid(ar[6]))
                             resource.setVersion(ar[6]);
                     } else {
                         resource.setVersion(ar[5]);
@@ -408,6 +439,11 @@ public class BaseConverter {
             this.owner = owner;
             this.userProfile = token.getUserProfile();
             this.accessionId = formattedId;
+            this.org = org;
+            this.username = username;
+            this.resourceId = resourceId;
+            this.resourceType = resource.getClass().getSimpleName();
+            this.url = url;
         }
 
         public BaseOclEntity getOwner() {
@@ -420,6 +456,26 @@ public class BaseConverter {
 
         public String getAccessionId() {
             return accessionId;
+        }
+
+        public String getOrg() {
+            return org;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public String getResourceId() {
+            return resourceId;
+        }
+
+        public String getResourceType() {
+            return resourceType;
+        }
+
+        public String getUrl() {
+            return url;
         }
     }
 

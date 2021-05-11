@@ -635,16 +635,20 @@ public class ValueSetConverter extends BaseConverter {
                 expressions.addAll(toExpression(ownerType, owner, source.getMnemonic(), source.getVersion(), validated));
             }
         });
+
         // save given version
         saveCollection(collection, validatedConceptIds, expressions);
-        // save HEAD version
-        collection.setId(null);
-        collection.setVersion(HEAD);
-        collection.setIsLatestVersion(false);
-        collection.setReleased(false);
-        collection.setUri(removeVersion(collection.getUri()));
-        saveCollection(collection, validatedConceptIds, expressions);
-
+        boolean isHeadExists = checkHeadVersionId(oclEntity.getUsername(), oclEntity.getOrg(), oclEntity.getResourceId(), oclEntity.getResourceType()) ||
+                checkHeadVersionUrl(oclEntity.getUsername(), oclEntity.getOrg(), oclEntity.getUrl(), oclEntity.getResourceType());
+        if (!isHeadExists) {
+            // save HEAD version
+            collection.setId(null);
+            collection.setVersion(HEAD);
+            collection.setIsLatestVersion(false);
+            collection.setReleased(false);
+            collection.setUri(removeVersion(collection.getUri()));
+            saveCollection(collection, validatedConceptIds, expressions);
+        }
         // clear data
         sourceToConceptMap.clear();
         validatedConceptIds.clear();

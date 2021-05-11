@@ -353,14 +353,18 @@ public class CodeSystemConverter extends BaseConverter {
 
 		// save given version
 		saveSource(source, concepts);
-		// save HEAD version
-		source.setId(null);
-		source.setVersion(HEAD);
-		source.setIsLatestVersion(false);
-		source.setReleased(false);
-		source.setUri(removeVersion(source.getUri()));
-		saveSource(source, concepts);
 
+		boolean isHeadExists = checkHeadVersionId(oclEntity.getUsername(), oclEntity.getOrg(), oclEntity.getResourceId(), oclEntity.getResourceType()) ||
+				checkHeadVersionUrl(oclEntity.getUsername(), oclEntity.getOrg(), oclEntity.getUrl(), oclEntity.getResourceType());
+		if (!isHeadExists) {
+			// save HEAD version
+			source.setId(null);
+			source.setVersion(HEAD);
+			source.setIsLatestVersion(false);
+			source.setReleased(false);
+			source.setUri(removeVersion(source.getUri()));
+			saveSource(source, concepts);
+		}
 		// populate index
 		oclFhirUtil.populateIndex(getToken(), SOURCES, CONCEPTS);
 	}

@@ -381,14 +381,18 @@ public class ConceptMapConverter extends BaseConverter {
 
         // save given version
         saveSource(source, mappings);
-        // save HEAD version
-        source.setId(null);
-        source.setVersion(HEAD);
-        source.setIsLatestVersion(false);
-        source.setReleased(false);
-        source.setUri(removeVersion(source.getUri()));
-        saveSource(source, mappings);
 
+        boolean isHeadExists = checkHeadVersionId(oclEntity.getUsername(), oclEntity.getOrg(), oclEntity.getResourceId(), oclEntity.getResourceType()) ||
+                checkHeadVersionUrl(oclEntity.getUsername(), oclEntity.getOrg(), oclEntity.getUrl(), oclEntity.getResourceType());
+        if (!isHeadExists) {
+            // save HEAD version
+            source.setId(null);
+            source.setVersion(HEAD);
+            source.setIsLatestVersion(false);
+            source.setReleased(false);
+            source.setUri(removeVersion(source.getUri()));
+            saveSource(source, mappings);
+        }
         // populate index
         oclFhirUtil.populateIndex(getToken(), SOURCES, MAPPINGS);
     }
