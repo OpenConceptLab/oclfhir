@@ -34,6 +34,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
+import org.springframework.jdbc.core.RowMapper;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -56,6 +57,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
     public void setUpBefore() {
         MockitoAnnotations.initMocks(this);
         when(requestDetails.getCompleteUrl()).thenReturn("http://test.org");
+        when(jdbcTemplate.queryForObject(anyString(), any(RowMapper.class), anyLong())).thenReturn(1);
         source1 = source(123L, V_1_0, concept1(), concept2(), concept3());
         source2 = source(234L, "v2.0", concept1(), concept2(), concept3(), concept4());
         source3 = source(345L, "v3.0", concept1(), concept2(), concept3(), concept4());
