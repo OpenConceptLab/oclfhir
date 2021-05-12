@@ -59,6 +59,11 @@ public class CodeSystemConverter extends BaseConverter {
 			" versioned_object_id = ? " +
 			" where id = ?";
 
+	private static final String conceptCountsql = "select count(*) from (select max(cs.concept_id) as concept_id , c1.mnemonic from concepts_sources cs \n" +
+			"inner join concepts c1 on c1.id = cs.concept_id \n" +
+			"where cs.source_id = ? \n" +
+			"group by c1.mnemonic) as val";
+
 	public CodeSystemConverter(SourceRepository sourceRepository, ConceptRepository conceptRepository, OclFhirUtil oclFhirUtil,
 							   UserProfile oclUser, ConceptsSourceRepository conceptsSourceRepository, DataSource dataSource,
 							   AuthtokenRepository authtokenRepository, UserProfilesOrganizationRepository userProfilesOrganizationRepository,
@@ -134,7 +139,7 @@ public class CodeSystemConverter extends BaseConverter {
         if(StringUtils.isNotBlank(source.getDescription()))
             codeSystem.setDescription(source.getDescription());
         // count
-		codeSystem.setCount(conceptRepository.findConceptCountInSource(source.getId()));
+		codeSystem.setCount(getConceptCount(source.getId()));
         // property
 		addProperty(codeSystem);
 		// publisher
@@ -799,6 +804,15 @@ public class CodeSystemConverter extends BaseConverter {
 				.filter(c ->
 						!isValid(filter.getVersion()) || isVersionAll(filter.getVersion()) || (isValid(c.getVersion()) && c.getVersion().equals(filter.getVersion())))
 				.collect(Collectors.toList());
+	}
+
+	private int getConceptCount(Long sourceId) {
+		return this.jdbcTemplate.queryForObject(conceptCountsql, new RowMapper<Integer>() {
+			@Override
+			public Integer mapRow(ResultSet resultSet, int i) throws SQLException {
+				return resultSet.getInt(1);
+			}
+		}, sourceId);
 	}
 
 }
