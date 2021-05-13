@@ -363,6 +363,7 @@ public class CodeSystemConverter extends BaseConverter {
 				checkHeadVersionUrl(oclEntity.getUsername(), oclEntity.getOrg(), oclEntity.getUrl(), oclEntity.getResourceType());
 		if (!isHeadExists) {
 			// save HEAD version
+			log.info("Creating HEAD version - " + source.getMnemonic());
 			source.setId(null);
 			source.setVersion(HEAD);
 			source.setIsLatestVersion(false);

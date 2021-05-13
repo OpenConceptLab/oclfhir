@@ -182,11 +182,17 @@ public class BaseConverter {
         if (CODESYSTEM.equals(resourceType) || CONCEPTMAP.equals(resourceType)) {
             Source userSource = sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsername(id, HEAD, username);
             Source orgSource = sourceRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonic(id, HEAD, org);
-            if (userSource != null || orgSource != null) return true;
+            if (userSource != null || orgSource != null) {
+                log.info(String.format("Found source id:%s, version:HEAD, user:%s, org:%s", id, username, org));
+                return true;
+            }
         } else if (VALUESET.equals(resourceType)) {
             Collection userCollection = collectionRepository.findFirstByMnemonicAndVersionAndUserIdUsername(id, HEAD, username);
             Collection orgCollection = collectionRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonic(id, HEAD, org);
-            if (userCollection != null || orgCollection != null) return true;
+            if (userCollection != null || orgCollection != null) {
+                log.info(String.format("Found collection id:%s, version:HEAD, user:%s, org:%s", id, username, org));
+                return true;
+            }
         }
         return false;
     }
@@ -195,11 +201,17 @@ public class BaseConverter {
         if (CODESYSTEM.equals(resourceType) || CONCEPTMAP.equals(resourceType)) {
             Source userSource = sourceRepository.findFirstByCanonicalUrlAndVersionAndUserIdUsername(url, HEAD, username);
             Source orgSource = sourceRepository.findFirstByCanonicalUrlAndVersionAndOrganizationMnemonic(url, HEAD, org);
-            if (userSource != null || orgSource != null) return true;
+            if (userSource != null || orgSource != null) {
+                log.info(String.format("Found source url:%s, version:HEAD, user:%s, org:%s", url, username, org));
+                return true;
+            }
         } else if (VALUESET.equals(resourceType)) {
             Collection userCollection = collectionRepository.findFirstByCanonicalUrlAndVersionAndUserIdUsername(url, HEAD, username);
             Collection orgCollection = collectionRepository.findFirstByCanonicalUrlAndVersionAndOrganizationMnemonic(url, HEAD, org);
-            if (userCollection != null || orgCollection != null) return true;
+            if (userCollection != null || orgCollection != null) {
+                log.info(String.format("Found collection url:%s, version:HEAD, user:%s, org:%s", url, username, org));
+                return true;
+            }
         }
         return false;
     }
