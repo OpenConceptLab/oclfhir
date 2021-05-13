@@ -349,39 +349,12 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
                         ownerId, access));
             }
         } else {
-            Collection collection = getCollectionVersion(id, version, access, ownerType, ownerId);
+            Collection collection = oclFhirUtil.getCollectionVersion(id, version, access, ownerType, ownerId);
             if (collection != null) collections.add(collection);
         }
         if (collections.isEmpty())
             throw new ResourceNotFoundException(notFound(ValueSet.class, owner, id, version));
         return collections;
-    }
-
-    public Collection getCollectionVersion(StringType id, StringType version, List<String> access, String ownerType, String ownerId) {
-        final Collection collection;
-        if (!isValid(version)) {
-            // get latest version
-            collection = getLatestCollectionByOwner(id.getValue(), ownerId, ownerType, access);
-        } else {
-            // get a given version
-            if (ORG.equals(ownerType)) {
-                collection = collectionRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(
-                        id.getValue(), version.getValue(), ownerId, access);
-            } else {
-                collection = collectionRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(
-                        id.getValue(), version.getValue(), ownerId, access);
-            }
-        }
-        return collection;
-    }
-
-    private Collection getLatestCollectionByOwner(String id, String owner, String ownerType, List<String> access) {
-        if (ORG.equals(ownerType)) {
-            return collectionRepository.findFirstByMnemonicAndPublicAccessInAndOrganizationMnemonicAndIsLatestVersionOrderByCreatedAtDesc(
-                    id, access, owner, true);
-        }
-        return collectionRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameAndIsLatestVersionOrderByCreatedAtDesc(
-                id, access, owner, true);
     }
 
     private Collection getLatestCollectionByUrl(StringType url, List<String> access) {

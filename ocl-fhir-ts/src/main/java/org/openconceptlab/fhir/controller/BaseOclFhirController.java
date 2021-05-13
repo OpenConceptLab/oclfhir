@@ -9,6 +9,7 @@ import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.model.Source;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
+import org.openconceptlab.fhir.repository.CollectionRepository;
 import org.openconceptlab.fhir.repository.SourceRepository;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,9 @@ public class BaseOclFhirController {
 
     @Autowired
     SourceRepository sourceRepository;
+
+    @Autowired
+    CollectionRepository collectionRepository;
 
     @Autowired
     public BaseOclFhirController(CodeSystemResourceProvider codeSystemResourceProvider,

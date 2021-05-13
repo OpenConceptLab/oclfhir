@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.hl7.fhir.r4.model.*;
+import org.openconceptlab.fhir.model.Collection;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
 import org.openconceptlab.fhir.util.OclFhirUtil;
@@ -90,9 +91,17 @@ public class OclFhirUserValueSetController extends BaseOclFhirController {
     public ResponseEntity<String> deleteValueSetByUser(@PathVariable(name = ID) @Parameter(description = THE_VALUESET_ID) String id,
                                                        @PathVariable(name = VERSION) @Parameter(description = THE_VALUESET_VERSION) String version,
                                                        @PathVariable(name = USER) @Parameter(description = THE_USERNAME) String user,
-                                                       @RequestHeader(name = AUTHORIZATION) @Parameter(hidden = true) String auth) {
-        String url = oclFhirUtil.oclApiBaseUrl() + FS + USERS + FS + user + FS + COLLECTIONS + FS + id + FS + version + FS;
-        return performDeleteOclApi(url, auth);
+                                                       @RequestHeader(name = AUTHORIZATION) @Parameter(hidden = true) String auth,
+                                                       @RequestParam(name = "force") @Parameter(hidden = true) boolean force) {
+        Collection collection = oclFhirUtil.getCollectionVersion(id, version, publicAccess, USER, user);
+        if (collection == null) return ResponseEntity.notFound().build();
+        if (oclFhirUtil.isOclAdmin(auth) && force) {
+            collectionRepository.delete(collection);
+            return ResponseEntity.noContent().build();
+        } else {
+            String url = oclFhirUtil.oclApiBaseUrl() + FS + USERS + FS + user + FS + COLLECTIONS + FS + id + FS + version + FS;
+            return performDeleteOclApi(url, auth);
+        }
     }
 
     /**

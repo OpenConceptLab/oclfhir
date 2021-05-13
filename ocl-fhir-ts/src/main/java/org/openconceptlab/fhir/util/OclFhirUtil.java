@@ -13,6 +13,8 @@ import org.apache.commons.logging.LogFactory;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.model.*;
+import org.openconceptlab.fhir.model.Collection;
+import org.openconceptlab.fhir.repository.CollectionRepository;
 import org.openconceptlab.fhir.repository.ConceptRepository;
 import org.openconceptlab.fhir.repository.ConceptsSourceRepository;
 import org.openconceptlab.fhir.repository.SourceRepository;
@@ -64,6 +66,7 @@ public class OclFhirUtil {
     private SourceRepository sourceRepository;
     private ConceptRepository conceptRepository;
     private ConceptsSourceRepository conceptsSourceRepository;
+    private CollectionRepository collectionRepository;
 
     @Autowired
     RestTemplate restTemplate;
@@ -72,10 +75,13 @@ public class OclFhirUtil {
     UserProfile oclUser;
 
     @Autowired
-    public OclFhirUtil(SourceRepository sourceRepository, ConceptRepository conceptRepository, ConceptsSourceRepository conceptsSourceRepository) {
+    public OclFhirUtil(SourceRepository sourceRepository, ConceptRepository conceptRepository,
+                       ConceptsSourceRepository conceptsSourceRepository,
+                       CollectionRepository collectionRepository) {
         this.sourceRepository = sourceRepository;
         this.conceptRepository = conceptRepository;
         this.conceptsSourceRepository = conceptsSourceRepository;
+        this.collectionRepository = collectionRepository;
     }
 
     public OclFhirUtil(){
@@ -214,6 +220,37 @@ public class OclFhirUtil {
             }
         }
         return source;
+    }
+
+    public Collection getCollectionVersion(String id, String version, List<String> access, String ownerType, String owner) {
+        return getCollectionVersion(new StringType(id), new StringType(version), access, ownerType, owner);
+    }
+
+    public Collection getCollectionVersion(StringType id, StringType version, List<String> access, String ownerType, String ownerId) {
+        final Collection collection;
+        if (!isValid(version)) {
+            // get latest version
+            collection = getLatestCollectionByOwner(id.getValue(), ownerId, ownerType, access);
+        } else {
+            // get a given version
+            if (ORG.equals(ownerType)) {
+                collection = collectionRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(
+                        id.getValue(), version.getValue(), ownerId, access);
+            } else {
+                collection = collectionRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(
+                        id.getValue(), version.getValue(), ownerId, access);
+            }
+        }
+        return collection;
+    }
+
+    private Collection getLatestCollectionByOwner(String id, String owner, String ownerType, List<String> access) {
+        if (ORG.equals(ownerType)) {
+            return collectionRepository.findFirstByMnemonicAndPublicAccessInAndOrganizationMnemonicAndIsLatestVersionOrderByCreatedAtDesc(
+                    id, access, owner, true);
+        }
+        return collectionRepository.findFirstByMnemonicAndPublicAccessInAndUserIdUsernameAndIsLatestVersionOrderByCreatedAtDesc(
+                id, access, owner, true);
     }
 
     public Source getLatestSourceByOwner(String id, String owner, String ownerType, List<String> access) {

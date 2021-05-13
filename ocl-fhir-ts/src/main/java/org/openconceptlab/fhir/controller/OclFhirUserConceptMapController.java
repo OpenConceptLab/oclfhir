@@ -9,6 +9,7 @@ import org.hl7.fhir.r4.model.ConceptMap;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Parameters;
+import org.openconceptlab.fhir.model.Source;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
 import org.openconceptlab.fhir.util.OclFhirUtil;
@@ -97,11 +98,19 @@ public class OclFhirUserConceptMapController extends BaseOclFhirController {
     public ResponseEntity<String> deleteConceptMapByUser(@PathVariable(name = ID) @Parameter(description = THE_CONCEPTMAP_ID) String id,
                                                          @PathVariable(name = VERSION) @Parameter(description = THE_CONCEPTMAP_VERSION) String version,
                                                          @PathVariable(name = USER) @Parameter(description = THE_USERNAME) String user,
-                                                         @RequestHeader(name = AUTHORIZATION) @Parameter(hidden = true) String auth) {
+                                                         @RequestHeader(name = AUTHORIZATION) @Parameter(hidden = true) String auth,
+                                                         @RequestParam(name = "force") @Parameter(hidden = true) boolean force) {
+        Source source = oclFhirUtil.getSourceVersion(id, version, publicAccess, USER, user);
+        if (source == null) return ResponseEntity.notFound().build();
         if (!validateIfEditable(CONCEPTMAP, id, version, USER, user))
             return badRequest("The ConceptMap can not be deleted.");
-        String url = oclFhirUtil.oclApiBaseUrl() + FS + USERS + FS + user + FS + SOURCES + FS + id + FS + version + FS;
-        return performDeleteOclApi(url, auth);
+        if (oclFhirUtil.isOclAdmin(auth) && force) {
+            sourceRepository.delete(source);
+            return ResponseEntity.noContent().build();
+        } else {
+            String url = oclFhirUtil.oclApiBaseUrl() + FS + USERS + FS + user + FS + SOURCES + FS + id + FS + version + FS;
+            return performDeleteOclApi(url, auth);
+        }
     }
 
     /**
