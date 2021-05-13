@@ -114,6 +114,17 @@ public class Concept extends BaseOclEntity implements Serializable {
 	@OneToMany(mappedBy="concept", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
 	private List<ConceptsName> conceptsNames;
 
+	@OneToMany(mappedBy="concept", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+	private List<ConceptsSource> conceptsSources;
+
+	public List<ConceptsSource> getConceptsSources() {
+		return conceptsSources;
+	}
+
+	public void setConceptsSources(List<ConceptsSource> conceptsSources) {
+		this.conceptsSources = conceptsSources;
+	}
+
 	public Concept() {
 	}
 

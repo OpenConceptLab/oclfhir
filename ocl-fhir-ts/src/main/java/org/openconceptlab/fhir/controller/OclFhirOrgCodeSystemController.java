@@ -5,6 +5,9 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.CodeSystem;
 import org.hl7.fhir.r4.model.IdType;
 import org.hl7.fhir.r4.model.Identifier;
@@ -12,18 +15,25 @@ import org.hl7.fhir.r4.model.Parameters;
 import org.openconceptlab.fhir.model.Source;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
+import org.openconceptlab.fhir.repository.SourceRepository;
 import org.openconceptlab.fhir.util.OclFhirUtil;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.Optional;
+import java.util.*;
 
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 import static org.openconceptlab.fhir.util.OclFhirConstants.VALIDATE_CODE;
@@ -34,6 +44,8 @@ import static org.openconceptlab.fhir.util.OclFhirUtil.newStringType;
 @RestController
 @RequestMapping({"/orgs/{org}/CodeSystem"})
 public class OclFhirOrgCodeSystemController extends BaseOclFhirController {
+
+    private static final Log log = LogFactory.getLog(OclFhirOrgCodeSystemController.class);
 
     public OclFhirOrgCodeSystemController(CodeSystemResourceProvider codeSystemResourceProvider,
                                           ValueSetResourceProvider valueSetResourceProvider,
@@ -101,11 +113,19 @@ public class OclFhirOrgCodeSystemController extends BaseOclFhirController {
     public ResponseEntity<String> deleteCodeSystemByOrg(@PathVariable(name = ID) @Parameter(description = THE_CODESYSTEM_ID) String id,
                                                         @PathVariable(name = VERSION) @Parameter(description = THE_CODESYSTEM_VERSION) String version,
                                                         @PathVariable(name = ORG) @Parameter(description = THE_ORGANIZATION_ID) String org,
-                                                        @RequestHeader(name = AUTHORIZATION) @Parameter(hidden = true) String auth) {
-        if (!validateIfEditable(CODESYSTEM, id, version, ORG, org))
+                                                        @RequestHeader(name = AUTHORIZATION) @Parameter(hidden = true) String auth,
+                                                        @RequestParam(name = "force") @Parameter(hidden = true) boolean force) {
+        Source source = oclFhirUtil.getSourceVersion(id, version, publicAccess, ORG, org);
+        if (source == null) return ResponseEntity.notFound().build();
+        if (!validateIfEditable(CODESYSTEM, source))
             return badRequest("The CodeSystem can not be deleted.");
-        String url = oclFhirUtil.oclApiBaseUrl() + FS + ORGS + FS + org + FS + SOURCES + FS + id + FS + version + FS;
-        return performDeleteOclApi(url, auth);
+        if (oclFhirUtil.isOclAdmin(auth) && force) {
+            sourceRepository.delete(source);
+            return ResponseEntity.noContent().build();
+        } else {
+            String url = oclFhirUtil.oclApiBaseUrl() + FS + ORGS + FS + org + FS + SOURCES + FS + id + FS + version + FS;
+            return performDeleteOclApi(url, auth);
+        }
     }
 
     /**

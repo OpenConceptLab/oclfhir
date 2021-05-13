@@ -9,6 +9,7 @@ import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.model.Source;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
+import org.openconceptlab.fhir.repository.SourceRepository;
 import org.openconceptlab.fhir.util.OclFhirUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
@@ -36,9 +37,12 @@ public class BaseOclFhirController {
     OclFhirUtil oclFhirUtil;
 
     @Autowired
+    SourceRepository sourceRepository;
+
+    @Autowired
     public BaseOclFhirController(CodeSystemResourceProvider codeSystemResourceProvider,
-                             ValueSetResourceProvider valueSetResourceProvider,
-                             OclFhirUtil oclFhirUtil) {
+                                ValueSetResourceProvider valueSetResourceProvider,
+                                OclFhirUtil oclFhirUtil) {
         this.codeSystemResourceProvider = codeSystemResourceProvider;
         this.valueSetResourceProvider = valueSetResourceProvider;
         this.oclFhirUtil = oclFhirUtil;
@@ -317,6 +321,16 @@ public class BaseOclFhirController {
     protected boolean validateIfEditable(String resourceType, String id, String version, String ownerType, String owner) {
         if (CODESYSTEM.equals(resourceType) || CONCEPTMAP.equals(resourceType)) {
             Source source = oclFhirUtil.getSourceVersion(id, version, publicAccess, ownerType, owner);
+            if (source != null && isValid(source.getSourceType())) {
+                return (CODESYSTEM.equals(resourceType) && source.getSourceType().toLowerCase().contains(CODESYSTEM.toLowerCase())) ||
+                        (CONCEPTMAP.equals(resourceType) && source.getSourceType().toLowerCase().contains(CONCEPTMAP.toLowerCase()));
+            }
+        }
+        return false;
+    }
+
+    protected boolean validateIfEditable(String resourceType, Source source) {
+        if (CODESYSTEM.equals(resourceType) || CONCEPTMAP.equals(resourceType)) {
             if (source != null && isValid(source.getSourceType())) {
                 return (CODESYSTEM.equals(resourceType) && source.getSourceType().toLowerCase().contains(CODESYSTEM.toLowerCase())) ||
                         (CONCEPTMAP.equals(resourceType) && source.getSourceType().toLowerCase().contains(CONCEPTMAP.toLowerCase()));

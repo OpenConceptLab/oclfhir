@@ -70,6 +70,9 @@ public class OclFhirUtil {
     RestTemplate restTemplate;
 
     @Autowired
+    UserProfile oclUser;
+
+    @Autowired
     public OclFhirUtil(SourceRepository sourceRepository, ConceptRepository conceptRepository, ConceptsSourceRepository conceptsSourceRepository) {
         this.sourceRepository = sourceRepository;
         this.conceptRepository = conceptRepository;
@@ -826,6 +829,18 @@ public class OclFhirUtil {
             }
         }
         return EMPTY;
+    }
+
+    private Optional<String> getToken() {
+        return oclUser.getAuthtokenTokens().stream()
+                .filter(f -> isValid(f.getKey()))
+                .map(m -> "Token " + m.getKey())
+                .findFirst();
+    }
+
+    public boolean isOclAdmin(String authToken) {
+        Optional<String> admin = getToken();
+        return admin.map(s -> s.equals(authToken)).orElse(false);
     }
 
 }
