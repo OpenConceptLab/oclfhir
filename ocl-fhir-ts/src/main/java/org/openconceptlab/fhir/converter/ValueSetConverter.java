@@ -639,7 +639,7 @@ public class ValueSetConverter extends BaseConverter {
         // save given version
         saveCollection(collection, validatedConceptIds, expressions);
         boolean isHeadExists = checkHeadVersionId(oclEntity.getUsername(), oclEntity.getOrg(), oclEntity.getResourceId(), oclEntity.getResourceType()) ||
-                checkHeadVersionUrl(oclEntity.getUsername(), oclEntity.getOrg(), oclEntity.getUrl(), oclEntity.getResourceType());
+                checkHeadVersionUrl(oclEntity.getUsername(), oclEntity.getOrg(), valueSet.getUrl(), oclEntity.getResourceType());
         if (!isHeadExists) {
             // save HEAD version
             collection.setId(null);

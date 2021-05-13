@@ -360,7 +360,7 @@ public class CodeSystemConverter extends BaseConverter {
 		saveSource(source, concepts);
 
 		boolean isHeadExists = checkHeadVersionId(oclEntity.getUsername(), oclEntity.getOrg(), oclEntity.getResourceId(), oclEntity.getResourceType()) ||
-				checkHeadVersionUrl(oclEntity.getUsername(), oclEntity.getOrg(), oclEntity.getUrl(), oclEntity.getResourceType());
+				checkHeadVersionUrl(oclEntity.getUsername(), oclEntity.getOrg(), codeSystem.getUrl(), oclEntity.getResourceType());
 		if (!isHeadExists) {
 			// save HEAD version
 			log.info("Creating HEAD version - " + source.getMnemonic());

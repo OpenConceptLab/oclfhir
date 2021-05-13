@@ -383,7 +383,7 @@ public class ConceptMapConverter extends BaseConverter {
         saveSource(source, mappings);
 
         boolean isHeadExists = checkHeadVersionId(oclEntity.getUsername(), oclEntity.getOrg(), oclEntity.getResourceId(), oclEntity.getResourceType()) ||
-                checkHeadVersionUrl(oclEntity.getUsername(), oclEntity.getOrg(), oclEntity.getUrl(), oclEntity.getResourceType());
+                checkHeadVersionUrl(oclEntity.getUsername(), oclEntity.getOrg(), conceptMap.getUrl(), oclEntity.getResourceType());
         if (!isHeadExists) {
             // save HEAD version
             source.setId(null);
