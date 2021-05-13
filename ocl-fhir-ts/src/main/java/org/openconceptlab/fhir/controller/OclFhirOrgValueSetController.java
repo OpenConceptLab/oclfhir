@@ -94,7 +94,7 @@ public class OclFhirOrgValueSetController extends BaseOclFhirController {
                                                       @PathVariable(name = VERSION) @Parameter(description = THE_VALUESET_VERSION) String version,
                                                       @PathVariable(name = ORG) @Parameter(description = THE_ORGANIZATION_ID) String org,
                                                       @RequestHeader(name = AUTHORIZATION) @Parameter(hidden = true) String auth,
-                                                      @RequestParam(name = "force") @Parameter(hidden = true) boolean force) {
+                                                      @RequestParam(name = "force", required = false, defaultValue = "false") @Parameter(hidden = true) boolean force) {
         Collection collection = oclFhirUtil.getCollectionVersion(id, version, publicAccess, ORG, org);
         if (collection == null) return ResponseEntity.notFound().build();
         if (oclFhirUtil.isOclAdmin(auth) && force) {

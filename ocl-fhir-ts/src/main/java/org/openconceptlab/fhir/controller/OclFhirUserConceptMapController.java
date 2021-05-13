@@ -99,7 +99,7 @@ public class OclFhirUserConceptMapController extends BaseOclFhirController {
                                                          @PathVariable(name = VERSION) @Parameter(description = THE_CONCEPTMAP_VERSION) String version,
                                                          @PathVariable(name = USER) @Parameter(description = THE_USERNAME) String user,
                                                          @RequestHeader(name = AUTHORIZATION) @Parameter(hidden = true) String auth,
-                                                         @RequestParam(name = "force") @Parameter(hidden = true) boolean force) {
+                                                         @RequestParam(name = "force", required = false, defaultValue = "false") @Parameter(hidden = true) boolean force) {
         Source source = oclFhirUtil.getSourceVersion(id, version, publicAccess, USER, user);
         if (source == null) return ResponseEntity.notFound().build();
         if (!validateIfEditable(CONCEPTMAP, id, version, USER, user))
