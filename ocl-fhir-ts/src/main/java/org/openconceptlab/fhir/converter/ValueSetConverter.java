@@ -674,8 +674,10 @@ public class ValueSetConverter extends BaseConverter {
                 );
                 // we need to update source version for later use. If version if not provided then we don't want to store
                 // source version info in expressions. This won't be persisted in db, it is for internal user only.
-                entityManager.detach(source);
-                source.setVersion(EMPTY);
+                if (source != null) {
+                    entityManager.detach(source);
+                    source.setVersion(EMPTY);
+                }
             }
             if (source == null)
                 throw new InvalidRequestException(String.format("The CodeSystem %s|%s does not exist.", system, version));
