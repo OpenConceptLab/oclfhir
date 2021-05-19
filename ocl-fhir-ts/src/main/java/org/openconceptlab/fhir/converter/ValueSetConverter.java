@@ -72,25 +72,38 @@ public class ValueSetConverter extends BaseConverter {
         this.insertCollectionReference = new SimpleJdbcInsert(jdbcTemplate).withTableName("collection_references");
     }
 
-    public List<ValueSet> convertToValueSet(List<Collection> collections, boolean includeCompose, Integer page, StringBuilder hasNext) {
+    public Bundle convertToValueSet(List<Collection> collections, boolean includeCompose, StringType page,
+                                            String url, OclFhirUtil.Filter filter) {
+        StringBuilder hasNext = new StringBuilder();
+        int pageInt = getPage(page);
+        // convert collection into valueset
         List<ValueSet> valueSets = new ArrayList<>();
+        for (Collection collection : collections) {
+            // convert to base
+            ValueSet valueSet = toBaseValueSet(collection);
+            if (includeCompose) {
+                // add concepts
+                addCompose(valueSet, collection, False, pageInt, hasNext);
+            }
+            valueSets.add(valueSet);
+        }
+        // apply valueset filter
+        List<ValueSet> valueSetsFiltered = applyFilter(valueSets, filter);
+        int total = valueSetsFiltered.size();
         if (!includeCompose) {
-            int offset = page * 10;
+            int offset = pageInt * 10;
             int count = 10;
-            if (page == 0) {
+            if (pageInt == 0) {
                 if (collections.size() > count) hasNext.append(True);
-            } else if (page < collections.size()/count) {
+            } else if (pageInt < valueSetsFiltered.size()/count) {
                 hasNext.append(True);
             }
-            collections = paginate(collections, offset, count);
+            valueSetsFiltered = paginate(valueSetsFiltered, offset, count);
         }
-        collections.forEach(collection -> {
-            ValueSet valueSet = toBaseValueSet(collection);
-            if (includeCompose)
-                addCompose(valueSet, collection, False, page, hasNext);
-            valueSets.add(valueSet);
-        });
-        return valueSets;
+        // bundle resources
+        Bundle bundle = OclFhirUtil.getBundle(valueSetsFiltered, url, getPrevPage(page), getNextPage(page, hasNext));
+        bundle.setTotal(total);
+        return bundle;
     }
 
     private ValueSet toBaseValueSet(final Collection collection) {
@@ -936,6 +949,18 @@ public class ValueSetConverter extends BaseConverter {
         // save collections concepts
         batchInsert(insertCollectionsConcepts, collection.getId().intValue(),
                 validatedConceptIds.keySet().stream().map(Long::intValue).collect(Collectors.toList()));
+    }
+
+    private List<ValueSet> applyFilter(List<ValueSet> valueSets, Filter filter) {
+        log.info("ValueSet filter - " + filter);
+        return valueSets.stream()
+                .filter(c ->
+                        !isValid(filter.getStatus()) || (c.getStatus() != null && c.getStatus().toCode().equalsIgnoreCase(filter.getStatus())))
+                .filter(c ->
+                        !isValid(filter.getPublisher()) || (isValid(c.getPublisher()) && c.getPublisher().equals(filter.getPublisher())))
+                .filter(c ->
+                        !isValid(filter.getVersion()) || isVersionAll(filter.getVersion()) || (isValid(c.getVersion()) && c.getVersion().equals(filter.getVersion())))
+                .collect(Collectors.toList());
     }
 
 }

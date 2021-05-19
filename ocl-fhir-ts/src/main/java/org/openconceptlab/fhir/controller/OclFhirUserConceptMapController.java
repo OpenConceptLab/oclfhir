@@ -5,10 +5,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import org.hl7.fhir.r4.model.ConceptMap;
-import org.hl7.fhir.r4.model.IdType;
-import org.hl7.fhir.r4.model.Identifier;
-import org.hl7.fhir.r4.model.Parameters;
+import org.hl7.fhir.r4.model.*;
 import org.openconceptlab.fhir.model.Source;
 import org.openconceptlab.fhir.provider.CodeSystemResourceProvider;
 import org.openconceptlab.fhir.provider.ValueSetResourceProvider;
@@ -19,6 +16,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.Optional;
 
@@ -146,10 +145,14 @@ public class OclFhirUserConceptMapController extends BaseOclFhirController {
     public ResponseEntity<String> getConceptMapVersionsByUser(@PathVariable(name = USER) @Parameter(description = THE_USERNAME) String user,
                                                               @PathVariable(name = ID) @Parameter(description = THE_CONCEPTMAP_ID) String id,
                                                               @PathVariable(name = VERSION) @Parameter(description = THE_CONCEPTMAP_VERSION, allowEmptyValue = true) Optional<String> version,
+                                                              @RequestParam(name = ConceptMap.SP_STATUS) Optional<String> status,
+                                                              @RequestParam(name = ConceptMap.SP_PUBLISHER) Optional<String> publisher,
                                                               @RequestParam(name = PAGE, required = false) Optional<String> page,
                                                               HttpServletRequest request) {
         return handleSearchResource(ConceptMap.class, OWNER, formatUser(user), ID, id, VERSION, version.orElse(ALL),
-                PAGE, page.orElse("1"), OWNER_URL, getRequestUrl(request));
+                PAGE, page.orElse("1"), OWNER_URL, getRequestUrl(request),
+                ConceptMap.SP_STATUS, status.orElse(EMPTY),
+                ConceptMap.SP_PUBLISHER, URLDecoder.decode(publisher.orElse(EMPTY), StandardCharsets.UTF_8));
     }
 
     /**
@@ -162,10 +165,16 @@ public class OclFhirUserConceptMapController extends BaseOclFhirController {
     @Operation(description = SEARCH_CONCEPTMAPS_FOR_USER)
     @GetMapping(produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> searchConceptMapsByUser(@PathVariable @Parameter(description = THE_USERNAME) String user,
+                                                          @RequestParam(name = ConceptMap.SP_STATUS) Optional<String> status,
+                                                          @RequestParam(name = ConceptMap.SP_PUBLISHER) Optional<String> publisher,
+                                                          @RequestParam(name = ConceptMap.SP_VERSION) Optional<String> version,
                                                           @RequestParam(name = PAGE, required = false) Optional<String> page,
                                                           HttpServletRequest request) {
         return handleSearchResource(ConceptMap.class, OWNER, formatUser(user), PAGE, page.orElse("1"),
-                OWNER_URL, getRequestUrl(request));
+                OWNER_URL, getRequestUrl(request),
+                ConceptMap.SP_STATUS, status.orElse(EMPTY),
+                ConceptMap.SP_PUBLISHER, URLDecoder.decode(publisher.orElse(EMPTY), StandardCharsets.UTF_8),
+                ConceptMap.SP_VERSION, URLDecoder.decode(version.orElse(EMPTY), StandardCharsets.UTF_8));
     }
 
     /**

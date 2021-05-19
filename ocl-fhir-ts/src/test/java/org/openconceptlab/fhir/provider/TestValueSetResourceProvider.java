@@ -128,7 +128,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         collection1.setReleased(false);
         when(collectionRepository.findAllLatest(anyList())).thenReturn(Collections.singletonList(collection1));
         ValueSetResourceProvider provider = valueSetProvider();
-        Bundle bundle = provider.searchValueSets(null, null, requestDetails);
+        Bundle bundle = provider.searchValueSets(null, null, null, null, null, requestDetails);
         assertEquals(1, bundle.getTotal());
         ValueSet valueSet = (ValueSet) bundle.getEntryFirstRep().getResource();
         assertEquals(0, valueSet.getCompose().getInclude().size());
@@ -142,7 +142,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         collection2.setReleased(false);
         when(collectionRepository.findAllLatest(anyList())).thenReturn(Arrays.asList(collection1, collection2));
         ValueSetResourceProvider provider = valueSetProvider();
-        Bundle bundle = provider.searchValueSets(null, null, requestDetails);
+        Bundle bundle = provider.searchValueSets(null, null,  null, null, null,requestDetails);
         assertEquals(2, bundle.getTotal());
         ValueSet valueSet1 = (ValueSet) bundle.getEntry().get(0).getResource();
         assertEquals(0, valueSet1.getCompose().getInclude().size());
@@ -157,7 +157,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
     @Test
     public void testSearchValueSet_return_empty() {
         ValueSetResourceProvider provider = valueSetProvider();
-        Bundle bundle = provider.searchValueSets(null, null, requestDetails);
+        Bundle bundle = provider.searchValueSets(null, null,  null, null, null,requestDetails);
         assertEquals(0, bundle.getTotal());
     }
 
@@ -169,7 +169,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         collection2.setVersion("HEAD");
         when(collectionRepository.findAllLatest(anyList())).thenReturn(Arrays.asList(collection1, collection2));
         ValueSetResourceProvider provider = valueSetProvider();
-        Bundle bundle = provider.searchValueSets(null, null, requestDetails);
+        Bundle bundle = provider.searchValueSets(null, null,  null, null, null,requestDetails);
         assertEquals(0, bundle.getTotal());
     }
 
@@ -182,7 +182,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList())).thenReturn(Collections.singletonList(cs22))
                 .thenReturn(Collections.singletonList(cs11));
         ValueSetResourceProvider provider = valueSetProvider();
-        Bundle bundle = provider.searchValueSetByUrl(newString(URL_COLLECTION_1), null, null, null, requestDetails);
+        Bundle bundle = provider.searchValueSetByUrl(newString(URL_COLLECTION_1), null, null, null,null, null, requestDetails);
         assertEquals(1, bundle.getTotal());
         ValueSet valueSet = (ValueSet) bundle.getEntryFirstRep().getResource();
         assertBaseValueSet(valueSet, URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
@@ -195,12 +195,13 @@ public class TestValueSetResourceProvider extends OclFhirTest {
     public void testSearchValueSetByUrl_version() {
         when(collectionRepository.findFirstByCanonicalUrlAndVersionAndPublicAccessIn(anyString(), anyString(), anyList()))
                 .thenReturn(collection1);
+        collection1.setVersion(V_1_0);
         when(sourceRepository.findFirstByMnemonicAndVersionAndOrganizationMnemonicAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
                 .thenReturn(source1).thenReturn(source2);
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList())).thenReturn(Collections.singletonList(cs22))
                 .thenReturn(Collections.singletonList(cs11));
         ValueSetResourceProvider provider = valueSetProvider();
-        Bundle bundle = provider.searchValueSetByUrl(newString(URL_COLLECTION_1), newString(V_1_0), null, null, requestDetails);
+        Bundle bundle = provider.searchValueSetByUrl(newString(URL_COLLECTION_1), newString(V_1_0), null, null, null, null, requestDetails);
         assertEquals(1, bundle.getTotal());
         ValueSet valueSet = (ValueSet) bundle.getEntryFirstRep().getResource();
         assertBaseValueSet(valueSet, URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
@@ -222,7 +223,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList())).thenReturn(Collections.singletonList(cs22))
                 .thenReturn(Collections.singletonList(cs11));
         ValueSetResourceProvider provider = valueSetProvider();
-        Bundle bundle = provider.searchValueSetByUrl(newString(URL_COLLECTION_1), newString("*"), null, null, requestDetails);
+        Bundle bundle = provider.searchValueSetByUrl(newString(URL_COLLECTION_1), newString("*"), null, null, null, null, requestDetails);
         assertEquals(2, bundle.getTotal());
         ValueSet valueSet1 = (ValueSet) bundle.getEntry().get(0).getResource();
         ValueSet valueSet2 = (ValueSet) bundle.getEntry().get(1).getResource();
@@ -240,7 +241,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
                 .thenReturn(Collections.singletonList(cs11));
         collection1.setVersion("HEAD");
         ValueSetResourceProvider provider = valueSetProvider();
-        Bundle bundle = provider.searchValueSetByUrl(newString(URL_COLLECTION_1), newString(V_1_0), null, null, requestDetails);
+        Bundle bundle = provider.searchValueSetByUrl(newString(URL_COLLECTION_1), newString(V_1_0), null,null, null, null, requestDetails);
         assertEquals(0, bundle.getTotal());
     }
 
@@ -248,7 +249,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
     public void testSearchValueSetByUrl_not_found() {
         ValueSetResourceProvider provider = valueSetProvider();
         Assertions.assertThrows(ResourceNotFoundException.class, () -> {
-            provider.searchValueSetByUrl(newString(URL_COLLECTION_1), null, null, null, requestDetails);
+            provider.searchValueSetByUrl(newString(URL_COLLECTION_1), null,null, null, null, null, requestDetails);
         });
     }
 
@@ -258,7 +259,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         when(collectionRepository.findByOrganizationMnemonicAndPublicAccessInAndIsLatestVersionOrderByMnemonic(anyString(), anyList(), anyBoolean()))
                 .thenReturn(Collections.singletonList(collection1));
         ValueSetResourceProvider provider = valueSetProvider();
-        Bundle bundle = provider.searchValueSetByOwner(newString("org:OCL"), null, null, requestDetails);
+        Bundle bundle = provider.searchValueSetByOwner(newString("org:OCL"), null, null, null,null, null, requestDetails);
         assertEquals(1, bundle.getTotal());
         assertBaseValueSet((ValueSet) bundle.getEntryFirstRep().getResource(), URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
                 "USA", TEST, COLLECTION_1_COPYRIGHT_TEXT);
@@ -271,7 +272,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         when(collectionRepository.findByUserIdUsernameAndPublicAccessInAndIsLatestVersionOrderByMnemonic(anyString(), anyList(), anyBoolean()))
                 .thenReturn(Collections.singletonList(collection1));
         ValueSetResourceProvider provider = valueSetProvider();
-        Bundle bundle = provider.searchValueSetByOwner(newString("user:test"), null, null, requestDetails);
+        Bundle bundle = provider.searchValueSetByOwner(newString("user:test"), null, null, null, null, null, requestDetails);
         assertEquals(1, bundle.getTotal());
         assertBaseValueSet((ValueSet) bundle.getEntryFirstRep().getResource(), URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
                 "USA", TEST, COLLECTION_1_COPYRIGHT_TEXT);
@@ -287,7 +288,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList())).thenReturn(Collections.singletonList(cs22))
                 .thenReturn(Collections.singletonList(cs11));
         ValueSetResourceProvider provider = valueSetProvider();
-        Bundle bundle = provider.searchValueSetByOwnerAndId(newString("org:OCL"), newString("123"), null, null, null, requestDetails);
+        Bundle bundle = provider.searchValueSetByOwnerAndId(newString("org:OCL"), newString("123"), null, null,  null, null,null, requestDetails);
         assertEquals(1, bundle.getTotal());
         ValueSet valueSet = (ValueSet) bundle.getEntryFirstRep().getResource();
         assertBaseValueSet(valueSet, URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
@@ -310,7 +311,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList())).thenReturn(Collections.singletonList(cs22))
                 .thenReturn(Collections.singletonList(cs11));
         ValueSetResourceProvider provider = valueSetProvider();
-        Bundle bundle = provider.searchValueSetByOwnerAndId(newString("user:test"), newString("123"), null, null, null, requestDetails);
+        Bundle bundle = provider.searchValueSetByOwnerAndId(newString("user:test"), newString("123"), null, null, null,  null, null,requestDetails);
         assertEquals(1, bundle.getTotal());
         ValueSet valueSet = (ValueSet) bundle.getEntryFirstRep().getResource();
         assertBaseValueSet(valueSet, URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
@@ -334,7 +335,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList())).thenReturn(Collections.singletonList(cs22))
                 .thenReturn(Collections.singletonList(cs11));
         ValueSetResourceProvider provider = valueSetProvider();
-        Bundle bundle = provider.searchValueSetByOwnerAndId(newString("user:test"), newString("123"), null, null, null, requestDetails);
+        Bundle bundle = provider.searchValueSetByOwnerAndId(newString("user:test"), newString("123"), null, null,  null, null, null, requestDetails);
         assertEquals(1, bundle.getTotal());
         ValueSet valueSet = (ValueSet) bundle.getEntryFirstRep().getResource();
         assertBaseValueSet(valueSet, URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
@@ -356,7 +357,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList())).thenReturn(Collections.singletonList(cs22))
                 .thenReturn(Collections.singletonList(cs11));
         ValueSetResourceProvider provider = valueSetProvider();
-        Bundle bundle = provider.searchValueSetByOwnerAndId(newString("user:test"), newString("123"), null, null, null, requestDetails);
+        Bundle bundle = provider.searchValueSetByOwnerAndId(newString("user:test"), newString("123"), null, null,  null, null, null, requestDetails);
         assertEquals(1, bundle.getTotal());
         ValueSet valueSet = (ValueSet) bundle.getEntryFirstRep().getResource();
         assertBaseValueSet(valueSet, URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
@@ -378,7 +379,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList())).thenReturn(Collections.singletonList(cs22))
                 .thenReturn(Collections.singletonList(cs11));
         ValueSetResourceProvider provider = valueSetProvider();
-        Bundle bundle = provider.searchValueSetByOwnerAndId(newString("user:test"), newString("123"), null, null, null, requestDetails);
+        Bundle bundle = provider.searchValueSetByOwnerAndId(newString("user:test"), newString("123"), null, null,  null, null, null, requestDetails);
         assertEquals(1, bundle.getTotal());
         ValueSet valueSet = (ValueSet) bundle.getEntryFirstRep().getResource();
         assertBaseValueSet(valueSet, URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
@@ -398,7 +399,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         when(sourceRepository.findFirstByMnemonicAndVersionAndUserIdUsernameAndPublicAccessIn(anyString(), anyString(), anyString(), anyList()))
                 .thenReturn(source1).thenReturn(source2);
         ValueSetResourceProvider provider = valueSetProvider();
-        Bundle bundle = provider.searchValueSetByOwnerAndId(newString("user:test"), newString("123"), null, null, null, requestDetails);
+        Bundle bundle = provider.searchValueSetByOwnerAndId(newString("user:test"), newString("123"), null, null,  null, null, null, requestDetails);
         assertEquals(1, bundle.getTotal());
         ValueSet valueSet = (ValueSet) bundle.getEntryFirstRep().getResource();
         assertBaseValueSet(valueSet, URL_COLLECTION_1, COLLECTION_1_NAME, COLLECTION_1_FULL_NAME, "Jon Doe 1", "jondoe1@gmail.com",
@@ -1017,7 +1018,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
     public void testSearchValueSet_count() {
         when(collectionRepository.findAllLatest(anyList())).thenReturn(getCollections());
         ValueSetResourceProvider provider = valueSetProvider();
-        Bundle bundle = provider.searchValueSets(null, null, requestDetails);
+        Bundle bundle = provider.searchValueSets(null, null, null, null, null, requestDetails);
         assertEquals(12, bundle.getTotal());
     }
 
@@ -1030,7 +1031,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         when(conceptsSourceRepository.findBySourceIdAndConceptIdInOrderByConceptIdDesc(anyLong(), anyList())).thenReturn(Collections.singletonList(cs22))
                 .thenReturn(Collections.singletonList(cs11));
         ValueSetResourceProvider provider = valueSetProvider();
-        Bundle bundle = provider.searchValueSetByUrl(newString(URL_COLLECTION_1), newString("*"), null, null, requestDetails);
+        Bundle bundle = provider.searchValueSetByUrl(newString(URL_COLLECTION_1), newString("*"), null,null, null, null, requestDetails);
         assertEquals(12, bundle.getTotal());
     }
 
@@ -1039,7 +1040,7 @@ public class TestValueSetResourceProvider extends OclFhirTest {
         when(collectionRepository.findByUserIdUsernameAndPublicAccessInAndIsLatestVersionOrderByMnemonic(anyString(), anyList(), anyBoolean()))
                 .thenReturn(getCollections());
         ValueSetResourceProvider provider = valueSetProvider();
-        Bundle bundle = provider.searchValueSetByOwner(newString("user:test"), null, null, requestDetails);
+        Bundle bundle = provider.searchValueSetByOwner(newString("user:test"), null, null, null, null, null, requestDetails);
         assertEquals(12, bundle.getTotal());
     }
 

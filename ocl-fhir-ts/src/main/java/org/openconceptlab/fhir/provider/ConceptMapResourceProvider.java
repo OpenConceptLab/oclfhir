@@ -95,16 +95,14 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
     @Transactional
     public Bundle searchConceptMaps(@OptionalParam(name = PAGE) StringType page,
                                     @OptionalParam(name = OWNER_URL) StringType ownerUrl,
+                                    @OptionalParam(name = ConceptMap.SP_STATUS) StringType status,
+                                    @OptionalParam(name = ConceptMap.SP_PUBLISHER) StringType publisher,
+                                    @OptionalParam(name = ConceptMap.SP_VERSION) StringType version,
                                     RequestDetails details) {
         List<Source> sources = filterSourceHead(getSources(publicAccess));
-        StringBuilder hasNext = new StringBuilder();
-        List<ConceptMap> conceptMaps = conceptMapConverter.convertToConceptMap(sources, false,
-                getPage(page), hasNext);
-        log.info("Found " + conceptMaps.size() + " ConceptMaps.");
-        Bundle bundle = OclFhirUtil.getBundle(conceptMaps, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
-                getPrevPage(page), getNextPage(page, hasNext));
-        bundle.setTotal(sources.size());
-        return bundle;
+        OclFhirUtil.Filter filter = getFilter(status, null, publisher, version);
+        return conceptMapConverter.convertToConceptMap(sources, false, page,
+                isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(), filter);
     }
 
     /**
@@ -119,17 +117,14 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
                                         @OptionalParam(name = VERSION) StringType version,
                                         @OptionalParam(name = PAGE) StringType page,
                                         @OptionalParam(name = OWNER_URL) StringType ownerUrl,
+                                        @OptionalParam(name = ConceptMap.SP_STATUS) StringType status,
+                                        @OptionalParam(name = ConceptMap.SP_PUBLISHER) StringType publisher,
                                         RequestDetails details) {
         List<Source> sources = filterSourceHead(getSourceByUrl(url, version, publicAccess));
-        StringBuilder hasNext = new StringBuilder();
         boolean includeMappings = !isValid(version) || !isVersionAll(version);
-        List<ConceptMap> conceptMaps = conceptMapConverter.convertToConceptMap(sources, includeMappings,
-                getPage(page), hasNext);
-        log.info("Found " + conceptMaps.size() + " ConceptMaps.");
-        Bundle bundle = OclFhirUtil.getBundle(conceptMaps, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
-                getPrevPage(page), getNextPage(page, hasNext));
-        bundle.setTotal(sources.size());
-        return bundle;
+        OclFhirUtil.Filter filter = getFilter(status, null, publisher, version);
+        return conceptMapConverter.convertToConceptMap(sources, includeMappings, page,
+                isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(), filter);
     }
 
     /**
@@ -142,16 +137,15 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
     public Bundle searchConceptMapByOwner(@RequiredParam(name = OWNER) StringType owner,
                                           @OptionalParam(name = PAGE) StringType page,
                                           @OptionalParam(name = OWNER_URL) StringType ownerUrl,
+                                          @OptionalParam(name = ConceptMap.SP_STATUS) StringType status,
+                                          @OptionalParam(name = ConceptMap.SP_PUBLISHER) StringType publisher,
+                                          @OptionalParam(name = VERSION) StringType version,
                                           RequestDetails details) {
         List<Source> sources = filterSourceHead(getSourceByOwner(owner, publicAccess));
-        StringBuilder hasNext = new StringBuilder();
-        List<ConceptMap> conceptMaps = conceptMapConverter.convertToConceptMap(sources, false,
-                getPage(page), hasNext);
-        log.info("Found " + conceptMaps.size() + " ConceptMaps.");
-        Bundle bundle = OclFhirUtil.getBundle(conceptMaps, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
-                getPrevPage(page), getNextPage(page, hasNext));
-        bundle.setTotal(sources.size());
-        return bundle;
+        OclFhirUtil.Filter filter = getFilter(status, null, publisher, version);
+        return conceptMapConverter.convertToConceptMap(sources, false, page,
+                isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(), filter);
+
     }
 
     /**
@@ -169,17 +163,14 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
                                                @OptionalParam(name = VERSION) StringType version,
                                                @OptionalParam(name = PAGE) StringType page,
                                                @OptionalParam(name = OWNER_URL) StringType ownerUrl,
+                                               @OptionalParam(name = ConceptMap.SP_STATUS) StringType status,
+                                               @OptionalParam(name = ConceptMap.SP_PUBLISHER) StringType publisher,
                                                RequestDetails details) {
         List<Source> sources = filterSourceHead(getSourceByOwnerAndIdAndVersion(id, owner, version, publicAccess));
-        StringBuilder hasNext = new StringBuilder();
         boolean includeMappings = !isVersionAll(version);
-        List<ConceptMap> conceptMaps = conceptMapConverter.convertToConceptMap(sources, includeMappings,
-                getPage(page), hasNext);
-        log.info("Found " + conceptMaps.size() + " ConceptMaps.");
-        Bundle bundle = OclFhirUtil.getBundle(conceptMaps, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
-                getPrevPage(page), getNextPage(page, hasNext));
-        bundle.setTotal(sources.size());
-        return bundle;
+        OclFhirUtil.Filter filter = getFilter(status, null, publisher, version);
+        return conceptMapConverter.convertToConceptMap(sources, includeMappings, page,
+                isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(), filter);
     }
 
     @Operation(name = TRANSLATE, idempotent = true)
@@ -204,7 +195,7 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
             }
             validate(sourceCode, sourceSystem);
             List<Source> conceptMaps = getSourceByOwnerAndIdAndVersion(newStringType(id), owner, conceptMapVersion, publicAccess);
-            if (conceptMaps.isEmpty()) throw new ResourceNotFoundException(notFound(CodeSystem.class, owner, newStringType(id), conceptMapVersion));
+            if (conceptMaps.isEmpty()) throw new ResourceNotFoundException(notFound(ConceptMap.class, owner, newStringType(id), conceptMapVersion));
             return conceptMapConverter.translate(conceptMaps.get(0), sourceSystem, sourceVersion, sourceCode, targetSystem, publicAccess);
         }
         // $translate by url

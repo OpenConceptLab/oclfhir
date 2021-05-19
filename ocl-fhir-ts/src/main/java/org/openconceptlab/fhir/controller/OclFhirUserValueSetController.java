@@ -16,6 +16,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 import static org.openconceptlab.fhir.util.OclFhirConstants.*;
@@ -158,9 +160,13 @@ public class OclFhirUserValueSetController extends BaseOclFhirController {
                                                             @PathVariable(name = ID) @Parameter(description = THE_VALUESET_ID) String id,
                                                             @PathVariable(name = VERSION) @Parameter(description = THE_VALUESET_VERSION, allowEmptyValue = true) Optional<String> version,
                                                             @RequestParam(name = PAGE, required = false) Optional<String> page,
+                                                            @RequestParam(name = ValueSet.SP_STATUS) Optional<String> status,
+                                                            @RequestParam(name = ValueSet.SP_PUBLISHER) Optional<String> publisher,
                                                             HttpServletRequest request) {
         return handleSearchResource(ValueSet.class, OWNER, formatUser(user), ID, id, VERSION, version.orElse(ALL),
-                PAGE, page.orElse("1"), OWNER_URL, getRequestUrl(request));
+                PAGE, page.orElse("1"), OWNER_URL, getRequestUrl(request),
+                ValueSet.SP_STATUS, status.orElse(EMPTY),
+                ValueSet.SP_PUBLISHER, URLDecoder.decode(publisher.orElse(EMPTY), StandardCharsets.UTF_8));
     }
 
     /**
@@ -173,10 +179,16 @@ public class OclFhirUserValueSetController extends BaseOclFhirController {
     @Operation(summary = SEARCH_VALUESETS_FOR_USER)
     @GetMapping(produces = {MediaType.APPLICATION_JSON_VALUE})
     public ResponseEntity<String> searchValueSetsByUser(@PathVariable @Parameter(description = THE_USERNAME) String user,
+                                                        @RequestParam(name = ValueSet.SP_STATUS) Optional<String> status,
+                                                        @RequestParam(name = ValueSet.SP_PUBLISHER) Optional<String> publisher,
+                                                        @RequestParam(name = ValueSet.SP_VERSION) Optional<String> version,
                                                         @RequestParam(name = PAGE, required = false) Optional<String> page,
                                                         HttpServletRequest request) {
         return handleSearchResource(ValueSet.class, OWNER, formatUser(user), PAGE, page.orElse("1"),
-                OWNER_URL, getRequestUrl(request));
+                OWNER_URL, getRequestUrl(request),
+                ValueSet.SP_STATUS, status.orElse(EMPTY),
+                ValueSet.SP_PUBLISHER, URLDecoder.decode(publisher.orElse(EMPTY), StandardCharsets.UTF_8),
+                ValueSet.SP_VERSION, URLDecoder.decode(version.orElse(EMPTY), StandardCharsets.UTF_8));
     }
 
     /**

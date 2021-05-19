@@ -120,6 +120,8 @@ public class SwaggerDocumentController extends BaseOclFhirController{
     public ResponseEntity<String> searchValueSetsByUrl(
             @RequestParam(name = ValueSet.SP_URL, required = false) @Parameter(description = THE_VALUESET_URL) String url,
             @RequestParam(name = VERSION, required = false) @Parameter(description = THE_VALUESET_VERSION) String version,
+            @RequestParam(name = CodeSystem.SP_STATUS) Optional<String> status,
+            @RequestParam(name = CodeSystem.SP_PUBLISHER) Optional<String> publisher,
             @RequestParam(name = PAGE, required = false) Optional<String> page) {
         return ResponseEntity.badRequest().body(DOCUMENTATION_CONTROLLER_CALLED);
     }
@@ -194,6 +196,8 @@ public class SwaggerDocumentController extends BaseOclFhirController{
     public ResponseEntity<String> searchConceptMapsByUrl(
             @RequestParam(name = ConceptMap.SP_URL, required = false) @Parameter(description = THE_CONCEPTMAP_URL) String url,
             @RequestParam(name = VERSION, required = false) @Parameter(description = THE_CONCEPTMAP_VERSION) String version,
+            @RequestParam(name = CodeSystem.SP_STATUS) Optional<String> status,
+            @RequestParam(name = CodeSystem.SP_PUBLISHER) Optional<String> publisher,
             @RequestParam(name = PAGE, required = false) Optional<String> page) {
         return ResponseEntity.badRequest().body(DOCUMENTATION_CONTROLLER_CALLED);
     }

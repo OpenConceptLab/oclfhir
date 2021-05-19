@@ -101,15 +101,14 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
     @Transactional
     public Bundle searchValueSets(@OptionalParam(name = PAGE) StringType page,
                                   @OptionalParam(name = OWNER_URL) StringType ownerUrl,
+                                  @OptionalParam(name = ValueSet.SP_STATUS) StringType status,
+                                  @OptionalParam(name = ValueSet.SP_PUBLISHER) StringType publisher,
+                                  @OptionalParam(name = ValueSet.SP_VERSION) StringType version,
                                   RequestDetails details) {
         List<Collection> collections = filterCollectionHead(getCollections(publicAccess));
-        StringBuilder hasNext = new StringBuilder();
-        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, false, getPage(page), hasNext);
-        log.info("Found " + valueSets.size() + " ValueSets.");
-        Bundle bundle = OclFhirUtil.getBundle(valueSets, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
-                getPrevPage(page), getNextPage(page, hasNext));
-        bundle.setTotal(collections.size());
-        return bundle;
+        OclFhirUtil.Filter filter = getFilter(status, null, publisher, version);
+        return valueSetConverter.convertToValueSet(collections, false, page,
+               isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(), filter);
     }
 
     /**
@@ -124,15 +123,13 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
                                       @OptionalParam(name = VERSION) StringType version,
                                       @OptionalParam(name = PAGE) StringType page,
                                       @OptionalParam(name = OWNER_URL) StringType ownerUrl,
+                                      @OptionalParam(name = ValueSet.SP_STATUS) StringType status,
+                                      @OptionalParam(name = ValueSet.SP_PUBLISHER) StringType publisher,
                                       RequestDetails details) {
         List<Collection> collections = filterCollectionHead(getCollectionByUrl(url, version, publicAccess));
-        StringBuilder hasNext = new StringBuilder();
-        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, !isVersionAll(version), getPage(page), hasNext);
-        log.info("Found " + valueSets.size() + " ValueSets.");
-        Bundle bundle = OclFhirUtil.getBundle(valueSets, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
-                getPrevPage(page), getNextPage(page, hasNext));
-        bundle.setTotal(collections.size());
-        return bundle;
+        OclFhirUtil.Filter filter = getFilter(status, null, publisher, version);
+        return valueSetConverter.convertToValueSet(collections, !isVersionAll(version), page,
+                isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(), filter);
     }
 
     /**
@@ -145,15 +142,14 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
     public Bundle searchValueSetByOwner(@RequiredParam(name = OWNER) StringType owner,
                                         @OptionalParam(name = PAGE) StringType page,
                                         @OptionalParam(name = OWNER_URL) StringType ownerUrl,
+                                        @OptionalParam(name = ValueSet.SP_STATUS) StringType status,
+                                        @OptionalParam(name = ValueSet.SP_PUBLISHER) StringType publisher,
+                                        @OptionalParam(name = ValueSet.SP_VERSION) StringType version,
                                         RequestDetails details) {
         List<Collection> collections = filterCollectionHead(getCollectionByOwner(owner, publicAccess));
-        StringBuilder hasNext = new StringBuilder();
-        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, false, getPage(page), hasNext);
-        log.info("Found " + valueSets.size() + " ValueSets.");
-        Bundle bundle = OclFhirUtil.getBundle(valueSets, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
-                getPrevPage(page), getNextPage(page, hasNext));
-        bundle.setTotal(collections.size());
-        return bundle;
+        OclFhirUtil.Filter filter = getFilter(status, null, publisher, version);
+        return valueSetConverter.convertToValueSet(collections, false, page,
+                isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(), filter);
     }
 
     /**
@@ -171,15 +167,13 @@ public class ValueSetResourceProvider extends BaseProvider implements IResourceP
                                              @OptionalParam(name = VERSION) StringType version,
                                              @OptionalParam(name = PAGE) StringType page,
                                              @OptionalParam(name = OWNER_URL) StringType ownerUrl,
+                                             @OptionalParam(name = ValueSet.SP_STATUS) StringType status,
+                                             @OptionalParam(name = ValueSet.SP_PUBLISHER) StringType publisher,
                                              RequestDetails details) {
         List<Collection> collections = filterCollectionHead(getCollectionByOwnerAndId(id, owner, version, publicAccess));
-        StringBuilder hasNext = new StringBuilder();
-        List<ValueSet> valueSets = valueSetConverter.convertToValueSet(collections, !isVersionAll(version), getPage(page), hasNext);
-        log.info("Found " + valueSets.size() + " ValueSets.");
-        Bundle bundle = OclFhirUtil.getBundle(valueSets, isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(),
-                getPrevPage(page), getNextPage(page, hasNext));
-        bundle.setTotal(collections.size());
-        return bundle;
+        OclFhirUtil.Filter filter = getFilter(status, null, publisher, version);
+        return valueSetConverter.convertToValueSet(collections, !isVersionAll(version), page,
+                isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(), filter);
     }
 
     @Operation(name = VALIDATE_CODE, idempotent = true)

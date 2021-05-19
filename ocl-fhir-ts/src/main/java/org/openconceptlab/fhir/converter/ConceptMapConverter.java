@@ -47,28 +47,39 @@ public class ConceptMapConverter extends BaseConverter {
                 userProfilesOrganizationRepository, organizationRepository, userRepository, collectionRepository, mappingRepository);
     }
 
-    public List<ConceptMap> convertToConceptMap(List<Source> sources, boolean includeMappings, int page, StringBuilder hasNext) {
+    public Bundle convertToConceptMap(List<Source> sources, boolean includeMappings, StringType page,
+                                      String url, OclFhirUtil.Filter filter) {
+        StringBuilder hasNext = new StringBuilder();
+        int pageInt = getPage(page);
+        // convert source into conceptmap
         List<ConceptMap> conceptMaps = new ArrayList<>();
-        if (!includeMappings) {
-            int offset = page * 10;
-            int count = 10;
-            if (page == 0) {
-                if (sources.size() > count) hasNext.append(True);
-            } else if (page < sources.size()/count) {
-                hasNext.append(True);
-            }
-            sources = paginate(sources, offset, count);
-        }
-        sources.forEach(source -> {
-            // convert to base concept map
+        for (Source source : sources) {
+            // convert to base
             ConceptMap conceptMap = toConceptMap(source);
             if (includeMappings) {
-                // populate mappings
-                addMappingsToConceptMap(conceptMap, source.getId(), page, hasNext);
+                // add concepts
+                addMappingsToConceptMap(conceptMap, source.getId(), pageInt, hasNext);
             }
             conceptMaps.add(conceptMap);
-        });
-        return conceptMaps;
+        }
+        // apply conceptmap filter
+        List<ConceptMap> conceptMapsFiltered = applyFilter(conceptMaps, filter);
+        int total = conceptMapsFiltered.size();
+        // paginate filtered list
+        if (!includeMappings) {
+            int offset = pageInt * 10;
+            int count = 10;
+            if (pageInt == 0) {
+                if (conceptMapsFiltered.size() > count) hasNext.append(True);
+            } else if (pageInt < conceptMapsFiltered.size()/count) {
+                hasNext.append(True);
+            }
+            conceptMapsFiltered = paginate(conceptMapsFiltered, offset, count);
+        }
+        // bundle resources
+        Bundle bundle = OclFhirUtil.getBundle(conceptMapsFiltered, url, getPrevPage(page), getNextPage(page, hasNext));
+        bundle.setTotal(total);
+        return bundle;
     }
 
     private ConceptMap toConceptMap(final Source source) {
@@ -753,6 +764,18 @@ public class ConceptMapConverter extends BaseConverter {
             throw new InvalidRequestException("The combination of source_url,source_version," +
                     "source_code,target_url,target_version,target_code,equivalence should be unique.");
         return mappings;
+    }
+
+    private List<ConceptMap> applyFilter(List<ConceptMap> conceptMaps, Filter filter) {
+        log.info("ConceptMap filter - " + filter);
+        return conceptMaps.stream()
+                .filter(c ->
+                        !isValid(filter.getStatus()) || (c.getStatus() != null && c.getStatus().toCode().equalsIgnoreCase(filter.getStatus())))
+                .filter(c ->
+                        !isValid(filter.getPublisher()) || (isValid(c.getPublisher()) && c.getPublisher().equals(filter.getPublisher())))
+                .filter(c ->
+                        !isValid(filter.getVersion()) || isVersionAll(filter.getVersion()) || (isValid(c.getVersion()) && c.getVersion().equals(filter.getVersion())))
+                .collect(Collectors.toList());
     }
 
 }
