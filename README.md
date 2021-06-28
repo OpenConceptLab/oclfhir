@@ -31,7 +31,7 @@ that the maintenance version will be automatically increased after a successful 
 should be turned off by setting the increaseMaintenanceRelease variable to false on the Run stage "Release" popup in other cases.
 
 You also need to create a deployment release [here](https://ci.openmrs.org/deploy/createDeploymentVersion.action?deploymentProjectId=205619205).
-Please make sure the release version matches the version defined in core/__init__.py (except the extended GIT SHA in the release version).
+Please make sure the release version matches the version defined in pom.xml (except the extended GIT SHA in the release version).
 
 ### Deployment
 
