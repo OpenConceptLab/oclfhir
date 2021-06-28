@@ -1,5 +1,5 @@
 #Stage 1: Build
-FROM openjdk:14-jdk-slim as build
+FROM openjdk:14 as build
 
 ARG SOURCE_COMMIT
 ARG MAVEN_VERSION=3.6.3
