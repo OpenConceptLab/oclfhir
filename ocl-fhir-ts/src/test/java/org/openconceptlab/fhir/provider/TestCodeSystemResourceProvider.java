@@ -239,9 +239,13 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         Bundle bundle = provider.searchCodeSystemByUrl(newString(URL_SOURCE_1), newString("*"), null, null, null, null, null, requestDetails);
         assertEquals(2, bundle.getTotal());
         assertEquals(URL_SOURCE_1, ((CodeSystem) bundle.getEntry().get(1).getResource()).getUrl());
-        assertEquals("v2.0", ((CodeSystem) bundle.getEntry().get(1).getResource()).getVersion());
         assertEquals(URL_SOURCE_1, ((CodeSystem) bundle.getEntry().get(0).getResource()).getUrl());
-        assertEquals(V_1_0, ((CodeSystem) bundle.getEntry().get(0).getResource()).getVersion());
+        if ("v2.0".equals(((CodeSystem) bundle.getEntry().get(1).getResource()).getVersion())) {
+            assertEquals(V_1_0, ((CodeSystem) bundle.getEntry().get(0).getResource()).getVersion());
+        } else {
+            assertEquals("v2.0", ((CodeSystem) bundle.getEntry().get(0).getResource()).getVersion());
+            assertEquals(V_1_0, ((CodeSystem) bundle.getEntry().get(1).getResource()).getVersion());
+        }
     }
 
     @Test
