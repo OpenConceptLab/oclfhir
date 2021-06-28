@@ -13,7 +13,7 @@ import javax.servlet.annotation.WebFilter;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
-@WebFilter("/*")
+@WebFilter({"/orgs/*", "/users/*"})
 public class VersionFilter implements Filter {
 
     @Autowired
@@ -28,6 +28,7 @@ public class VersionFilter implements Filter {
     public void doFilter(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws IOException, ServletException {
         HttpServletResponse httpServletResponse = (HttpServletResponse) servletResponse;
         httpServletResponse.addHeader("x-ocl-fhir-version", applicationProperties.getOclFhirVersion());
+        filterChain.doFilter(servletRequest, servletResponse);
     }
 
     @Override
