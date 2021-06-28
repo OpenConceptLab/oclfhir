@@ -3,7 +3,8 @@ package org.openconceptlab.fhir.provider;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import org.hl7.fhir.r4.hapi.rest.server.ServerCapabilityStatementProvider;
 import org.hl7.fhir.r4.model.*;
-import org.springframework.beans.factory.annotation.Value;
+import org.openconceptlab.fhir.ApplicationProperties;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.servlet.http.HttpServletRequest;
@@ -20,8 +21,8 @@ import static org.openconceptlab.fhir.util.OclFhirConstants.*;
 @Component
 public class OclCapabilityStatementProvider extends ServerCapabilityStatementProvider {
 
-    @Value("${oclfhir.version}")
-    private String oclfhirVersion;
+    @Autowired
+    private ApplicationProperties properties;
 
     public static final String OPEN_CONCEPT_LAB = "Open Concept Lab";
     public static final String OPEN_CONCEPT_LAB_FHIR_CAPABILITY_STATEMENT = "Open Concept Lab FHIR Capability Statement";
@@ -40,7 +41,7 @@ public class OclCapabilityStatementProvider extends ServerCapabilityStatementPro
     @Override
     public CapabilityStatement getServerConformance(HttpServletRequest theRequest, RequestDetails theRequestDetails) {
         CapabilityStatement capabilityStatement = new CapabilityStatement();
-        capabilityStatement.setVersion(oclfhirVersion);
+        capabilityStatement.setVersion(properties.getOclFhirVersion());
         CapabilityStatement generated = getSuperServerConformance(theRequest, theRequestDetails);
         capabilityStatement.setStatus(Enumerations.PublicationStatus.ACTIVE);
         capabilityStatement.setPublisher(OPEN_CONCEPT_LAB);

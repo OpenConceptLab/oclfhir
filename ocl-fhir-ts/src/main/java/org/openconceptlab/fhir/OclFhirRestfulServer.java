@@ -16,6 +16,7 @@ import org.springframework.web.cors.CorsConfiguration;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServletResponse;
 import java.util.Arrays;
 
 /**
@@ -25,6 +26,9 @@ import java.util.Arrays;
 @Component
 @WebServlet(urlPatterns = "/fhir/*", loadOnStartup = 1, displayName = "OCL FHIR Server", asyncSupported = true)
 public class OclFhirRestfulServer extends RestfulServer {
+
+	@Autowired
+	ApplicationProperties properties;
 
 	private CodeSystemResourceProvider codeSystemResourceProvider;
 	private ValueSetResourceProvider valueSetResourceProvider;
@@ -86,6 +90,11 @@ public class OclFhirRestfulServer extends RestfulServer {
 		// Create the interceptor and register it
 		CorsInterceptor interceptor = new CorsInterceptor(config);
 		registerInterceptor(interceptor);
+
 	}
 
+	@Override
+	public void addHeadersToResponse(HttpServletResponse theHttpResponse) {
+		theHttpResponse.addHeader("x-ocl-fhir-version", properties.getOclFhirVersion());
+	}
 }
