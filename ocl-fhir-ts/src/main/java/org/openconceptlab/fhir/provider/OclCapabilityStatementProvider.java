@@ -38,10 +38,14 @@ public class OclCapabilityStatementProvider extends ServerCapabilityStatementPro
     public static final String CONCEPTMAP_PROFILE = "http://hl7.org/fhir/StructureDefinition/ConceptMap";
     public static final String COMMA = ", ";
 
+    public ApplicationProperties getProperties() {
+        return properties;
+    }
+
     @Override
     public CapabilityStatement getServerConformance(HttpServletRequest theRequest, RequestDetails theRequestDetails) {
         CapabilityStatement capabilityStatement = new CapabilityStatement();
-        capabilityStatement.setVersion(properties.getOclFhirVersion());
+        capabilityStatement.setVersion(getProperties().getOclFhirVersion());
         CapabilityStatement generated = getSuperServerConformance(theRequest, theRequestDetails);
         capabilityStatement.setStatus(Enumerations.PublicationStatus.ACTIVE);
         capabilityStatement.setPublisher(OPEN_CONCEPT_LAB);

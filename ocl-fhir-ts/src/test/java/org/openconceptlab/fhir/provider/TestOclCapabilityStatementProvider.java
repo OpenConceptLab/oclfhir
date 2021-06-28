@@ -10,6 +10,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import org.openconceptlab.fhir.ApplicationProperties;
 import org.openconceptlab.fhir.base.OclFhirTest;
 
 import javax.servlet.http.HttpServletRequest;
@@ -30,6 +31,7 @@ public class TestOclCapabilityStatementProvider extends OclFhirTest {
     public void testCapabilityStatementProvider() {
         OclCapabilityStatementProvider provider = Mockito.spy(new OclCapabilityStatementProvider());
         doReturn(new CapabilityStatement()).when(provider).getSuperServerConformance(any(HttpServletRequest.class), any(RequestDetails.class));
+        doReturn(new ApplicationProperties()).when(provider).getProperties();
         CapabilityStatement statement = provider.getServerConformance(servletRequest, requestDetails);
         assertEquals(OPEN_CONCEPT_LAB, statement.getPublisher());
         assertEquals(OPEN_CONCEPT_LAB_FHIR_CAPABILITY_STATEMENT, statement.getTitle());
