@@ -11,7 +11,7 @@ fi
 GIT_SHA=${SOURCE_COMMIT:-'SNAPSHOT'}
 GIT_SHA=${GIT_SHA:0:8}
 
-GET_VERSION_CMD="$MAVEN_BIN -Dexec.executable='echo' -Dexec.args='${project.version}' --non-recursive exec:exec -q"
+GET_VERSION_CMD="$MAVEN_BIN -Dexec.executable='echo' -Dexec.args='\${project.version}' --non-recursive exec:exec -q"
 PROJECT_VERSION=$(eval "$GET_VERSION_CMD")
 
 PROJECT_MAINTENANCE_VERSION=$(echo "$PROJECT_VERSION" | cut -f 1 -d '-')
