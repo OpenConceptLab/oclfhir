@@ -3,7 +3,7 @@ set -e
 
 MAVEN_BIN = "$MAVEN_HOME/bin/mvn"
 if [[ "$MAVEN_HOME" == "" ]]; then
-	echo "[INFO] MAVEN_HOME variable is unset. Trying to use 'mvn' from the system path."
+  echo "[INFO] MAVEN_HOME variable is unset. Trying to use 'mvn' from the system path."
   MAVEN_BIN = "mvn"
 fi
 
@@ -12,7 +12,8 @@ export SOURCE_COMMIT=${SOURCE_COMMIT:0:8}
 
 ./set_build_version.sh
 
-PROJECT_VERSION=$($MAVEN_BIN -Dexec.executable='echo' -Dexec.args='${project.version}' --non-recursive exec:exec -q)
+GET_VERSION_CMD="$MAVEN_BIN -Dexec.executable='echo' -Dexec.args='${project.version}' --non-recursive exec:exec -q"
+PROJECT_VERSION=$(eval "$GET_VERSION_CMD")
 
 TAG="$PROJECT_VERSION-$SOURCE_COMMIT"
 
