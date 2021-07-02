@@ -1,10 +1,10 @@
 #!/bin/bash
 set -e
 
-MAVEN_BIN = "$MAVEN_HOME/bin/mvn"
+MAVEN_BIN="$MAVEN_HOME/bin/mvn"
 if [[ "$MAVEN_HOME" == "" ]]; then
   echo "[INFO] MAVEN_HOME variable is unset. Trying to use 'mvn' from the system path."
-  MAVEN_BIN = "mvn"
+  MAVEN_BIN="mvn"
 fi
 
 SOURCE_COMMIT=$(git rev-parse HEAD)
