@@ -12,7 +12,7 @@ export SOURCE_COMMIT=${SOURCE_COMMIT:0:8}
 
 ./set_build_version.sh
 
-GET_VERSION_CMD="$MAVEN_BIN -Dexec.executable='echo' -Dexec.args='${project.version}' --non-recursive exec:exec -q"
+GET_VERSION_CMD="$MAVEN_BIN -Dexec.executable='echo' -Dexec.args='\${project.version}' --non-recursive exec:exec -q"
 PROJECT_VERSION=$(eval "$GET_VERSION_CMD")
 
 TAG="$PROJECT_VERSION-$SOURCE_COMMIT"
