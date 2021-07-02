@@ -32,8 +32,9 @@ docker tag $DOCKER_IMAGE_ID $DOCKER_IMAGE_NAME:$TAG
 docker push $DOCKER_IMAGE_NAME:$TAG
 
 if [[ "$INCREASE_MAINTENANCE_VERSION" = true ]]; then
-  $MAVEN_BIN --batch-mode release:update-versions -DautoVersionSubmodules=true
-  $MAVEN_BIN versions:commit
+  $MAVEN_BIN versions:set -DnextSnapshot=true
+  git add .
+  git commit -m "Increase maintenance version"
   git push origin master
 fi
 
