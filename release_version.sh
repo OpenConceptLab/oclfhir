@@ -24,7 +24,7 @@ git commit -m "Set build version"
 git tag "$TAG"
 
 git remote set-url origin ${GIT_REPO_URL}
-git push origin --tags
+git push origin "$TAG"
 git checkout master
 
 docker pull $DOCKER_IMAGE_ID
@@ -34,6 +34,7 @@ docker push $DOCKER_IMAGE_NAME:$TAG
 if [[ "$INCREASE_MAINTENANCE_VERSION" = true ]]; then
   $MAVEN_BIN --batch-mode release:update-versions -DautoVersionSubmodules=true
   $MAVEN_BIN versions:commit
+  git push origin master
 fi
 
 
