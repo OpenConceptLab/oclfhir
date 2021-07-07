@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>org.openconceptlab</groupId>
 		<artifactId>openconceptlab</artifactId>
-		<version>2.0.1-SNAPSHOT</version>
+		<version>2.0.2-SNAPSHOT</version>
 	</parent>
 	<groupId>org.openconceptlab.oclfhir</groupId>
 	<artifactId>ocl-fhir-ts</artifactId>
