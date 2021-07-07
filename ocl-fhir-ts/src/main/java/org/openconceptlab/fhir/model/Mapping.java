@@ -10,6 +10,8 @@ import java.io.Serializable;
 import java.sql.Timestamp;
 import java.util.List;
 
+import static org.openconceptlab.fhir.util.OclFhirUtil.decodeValue;
+
 
 /**
  * The persistent class for the mappings database table.
@@ -254,7 +256,7 @@ public class Mapping extends BaseOclEntity implements Serializable {
 	}
 
 	public String getToConceptCode() {
-		return this.toConceptCode;
+		return decodeValue(this.toConceptCode);
 	}
 
 	public void setToConceptCode(String toConceptCode) {
@@ -390,7 +392,7 @@ public class Mapping extends BaseOclEntity implements Serializable {
 //	}
 
 	public String getFromConceptCode() {
-		return fromConceptCode;
+		return decodeValue(fromConceptCode);
 	}
 
 	public void setFromConceptCode(String fromConceptCode) {
