@@ -1,6 +1,9 @@
 package org.openconceptlab.fhir.model;
-
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import org.hibernate.annotations.Type;
+import org.openconceptlab.fhir.util.OclFhirUtil;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -233,7 +236,7 @@ public class Concept extends BaseOclEntity implements Serializable {
 	}
 
 	public String getMnemonic() {
-		return this.mnemonic;
+		return OclFhirUtil.decodeValue(this.mnemonic);
 	}
 
 	public void setMnemonic(String mnemonic) {

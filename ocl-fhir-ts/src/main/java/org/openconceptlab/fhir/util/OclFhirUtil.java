@@ -31,6 +31,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URL;
 import java.net.URLDecoder;
@@ -879,6 +880,13 @@ public class OclFhirUtil {
         return admin.map(s -> s.equals(authToken)).orElse(false);
     }
 
+    public static String decodeValue(String value) {
+        try {
+            return URLDecoder.decode(value, StandardCharsets.UTF_8.toString());
+        } catch (UnsupportedEncodingException ex) {
+            return value;
+        }
+    }
 }
 
 
