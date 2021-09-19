@@ -25,9 +25,6 @@ public class CollectionReference extends BaseOclEntity implements Serializable {
 	@Column
 	private String expression;
 
-	@Column(name="internal_reference_id")
-	private String internalReferenceId;
-
 	@Column(name="last_resolved_at")
 	private Timestamp lastResolvedAt;
 
@@ -62,14 +59,6 @@ public class CollectionReference extends BaseOclEntity implements Serializable {
 
 	public void setExpression(String expression) {
 		this.expression = expression;
-	}
-
-	public String getInternalReferenceId() {
-		return this.internalReferenceId;
-	}
-
-	public void setInternalReferenceId(String internalReferenceId) {
-		this.internalReferenceId = internalReferenceId;
 	}
 
 	public Timestamp getLastResolvedAt() {

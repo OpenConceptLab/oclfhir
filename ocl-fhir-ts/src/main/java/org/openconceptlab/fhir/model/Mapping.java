@@ -48,9 +48,6 @@ public class Mapping extends BaseOclEntity implements Serializable {
 	@Column(columnDefinition = "jsonb")
 	private String extras;
 
-	@Column(name="internal_reference_id")
-	private String internalReferenceId;
-
 	@Column(name="is_active")
 	private Boolean isActive;
 
@@ -197,14 +194,6 @@ public class Mapping extends BaseOclEntity implements Serializable {
 
 	public void setExtras(String extras) {
 		this.extras = extras;
-	}
-
-	public String getInternalReferenceId() {
-		return this.internalReferenceId;
-	}
-
-	public void setInternalReferenceId(String internalReferenceId) {
-		this.internalReferenceId = internalReferenceId;
 	}
 
 	public Boolean getIsActive() {

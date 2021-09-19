@@ -78,9 +78,6 @@ public class Collection extends BaseOclEntity implements Serializable {
 	@Column(name="full_name")
 	private String fullName;
 
-	@Column(name="internal_reference_id")
-	private String internalReferenceId;
-
 	@Column(name="is_active")
 	private Boolean isActive;
 
@@ -305,14 +302,6 @@ public class Collection extends BaseOclEntity implements Serializable {
 
 	public void setFullName(String fullName) {
 		this.fullName = fullName;
-	}
-
-	public String getInternalReferenceId() {
-		return this.internalReferenceId;
-	}
-
-	public void setInternalReferenceId(String internalReferenceId) {
-		this.internalReferenceId = internalReferenceId;
 	}
 
 	public Boolean getIsActive() {

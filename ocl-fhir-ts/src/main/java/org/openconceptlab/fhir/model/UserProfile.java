@@ -40,9 +40,6 @@ public class UserProfile extends BaseOclEntity implements Serializable {
 	@Column(name="first_name")
 	private String firstName;
 
-	@Column(name="internal_reference_id")
-	private String internalReferenceId;
-
 	@Column(name="is_active")
 	private Boolean isActive;
 
@@ -160,14 +157,6 @@ public class UserProfile extends BaseOclEntity implements Serializable {
 
 	public void setFirstName(String firstName) {
 		this.firstName = firstName;
-	}
-
-	public String getInternalReferenceId() {
-		return this.internalReferenceId;
-	}
-
-	public void setInternalReferenceId(String internalReferenceId) {
-		this.internalReferenceId = internalReferenceId;
 	}
 
 	public Boolean getIsActive() {

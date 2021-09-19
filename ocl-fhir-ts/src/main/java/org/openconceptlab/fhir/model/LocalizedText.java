@@ -25,9 +25,6 @@ public class LocalizedText extends BaseOclEntity implements Serializable {
 	@Column(name="external_id")
 	private String externalId;
 
-	@Column(name="internal_reference_id")
-	private String internalReferenceId;
-
 	@Column
 	private String locale;
 
@@ -71,14 +68,6 @@ public class LocalizedText extends BaseOclEntity implements Serializable {
 
 	public void setExternalId(String externalId) {
 		this.externalId = externalId;
-	}
-
-	public String getInternalReferenceId() {
-		return this.internalReferenceId;
-	}
-
-	public void setInternalReferenceId(String internalReferenceId) {
-		this.internalReferenceId = internalReferenceId;
 	}
 
 	public String getLocale() {
