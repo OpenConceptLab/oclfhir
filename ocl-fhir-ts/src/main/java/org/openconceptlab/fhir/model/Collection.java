@@ -157,6 +157,12 @@ public class Collection extends BaseOclEntity implements Serializable {
 	@Column(name="meta", columnDefinition = "jsonb")
 	private String meta;
 
+	@Column
+	private Long activeConcepts = 0L;
+
+	@Column
+	private Long activeMappings = 0L;
+
 	public Collection() {
 	}
 
@@ -538,5 +544,21 @@ public class Collection extends BaseOclEntity implements Serializable {
 
 	public void setMeta(String meta) {
 		this.meta = meta;
+	}
+
+	public Long getActiveConcepts() {
+		return activeConcepts;
+	}
+
+	public void setActiveConcepts(Long activeConcepts) {
+		this.activeConcepts = activeConcepts;
+	}
+
+	public Long getActiveMappings() {
+		return activeMappings;
+	}
+
+	public void setActiveMappings(Long activeMappings) {
+		this.activeMappings = activeMappings;
 	}
 }

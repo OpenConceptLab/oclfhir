@@ -649,6 +649,8 @@ public class ValueSetConverter extends BaseConverter {
             }
         });
 
+        collection.setActiveConcepts(Long.valueOf(validatedConceptIds.size()));
+
         // save given version
         saveCollection(collection, validatedConceptIds, expressions);
         boolean isHeadExists = checkHeadVersionId(oclEntity.getUsername(), oclEntity.getOrg(), oclEntity.getResourceId(), oclEntity.getResourceType()) ||
