@@ -163,7 +163,7 @@ public class ValueSetConverter extends BaseConverter {
         return valueSet;
     }
 
-    private Optional<Concept> getConcept(List<ConceptsSource> conceptsSources, String conceptId, String conceptVersion) {
+        private Optional<Concept> getConcept(List<ConceptsSource> conceptsSources, String conceptId, String conceptVersion) {
         if (isValid(conceptVersion)) {
             return conceptsSources.parallelStream().map(ConceptsSource::getConcept)
                     .filter(c -> c.getMnemonic().equals(conceptId) && conceptVersion.equals(c.getVersion()))

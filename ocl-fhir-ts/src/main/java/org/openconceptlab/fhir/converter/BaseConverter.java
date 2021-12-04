@@ -555,7 +555,7 @@ public class BaseConverter {
 
         // draft or unknown or empty
         source.setIsActive(True);
-        source.setIsLatestVersion(True);
+        source.setIsLatestVersion(false);
         source.setRetired(False);
         source.setReleased(False);
         if (resource.getStatus() != null) {

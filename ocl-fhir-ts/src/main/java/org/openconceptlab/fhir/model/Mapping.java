@@ -49,10 +49,10 @@ public class Mapping extends BaseOclEntity implements Serializable {
 	private String extras;
 
 	@Column(name="is_active")
-	private Boolean isActive;
+	private Boolean isActive = true;
 
 	@Column(name="is_latest_version")
-	private Boolean isLatestVersion;
+	private Boolean isLatestVersion = false;
 
 	@Column(name="map_type")
 	private String mapType;
@@ -61,10 +61,10 @@ public class Mapping extends BaseOclEntity implements Serializable {
 	private String publicAccess;
 
 	@Column
-	private Boolean released;
+	private Boolean released = false;
 
 	@Column
-	private Boolean retired;
+	private Boolean retired = false;
 
 	@Column(name="to_concept_code")
 	private String toConceptCode;

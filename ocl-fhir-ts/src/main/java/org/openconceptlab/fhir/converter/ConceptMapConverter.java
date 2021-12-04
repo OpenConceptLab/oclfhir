@@ -399,9 +399,12 @@ public class ConceptMapConverter extends BaseConverter {
             // save HEAD version
             source.setId(null);
             source.setVersion(HEAD);
-            source.setIsLatestVersion(false);
+            source.setIsLatestVersion(true);
             source.setReleased(false);
             source.setUri(removeVersion(source.getUri()));
+            for (Mapping mapping: mappings) {
+                mapping.setIsLatestVersion(true);
+            }
             saveSource(source, mappings);
         }
         // populate index
@@ -410,6 +413,7 @@ public class ConceptMapConverter extends BaseConverter {
 
     @Transactional
     protected void saveSource(Source source, List<Mapping> mappings) {
+        source.setActiveMappings(Long.valueOf(mappings.size()));
         // save source
         sourceRepository.saveAndFlush(source);
         log.info("saved source - " + source.getMnemonic());
@@ -530,11 +534,9 @@ public class ConceptMapConverter extends BaseConverter {
         mappings.forEach(c -> {
             c.setParent(source);
             c.setPublicAccess(source.getPublicAccess());
-            c.setIsLatestVersion(True);
             c.setReleased(false);
             c.setRetired(false);
             c.setIsActive(true);
-            c.setIsLatestVersion(true);
             c.setCreatedBy(user);
             c.setUpdatedBy(user);
             c.setVersionedObject(c);
@@ -741,6 +743,7 @@ public class ConceptMapConverter extends BaseConverter {
         }
 
         if (!newMappings.isEmpty()) {
+            source.setActiveConcepts(Long.valueOf(newMappings.size() + allExisting.getSize()));
             saveMappings(source, newMappings);
             return true;
         }

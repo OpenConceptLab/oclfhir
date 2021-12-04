@@ -366,9 +366,12 @@ public class CodeSystemConverter extends BaseConverter {
 			log.info("Creating HEAD version - " + source.getMnemonic());
 			source.setId(null);
 			source.setVersion(HEAD);
-			source.setIsLatestVersion(false);
+			source.setIsLatestVersion(true);
 			source.setReleased(false);
 			source.setUri(removeVersion(source.getUri()));
+			for (Concept concept: concepts) {
+				concept.setIsLatestVersion(true);
+			}
 			saveSource(source, concepts);
 		}
 		// populate index
@@ -377,6 +380,7 @@ public class CodeSystemConverter extends BaseConverter {
 
 	@Transactional
 	protected void saveSource(Source source, List<Concept> concepts) {
+		source.setActiveConcepts(Long.valueOf(concepts.size()));
 		// save source
 		sourceRepository.saveAndFlush(source);
 		log.info("saved source - " + source.getMnemonic());
@@ -428,6 +432,13 @@ public class CodeSystemConverter extends BaseConverter {
 			concept.setMnemonic(code);
 			// name
 			concept.setName(isValid(component.getDisplay()) ? component.getDisplay() : code);
+			ConceptsName conceptsName = new ConceptsName();
+			LocalizedText localizedText = new LocalizedText();
+			localizedText.setLocalePreferred(true);
+			localizedText.setLocale(defaultLocale);
+			localizedText.setName(concept.getName());
+			conceptsName.setLocalizedText(localizedText);
+			concept.addConceptsName(conceptsName);
 			// definition
 			addDefinition(concept, component.getDefinition(), defaultLocale);
 			// designation
@@ -471,7 +482,7 @@ public class CodeSystemConverter extends BaseConverter {
 			conceptsName.setLocalizedText(name);
 			return conceptsName;
 		}).collect(Collectors.toList());
-		concept.setConceptsNames(conceptsNames);
+		concept.getConceptsNames().addAll(conceptsNames);
 	}
 
 	private List<LocalizedText> toLocalizedText(List<CodeSystem.ConceptDefinitionDesignationComponent> components, String defaultLocale) {
@@ -486,7 +497,6 @@ public class CodeSystemConverter extends BaseConverter {
 				if (type != null)
 					text.setType(type);
 				text.setName(name);
-				text.setLocalePreferred(locale.equals(defaultLocale));
 				texts.add(text);
 			}
 		}
@@ -634,6 +644,7 @@ public class CodeSystemConverter extends BaseConverter {
 					.collect(Collectors.toList()), source.getId());
 			List<Concept> newConcepts = batch.stream().filter(f -> !existingConcepts.contains(f.getMnemonic())).collect(Collectors.toList());
 			if (!newConcepts.isEmpty()) {
+				source.setActiveConcepts(Long.valueOf(newConcepts.size() + existingConcepts.size()));
 				populateBaseConceptField(newConcepts, source, oclEntity.getUserProfile());
 				saveConcepts(source, newConcepts);
 				return true;
@@ -701,11 +712,7 @@ public class CodeSystemConverter extends BaseConverter {
 
 	private void batchConcepts(List<Concept> concepts, List<Integer> conceptIds) {
 		concepts.forEach(c -> {
-			boolean isLatestVersion = c.getIsLatestVersion();
-			boolean released = c.getReleased();
 			// base concept version
-			c.setIsLatestVersion(false);
-			c.setReleased(false);
 			Integer id1 = saveConcept(c);
 			this.jdbcTemplate.update(updateConceptBaseSql, new PreparedStatementSetter() {
 				@Override
@@ -715,21 +722,7 @@ public class CodeSystemConverter extends BaseConverter {
 					ps.setInt(3, id1);
 				}
 			});
-  			// first concept version (Ideally we should only be creating one concept record, but we need to create two for OCL API compatibility)
-			c.setIsLatestVersion(isLatestVersion);
-			c.setReleased(released);
-			Integer id2 = saveConcept(c);
-			this.jdbcTemplate.update(updateConceptSql, new PreparedStatementSetter() {
-				@Override
-				public void setValues(PreparedStatement ps) throws SQLException {
-					ps.setInt(1, id2);
-					ps.setInt(2, id1);
-					ps.setInt(3, id2);
-					ps.setInt(4, id2);
-				}
-			});
 			conceptIds.add(id1);
-			conceptIds.add(id2);
 		});
 	}
 
