@@ -750,8 +750,8 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         verify(authtokenRepository, times(1)).findByKey(anyString());
         verify(userProfilesOrganizationRepository, times(1)).findByOrganizationMnemonic(anyString());
         verify(sourceRepository, times(2)).saveAndFlush(any(Source.class));
-        verify(insertConcept, times(4)).executeAndReturnKeyHolder(anyMap());
-        verify(insertLocalizedText, times(8)).executeAndReturnKeyHolder(anyMap());
+        verify(insertConcept, times(2)).executeAndReturnKeyHolder(anyMap());
+        verify(insertLocalizedText, times(6)).executeAndReturnKeyHolder(anyMap());
     }
 
     @Test
