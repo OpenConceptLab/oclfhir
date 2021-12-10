@@ -95,7 +95,7 @@ public class OclFhirUtil {
 
     public static IParser parser = context.newJsonParser();
     public static JsonParser jsonParser = new JsonParser();
-    public static Gson gson = new Gson();
+    public static Gson gson = new GsonBuilder().disableHtmlEscaping().create();
 
     public static FhirContext getFhirContext() {
         return context;
