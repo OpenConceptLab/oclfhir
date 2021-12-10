@@ -2,6 +2,7 @@ package org.openconceptlab.fhir.converter;
 
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import com.google.gson.reflect.TypeToken;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
@@ -131,6 +132,22 @@ public class ConceptMapConverter extends BaseConverter {
             conceptMap.setDate(source.getRevisionDate());
         // experimental
         if (source.isExperimental() != null) conceptMap.setExperimental(source.isExperimental());
+
+        if (source.getExtras() != null) {
+            try {
+                Object targetCanonical = source.getExtras().get("targetCanonical");
+                if (targetCanonical != null) {
+                    conceptMap.setTarget(new CanonicalType(targetCanonical.toString()));
+                }
+                Object sourceCanonical = source.getExtras().get("sourceCanonical");
+                if (sourceCanonical != null) {
+                    conceptMap.setSource(new CanonicalType(sourceCanonical.toString()));
+                }
+            } catch (Exception e) {
+                log.info(String.format("Cannot deserialize extras for %s: %s", source.getUri(), source.getExtras()), e);
+            }
+
+        }
         return conceptMap;
     }
 

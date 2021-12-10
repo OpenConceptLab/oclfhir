@@ -591,8 +591,6 @@ public class BaseConverter {
         // revision date
         if (resource.getDate() != null)
             source.setRevisionDate(resource.getDate());
-        // extras
-        source.setExtras(EMPTY_JSON);
         // experimental
         if (resource.getExperimentalElement().getValue() != null)
             source.setExperimental(resource.getExperimentalElement().booleanValue());
@@ -637,6 +635,15 @@ public class BaseConverter {
             // purpose
             if (isValid(conceptMap.getPurpose()))
                 source.setPurpose(conceptMap.getPurpose());
+
+            Map<String, Object> extras = new HashMap<>();
+            if (conceptMap.getTargetCanonicalType() != null && conceptMap.getTargetCanonicalType().getValue() != null) {
+                extras.put("targetCanonical", conceptMap.getTargetCanonicalType().getValue());
+            }
+            if (conceptMap.getSourceCanonicalType() != null && conceptMap.getSourceCanonicalType().getValue() != null) {
+                extras.put("sourceCanonical", conceptMap.getSourceCanonicalType().getValue());
+            }
+            source.setExtras(extras);
         }
         return source;
     }

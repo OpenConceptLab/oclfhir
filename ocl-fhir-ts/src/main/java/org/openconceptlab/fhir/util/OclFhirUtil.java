@@ -281,17 +281,17 @@ public class OclFhirUtil {
 
     public Source getLatestSourceByUrl(StringType url, List<String> access) {
         return sourceRepository.findFirstByCanonicalUrlAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
-                url.getValue(), access, true
+                url.getValue(), access, false
         );
     }
 
     private Source getLatestSourceByOwnerAndUrl(String owner, String ownerType, StringType url, List<String> access) {
         if (ORG.equals(ownerType))
             return sourceRepository.findFirstByCanonicalUrlAndOrganizationMnemonicAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
-                    url.getValue(), owner, access, true
+                    url.getValue(), owner, access, false
             );
         return sourceRepository.findFirstByCanonicalUrlAndUserIdUsernameAndPublicAccessInAndIsLatestVersionOrderByCreatedAtDesc(
-                url.getValue(), owner, access, true
+                url.getValue(), owner, access, false
         );
     }
 

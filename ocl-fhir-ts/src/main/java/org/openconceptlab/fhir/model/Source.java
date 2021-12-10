@@ -9,7 +9,9 @@ import java.io.Serializable;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 
 /**
@@ -69,7 +71,7 @@ public class Source extends BaseOclEntity implements Serializable {
 
 	@Type(type = "jsonb")
 	@Column(name = "extras", columnDefinition = "jsonb")
-	private String extras;
+	private Map<String, Object> extras = new HashMap<>();
 
 	@Column(name="full_name")
 	private String fullName;
@@ -290,11 +292,11 @@ public class Source extends BaseOclEntity implements Serializable {
 		this.externalId = externalId;
 	}
 
-	public String getExtras() {
+	public Map<String, Object> getExtras() {
 		return this.extras;
 	}
 
-	public void setExtras(String extras) {
+	public void setExtras(Map<String, Object> extras) {
 		this.extras = extras;
 	}
 
