@@ -1,5 +1,6 @@
 package org.openconceptlab.fhir.model;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.hibernate.annotations.Type;
@@ -71,7 +72,7 @@ public class Source extends BaseOclEntity implements Serializable {
 
 	@Type(type = "jsonb")
 	@Column(name = "extras", columnDefinition = "jsonb")
-	private Map<String, Object> extras = new HashMap<>();
+	private String extras = "{}";
 
 	@Column(name="full_name")
 	private String fullName;
@@ -292,11 +293,11 @@ public class Source extends BaseOclEntity implements Serializable {
 		this.externalId = externalId;
 	}
 
-	public Map<String, Object> getExtras() {
+	public String getExtras() {
 		return this.extras;
 	}
 
-	public void setExtras(Map<String, Object> extras) {
+	public void setExtras(String extras) {
 		this.extras = extras;
 	}
 

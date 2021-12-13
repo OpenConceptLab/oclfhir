@@ -2,7 +2,8 @@ package org.openconceptlab.fhir.converter;
 
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
-import com.google.gson.reflect.TypeToken;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.reflect.TypeToken;
 import org.apache.commons.collections4.ListUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
@@ -135,11 +136,12 @@ public class ConceptMapConverter extends BaseConverter {
 
         if (source.getExtras() != null) {
             try {
-                Object targetCanonical = source.getExtras().get("targetCanonical");
+                Map<String, Object> extras = gson.fromJson(source.getExtras(), new TypeToken<Map<String, Object>>() {}.getType());
+                Object targetCanonical = extras.get("targetCanonical");
                 if (targetCanonical != null) {
                     conceptMap.setTarget(new CanonicalType(targetCanonical.toString()));
                 }
-                Object sourceCanonical = source.getExtras().get("sourceCanonical");
+                Object sourceCanonical = extras.get("sourceCanonical");
                 if (sourceCanonical != null) {
                     conceptMap.setSource(new CanonicalType(sourceCanonical.toString()));
                 }

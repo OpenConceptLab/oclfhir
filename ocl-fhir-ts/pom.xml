@@ -128,7 +128,6 @@
 		<dependency>
 			<groupId>com.vladmihalcea</groupId>
 			<artifactId>hibernate-types-52</artifactId>
-			<version>2.9.13</version>
 		</dependency>
 		
 		<dependency>

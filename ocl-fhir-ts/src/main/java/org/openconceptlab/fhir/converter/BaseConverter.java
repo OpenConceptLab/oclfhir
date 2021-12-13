@@ -643,7 +643,7 @@ public class BaseConverter {
             if (conceptMap.getSourceCanonicalType() != null && conceptMap.getSourceCanonicalType().getValue() != null) {
                 extras.put("sourceCanonical", conceptMap.getSourceCanonicalType().getValue());
             }
-            source.setExtras(extras);
+            source.setExtras(gson.toJson(extras));
         }
         return source;
     }
