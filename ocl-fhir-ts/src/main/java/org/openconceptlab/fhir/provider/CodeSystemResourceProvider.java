@@ -103,7 +103,7 @@ public class CodeSystemResourceProvider extends BaseProvider implements IResourc
                                     @OptionalParam(name = CodeSystem.SP_PUBLISHER) StringType publisher,
                                     @OptionalParam(name = CodeSystem.SP_VERSION) StringType version,
                                     RequestDetails details) {
-        List<Source> sources = getSources(publicAccess);
+        List<Source> sources = filterSourceHead(getSources(publicAccess));
         OclFhirUtil.Filter filter = getFilter(status, contentMode, publisher, version);
         return codeSystemConverter.convertToCodeSystem(sources, false, page,
                 isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(), filter);

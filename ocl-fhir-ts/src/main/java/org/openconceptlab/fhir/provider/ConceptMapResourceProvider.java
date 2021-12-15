@@ -99,7 +99,7 @@ public class ConceptMapResourceProvider extends BaseProvider implements IResourc
                                     @OptionalParam(name = ConceptMap.SP_PUBLISHER) StringType publisher,
                                     @OptionalParam(name = ConceptMap.SP_VERSION) StringType version,
                                     RequestDetails details) {
-        List<Source> sources = getSources(publicAccess);
+        List<Source> sources = filterSourceHead(getSources(publicAccess));
         OclFhirUtil.Filter filter = getFilter(status, null, publisher, version);
         return conceptMapConverter.convertToConceptMap(sources, false, page,
                 isValid(ownerUrl) ? ownerUrl.getValue() : details.getCompleteUrl(), filter);
