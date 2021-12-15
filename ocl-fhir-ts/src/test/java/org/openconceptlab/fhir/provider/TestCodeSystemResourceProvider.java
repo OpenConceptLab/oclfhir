@@ -166,7 +166,7 @@ public class TestCodeSystemResourceProvider extends OclFhirTest {
         when(sourceRepository.findAllLatest(anyList())).thenReturn(Arrays.asList(source1));
         CodeSystemResourceProvider provider = codeSystemProvider();
         Bundle bundle = provider.searchCodeSystems(null, null, null, null, null, null, requestDetails);
-        assertEquals(0, bundle.getTotal());
+        assertEquals(1, bundle.getTotal());
     }
 
     @Test
